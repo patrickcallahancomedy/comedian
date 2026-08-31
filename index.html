@@ -1,11 +1,11 @@
 <!doctype html>
-<!-- COMEDIAN BUILD: Lab 36 -->
+<!-- COMEDIAN BUILD: Lab 37 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>COMEDIAN — Beginning Lab 36</title>
-<meta name="comedian-build" content="Lab 36">
+<title>COMEDIAN — Beginning Lab 37</title>
+<meta name="comedian-build" content="Lab 37">
 <style>
 :root{
   --bg:#050505;
@@ -2022,6 +2022,223 @@ h1{font-size:clamp(38px,10vw,64px);line-height:.95;margin:0 0 18px;letter-spacin
   box-shadow:0 7px 17px rgba(0,0,0,.26);
 }
 
+/* LAB 37 — one screen, one experience */
+.auto-next{
+  margin-top:20px;
+  color:#77716b;
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+}
+.auto-next::after{
+  content:"";
+  display:block;
+  width:100%;
+  height:2px;
+  margin-top:8px;
+  background:linear-gradient(90deg,var(--red2),var(--red2)) 0 0/0 100% no-repeat,#171717;
+  animation:autoNextFill var(--advance-time,2.4s) linear forwards;
+}
+@keyframes autoNextFill{to{background-size:100% 100%}}
+
+.lunch-screen{padding-top:16px;padding-bottom:calc(22px + env(safe-area-inset-bottom));}
+.lunch-experience{width:min(900px,100%);margin:auto}
+.lunch-meta{margin-bottom:9px;color:#8b8580;font-size:10px;font-weight:900;letter-spacing:1.7px;text-transform:uppercase}
+.breakroom-scene{
+  position:relative;
+  height:clamp(360px,52vh,470px);
+  overflow:hidden;
+  border:1px solid #393632;
+  background:
+    linear-gradient(90deg,transparent 0 68%,rgba(0,0,0,.13) 68% 69%,transparent 69%),
+    linear-gradient(180deg,#272925 0 62%,#1d1b18 62% 100%);
+  box-shadow:inset 0 -80px 90px rgba(0,0,0,.28);
+}
+.breakroom-scene::before{
+  content:"BREAK ROOM";
+  position:absolute;
+  left:18px;top:16px;
+  padding:5px 8px;
+  border:1px solid #66645e;
+  background:#d6d2c6;
+  color:#34332f;
+  font-size:8px;font-weight:950;letter-spacing:1.6px;
+  transform:rotate(-1deg);
+}
+.breakroom-scene::after{
+  content:"";
+  position:absolute;
+  right:7%;top:8%;
+  width:18%;height:45%;
+  border:4px solid #171816;
+  background:
+    linear-gradient(180deg,#171a18 0 12%,#4a4437 12% 19%,#171a18 19% 100%);
+  box-shadow:inset 0 0 0 2px #3b3d38;
+  opacity:.78;
+}
+.breakroom-clock{
+  position:absolute;left:43%;top:11%;
+  width:52px;height:52px;border:4px solid #171717;border-radius:50%;
+  background:conic-gradient(from 0deg,#ddd 0 25%,#bdbdb8 25% 100%);
+  box-shadow:0 3px 8px rgba(0,0,0,.35);
+}
+.breakroom-clock::before{content:"";position:absolute;left:24px;top:8px;width:2px;height:18px;background:#222;transform-origin:bottom;transform:rotate(7deg)}
+.breakroom-clock::after{content:"";position:absolute;left:24px;top:24px;width:14px;height:2px;background:#222;transform-origin:left;transform:rotate(35deg)}
+.lunch-person{
+  position:absolute;z-index:4;left:50%;bottom:96px;
+  width:142px;height:190px;transform:translateX(-50%);
+}
+.lunch-person-head{
+  position:absolute;left:43px;top:0;width:58px;height:66px;border-radius:46% 46% 42% 42%;
+  background:#b99a7e;border:2px solid #211d19;
+}
+.lunch-person-hair{position:absolute;left:40px;top:-2px;width:64px;height:27px;border-radius:50% 50% 18% 18%;background:#292522}
+.lunch-person-body{position:absolute;left:14px;bottom:0;width:114px;height:130px;border-radius:48px 48px 8px 8px;background:#565a54;border:2px solid #292b28}
+.lunch-person-tag{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);color:#d4d1ca;font-size:11px;font-weight:950;letter-spacing:1px;text-transform:uppercase;white-space:nowrap}
+.lunch-table{
+  position:absolute;z-index:6;left:8%;right:8%;bottom:42px;height:69px;
+  border:2px solid #24211d;border-radius:50% 50% 8px 8px/28% 28% 8px 8px;
+  background:linear-gradient(180deg,#81766a,#574f47);
+  box-shadow:0 18px 0 #292622,0 22px 30px rgba(0,0,0,.35);
+}
+.lunch-tray{position:absolute;left:18%;top:13px;width:120px;height:35px;border:2px solid #393a35;border-radius:8px;background:#6d7068;box-shadow:inset 0 0 0 8px #8a8d84}
+.lunch-cup{position:absolute;right:20%;top:-19px;width:32px;height:47px;border:2px solid #3c332b;background:#b9a687;transform:skew(-3deg)}
+.lunch-cup::after{content:"";position:absolute;left:14px;top:-28px;width:3px;height:30px;background:#d5cec1;transform:rotate(8deg)}
+.lunch-bubble{
+  position:absolute;z-index:10;left:5%;top:18%;width:min(390px,48%);
+  padding:14px 16px;border:2px solid #d1cbc0;border-radius:18px;background:#eee9df;color:#25221f;
+  box-shadow:0 8px 20px rgba(0,0,0,.28);font-size:16px;line-height:1.38;
+}
+.lunch-bubble strong{display:block;margin-bottom:5px;font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:#69635c}
+.lunch-bubble::after{content:"";position:absolute;right:30px;bottom:-12px;width:20px;height:20px;border-right:2px solid #d1cbc0;border-bottom:2px solid #d1cbc0;background:#eee9df;transform:rotate(45deg)}
+.darren-bubble{
+  position:absolute;z-index:11;right:4%;bottom:122px;width:min(410px,48%);
+  padding:13px 15px;border:2px solid #7c2938;border-radius:16px;background:#180d10;color:#eee7df;
+  font-size:15px;line-height:1.38;opacity:0;transform:translateY(8px);transition:.2s ease;
+}
+.darren-bubble.show{opacity:1;transform:translateY(0)}
+.lunch-outcome{
+  position:absolute;z-index:14;left:50%;bottom:8px;transform:translateX(-50%);
+  width:max-content;max-width:90%;padding:7px 11px;background:#080808;border-left:3px solid var(--red2);
+  color:#d8d1c9;font-size:11px;font-weight:850;letter-spacing:.4px;
+}
+.lunch-controller{
+  display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:stretch;
+  margin-top:10px;
+}
+.lunch-arrow{border:1px solid #393532;background:#0d0d0d;color:#b9b2aa;font-size:25px;font-weight:900}
+.lunch-current{
+  min-height:102px;padding:14px 16px;border:1px solid #52323a;border-left:4px solid var(--red2);
+  background:#100b0d;color:#f1ebe5;text-align:left;
+}
+.lunch-current small{display:block;margin-bottom:7px;color:#d13a53;font-size:9px;font-weight:950;letter-spacing:1.5px;text-transform:uppercase}
+.lunch-current span{display:block;font-size:16px;font-weight:800;line-height:1.32}
+.lunch-hint{grid-column:1/-1;text-align:center;color:#706b66;font-size:9px;letter-spacing:1.1px;text-transform:uppercase}
+.lunch-controller.is-finished{display:none}
+
+.prep-action-scene{
+  position:relative;height:430px;overflow:hidden;margin-top:12px;border:1px solid #393532;
+  background:linear-gradient(180deg,#242321 0 67%,#171411 67% 100%);
+  box-shadow:inset 0 -45px 70px rgba(0,0,0,.35);
+}
+.prep-action-scene::before{
+  content:"";position:absolute;left:7%;top:11%;width:27%;height:48%;
+  border:5px solid #151515;background:linear-gradient(90deg,#25282a 0 49%,#17191a 49% 52%,#25282a 52%);
+}
+.prep-action-scene::after{
+  content:"";position:absolute;right:8%;top:12%;width:25%;height:53%;
+  border:5px solid #171513;background:repeating-linear-gradient(90deg,#827b70 0 8px,#6e685f 8px 15px);
+  opacity:.72;
+}
+.prep-bed{position:absolute;left:7%;right:35%;bottom:32px;height:85px;border:3px solid #171513;background:#514b45;box-shadow:0 14px 0 #292520}
+.prep-dresser{position:absolute;right:6%;bottom:25px;width:26%;height:110px;border:3px solid #171513;background:repeating-linear-gradient(180deg,#493b30 0 34px,#1c1815 34px 37px)}
+.prep-object{
+  position:absolute;z-index:7;left:50%;top:48%;transform:translate(-50%,-50%);
+  width:180px;height:180px;border:0!important;background:transparent!important;color:#eee!important;
+  box-shadow:none!important;
+}
+.prep-object:hover,.prep-object:focus-visible{transform:translate(-50%,-52%) scale(1.04)!important;background:transparent!important;box-shadow:none!important}
+.prep-object.completing{pointer-events:none;animation:prepObjectDone .42s ease forwards}
+@keyframes prepObjectDone{to{opacity:0;transform:translate(-50%,15%) scale(.82)}}
+.prep-shirt{display:block;width:118px;height:126px;margin:auto;background:#676963;clip-path:polygon(20% 0,38% 0,43% 12%,57% 12%,62% 0,80% 0,100% 23%,82% 39%,76% 29%,76% 100%,24% 100%,24% 29%,18% 39%,0 23%);filter:drop-shadow(0 10px 8px rgba(0,0,0,.45))}
+.prep-boots{display:flex;gap:14px;align-items:end;justify-content:center;height:145px}
+.prep-boot{width:62px;height:112px;background:#564537;border:3px solid #231c17;border-radius:6px 6px 18px 5px;transform:rotate(4deg)}
+.prep-boot:last-child{transform:rotate(-4deg)}
+.prep-shower{display:block;width:120px;height:150px;margin:auto;border:4px solid #737a78;background:linear-gradient(135deg,rgba(170,205,211,.32),rgba(65,85,89,.55));position:relative;overflow:hidden}
+.prep-shower::after{content:"HOLD";position:absolute;inset:auto 0 12px;color:#e8f5f5;font-size:11px;font-weight:950;letter-spacing:1.4px}
+.prep-object.holding .prep-shower::before{content:"";position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(114,198,213,.42);animation:showerHold 1.15s linear forwards}
+@keyframes showerHold{to{height:100%}}
+.prep-towel{display:block;width:132px;height:112px;margin:auto;background:repeating-linear-gradient(90deg,#a39b89 0 11px,#928a79 11px 13px);border:3px solid #595349;transform:rotate(-4deg);box-shadow:0 12px 18px rgba(0,0,0,.35)}
+.prep-keys{display:block;position:relative;width:76px;height:76px;margin:auto;border:10px solid #b6a97e;border-radius:50%;filter:drop-shadow(0 8px 5px rgba(0,0,0,.55))}
+.prep-keys::after{content:"";position:absolute;left:52px;top:24px;width:64px;height:12px;background:#b6a97e;clip-path:polygon(0 0,100% 0,100% 55%,78% 55%,78% 100%,61% 100%,61% 55%,0 55%)}
+.prep-object.task-keys.spot-0{left:26%;top:68%;transform:translate(-50%,-50%) scale(.72)}
+.prep-object.task-keys.spot-1{left:78%;top:68%;transform:translate(-50%,-50%) scale(.72)}
+.prep-object.task-keys.spot-2{left:21%;top:33%;transform:translate(-50%,-50%) scale(.72)}
+.prep-object.task-keys.spot-3{left:73%;top:34%;transform:translate(-50%,-50%) scale(.72)}
+.prep-instruction{position:absolute;z-index:9;left:50%;bottom:14px;transform:translateX(-50%);width:max-content;max-width:90%;padding:9px 13px;background:#090909;border-left:4px solid var(--red2);color:#eee8df;font-size:12px;font-weight:950;letter-spacing:.8px;text-align:center}
+.prep-task-count{position:absolute;z-index:8;right:13px;top:12px;color:#a49d95;font:900 12px monospace}
+
+.closet-scene{border:1px solid #363230;background:linear-gradient(180deg,#201e1c,#0c0b0b);padding:18px;margin-top:12px;text-align:center}
+.closet-rail{display:grid;grid-template-columns:48px 1fr 48px;gap:10px;align-items:center;min-height:285px}
+.closet-arrow{height:72px;border:1px solid #3b3734;background:#0d0d0d;color:#c4bdb5;font-size:28px}
+.outfit-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:270px}
+.outfit-figure{position:relative;width:128px;height:174px;margin-bottom:13px}
+.outfit-head{position:absolute;left:45px;top:0;width:39px;height:44px;border-radius:50%;background:#b49377}
+.outfit-body{position:absolute;left:23px;top:40px;width:83px;height:98px;background:#242424;clip-path:polygon(20% 0,80% 0,100% 23%,84% 38%,78% 29%,78% 100%,22% 100%,22% 29%,16% 38%,0 23%)}
+.outfit-legs{position:absolute;left:33px;top:132px;width:63px;height:42px;border-left:26px solid #30343a;border-right:26px solid #30343a}
+.outfit-figure[data-outfit="graphic_tee"] .outfit-body{background:linear-gradient(135deg,#4c3f38 0 46%,#c8b593 46% 55%,#4c3f38 55%)}
+.outfit-figure[data-outfit="button_up"] .outfit-body{background:linear-gradient(90deg,#d2cec4 0 48%,#4e4b47 48% 51%,#d2cec4 51%)}
+.outfit-figure[data-outfit="fedora_vest"] .outfit-body{background:linear-gradient(90deg,#2c2520 0 29%,#b9ad99 29% 71%,#2c2520 71%)}
+.outfit-figure[data-outfit="fedora_vest"]::before{content:"";position:absolute;z-index:3;left:35px;top:-5px;width:62px;height:13px;border-radius:50%;background:#342b24;box-shadow:0 -10px 0 -3px #342b24}
+.outfit-name{font-size:20px;font-weight:950;color:#eee8e1}
+.outfit-note{min-height:38px;margin-top:6px;color:#918a83;font-size:13px;line-height:1.4}
+.wear-outfit{width:100%;min-height:58px;margin-top:10px;border:1px solid #5b2430;border-left:4px solid var(--red2);background:#120a0c;color:#fff;font-weight:950;letter-spacing:.7px}
+
+@media(max-width:560px){
+  .work-screen{align-items:flex-start;justify-content:center;padding:10px 10px calc(16px + env(safe-area-inset-bottom))}
+  .work-screen .work-wrap{margin:0 auto}
+  .work-screen .work-head{margin-bottom:7px}
+  .work-screen .shift-title{font-size:18px}
+  .work-screen .shift-clock{padding:7px 8px;font-size:27px}
+  .work-screen .line-meter{margin-bottom:7px}
+  .work-screen .station{min-height:0}
+  .work-screen .warehouse-scene{height:370px;min-height:370px}
+  .work-screen .thought-lane{min-height:102px;padding:8px 9px 2px}
+  .work-screen .thought{min-height:58px;padding:11px 13px;width:92%}
+  .work-screen .conveyor{bottom:42px;min-height:205px}
+  .work-screen .scan-zone{top:28px;height:132px}
+  .work-screen .box{top:73px}
+  .work-screen .safety-floor{height:42px}
+  .work-screen .station-feedback{min-height:36px;padding:7px 9px}
+  .work-screen .controls{padding:7px;gap:7px}
+.work-screen .ctrl{min-height:57px}
+  .work-screen .ctrl small{display:block;margin-top:3px;color:inherit;font-size:7px;letter-spacing:1.1px;opacity:.65}
+  .lunch-screen{align-items:flex-start;padding:10px 10px calc(16px + env(safe-area-inset-bottom))}
+  .breakroom-scene{height:345px}
+  .lunch-bubble{left:4%;top:16%;width:64%;font-size:14px;padding:11px 13px}
+  .darren-bubble{right:3%;bottom:112px;width:64%;font-size:13px;padding:10px 12px}
+  .lunch-person{bottom:86px;transform:translateX(-50%) scale(.86);transform-origin:bottom}
+  .lunch-table{left:3%;right:3%;bottom:35px}
+  .lunch-current{min-height:94px;padding:12px}
+  .lunch-current span{font-size:14px}
+  .lunch-controller{grid-template-columns:44px 1fr 44px}
+  .prep-screen{align-items:flex-start;padding:10px 10px calc(18px + env(safe-area-inset-bottom))}
+  .prep-action-scene{height:360px}
+  .prep-object{transform:translate(-50%,-50%) scale(.86)}
+  .closet-rail{min-height:245px}
+  .outfit-preview{min-height:230px}
+}
+
+@media(max-width:560px) and (max-height:700px){
+  .work-screen .warehouse-scene{height:320px;min-height:320px}
+  .work-screen .thought-lane{min-height:88px}
+  .work-screen .conveyor{min-height:184px}
+  .breakroom-scene{height:305px}
+  .lunch-controller{margin-top:7px}
+  .lunch-current{min-height:82px}
+}
+
 /* LAB 35 — persistent build label and lightweight developer tools */
 .build-badge{
   position:fixed;
@@ -2065,9 +2282,9 @@ h1{font-size:clamp(38px,10vw,64px);line-height:.95;margin:0 0 18px;letter-spacin
 </head>
 <body>
 <div id="game"></div>
-<button class="build-badge" id="buildBadge" type="button" aria-expanded="false" aria-controls="devPanel">LAB 36</button>
+<button class="build-badge" id="buildBadge" type="button" aria-expanded="false" aria-controls="devPanel">LAB 37</button>
 <aside class="dev-panel" id="devPanel" hidden>
-  <div class="dev-title">Developer Tools · Lab 36</div>
+  <div class="dev-title">Developer Tools · Lab 37</div>
   <pre class="dev-readout" id="devReadout"></pre>
   <div class="dev-actions">
     <button class="dev-action" id="devRefresh" type="button">REFRESH</button>
@@ -2220,7 +2437,7 @@ function topbar(){
 }
 
 
-const BUILD_VERSION="Lab 36";
+const BUILD_VERSION="Lab 37";
 const SAVE_KEY="comedian_lab32_save";
 
 function developerSnapshot(){
@@ -2325,6 +2542,17 @@ function ensureCoreSchema(){
 function saveGame(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch(e){}
 }
+let sceneAdvanceTimer=null;
+function scheduleSceneAdvance(callback,delay=1800){
+  clearTimeout(sceneAdvanceTimer);
+  sceneAdvanceTimer=setTimeout(()=>{
+    sceneAdvanceTimer=null;
+    callback();
+  },delay);
+}
+function autoNextHTML(label="Continuing",delay=1800){
+  return `<div class="auto-next" style="--advance-time:${delay}ms">${escapeHtml(label)}</div>`;
+}
 function hasSave(){
   try{return !!localStorage.getItem(SAVE_KEY);}catch(e){return false;}
 }
@@ -2338,6 +2566,9 @@ function loadSavedState(){
   }catch(e){return false;}
 }
 function clearTimers(){
+  clearTimeout(sceneAdvanceTimer);
+  document.onkeydown=null;
+  document.onkeyup=null;
   clearInterval(tickTimer);
   clearTimeout(boxTimer);
   clearTimeout(thoughtTimer);
@@ -2449,6 +2680,7 @@ function resumeGame(){
     case 'performance_warning': endShift(true,true); break;
     case 'promotion_offer': renderPromotionOffer(); break;
     case 'promotion_result': renderPromotionResult(!!state.promoted); break;
+    case 'end': SOCIAL_ENGINE.knows("back_room_open_mic") && isTuesday() ? renderMicDecision() : advanceOneDay(); break;
     case 'weekend': renderWeekend(); break;
     case 'fired': renderFiredAftermath(); break;
     case 'fired_aftermath': renderFiredAftermath(); break;
@@ -2844,7 +3076,7 @@ function renderOpeningStory(){
   document.getElementById('beginMonday').onclick=()=>{
     state.storySeen=true;
     saveGame();
-    renderIntro();
+    startShift();
   };
 }
 
@@ -2860,33 +3092,19 @@ function renderIntro(){
 
   saveGame();
 
-  const knowsMic=SOCIAL_ENGINE.knows("back_room_open_mic");
-
   game.innerHTML=topbar()+`
     <div class="screen">
       <div class="card">
         <div class="eyebrow">${weekdayName().toUpperCase()} • 6:47 AM</div>
         <h1>Darren.</h1>
         <div class="copy">Warehouse job. Eighty-four dollars in your checking account.</div>
-
-        ${knowsMic && !isTuesday()
-          ? `<div class="mut" style="margin-top:14px">
-               The next Back Room mic is Tuesday.
-             </div>`
-          : `<div class="mut" style="margin-top:14px">Today is not special.</div>`}
-
-        <button class="action" id="start">GO TO WORK</button>
-
-        ${knowsMic && !isTuesday()
-          ? `<button class="boot-btn" id="waitMic">WAIT FOR TUESDAY</button>`
-          : ''}
+        <div class="mut" style="margin-top:14px">${SOCIAL_ENGINE.knows("back_room_open_mic")
+          ? (isTuesday() ? `The mic is tonight.` : `Tuesday is sitting in the back of your mind.`)
+          : `Today is not special.`}</div>
+        ${autoNextHTML("Leaving for work",900)}
       </div>
     </div>`;
-
-  document.getElementById('start').onclick=startShift;
-
-  const wait=document.getElementById('waitMic');
-  if(wait)wait.onclick=waitForNextTuesday;
+  scheduleSceneAdvance(startShift,900);
 }
 
 let tickTimer=null;
@@ -2900,6 +3118,8 @@ let thoughtActive=false;
 let currentThought='';
 
 function startShift(){
+  document.onkeydown=null;
+  document.onkeyup=null;
   state.phase='work';
   saveGame();
   state.timeLeft=22;
@@ -2933,7 +3153,7 @@ function startShift(){
 
 function renderWork(){
   game.innerHTML=topbar()+`
-    <div class="screen">
+    <div class="screen work-screen">
       <div class="work-wrap">
         <div class="work-head">
           <div>
@@ -2976,8 +3196,8 @@ function renderWork(){
           </div>
 
           <div class="controls">
-            <button class="ctrl" id="scan" disabled>SCAN</button>
-            <button class="ctrl" id="keep" disabled>WRITE IT DOWN</button>
+            <button class="ctrl" id="scan" disabled>SCAN <small>SPACE</small></button>
+            <button class="ctrl" id="keep" disabled>WRITE IT DOWN <small>N</small></button>
           </div>
         </div>
       </div>
@@ -2985,6 +3205,16 @@ function renderWork(){
 
   document.getElementById('scan').onclick=scanBox;
   document.getElementById('keep').onclick=keepThought;
+  document.onkeydown=e=>{
+    if(state.phase!=='work')return;
+    if(e.code==='Space'){
+      e.preventDefault();
+      scanBox();
+    }else if(e.code==='KeyN'){
+      e.preventDefault();
+      keepThought();
+    }
+  };
   updateHUD();
 }
 function updateHUD(){
@@ -3006,7 +3236,7 @@ function setScanReady(ready){
   if(station)station.classList.toggle('scan-ready',ready);
   if(scan){
     scan.disabled=!ready || state.writingThought;
-    scan.textContent='SCAN';
+    scan.innerHTML='SCAN <small>SPACE</small>';
   }
 }
 
@@ -3212,7 +3442,7 @@ function keepThought(){
 
     if(keep){
       keep.classList.remove('writing');
-      keep.textContent='WRITE IT DOWN';
+      keep.innerHTML='WRITE IT DOWN <small>N</small>';
       keep.disabled=true;
     }
     if(scan)scan.disabled=!boxScannable;
@@ -3229,8 +3459,67 @@ function flash(msg){
 }
 
 
+let activeLunchOptions=[];
+let activeLunchIndex=0;
+
+function lunchOpeningLine(person){
+  if(person.personality==="boss")return "How’s Line 3 running?";
+  if(person.personality==="quiet_guy")return "What’s up.";
+  if(person.personality==="older_coworker")return "Same lunch. Different day.";
+  if(person.personality==="class_clown")return "You look like that line already beat your ass.";
+  return "You surviving?";
+}
+
+function renderLunchOption(){
+  const current=activeLunchOptions[activeLunchIndex];
+  const button=document.getElementById('lunchCurrent');
+  if(!current||!button)return;
+  button.innerHTML=`<small>${escapeHtml(current.label)}</small><span>${escapeHtml(current.text)}</span>`;
+  button.setAttribute('aria-label',`${current.label}: ${current.text}`);
+  const position=document.getElementById('lunchPosition');
+  if(position)position.textContent=`${activeLunchIndex+1} of ${activeLunchOptions.length}`;
+}
+
+function moveLunchOption(direction){
+  if(!activeLunchOptions.length)return;
+  activeLunchIndex=(activeLunchIndex+direction+activeLunchOptions.length)%activeLunchOptions.length;
+  renderLunchOption();
+}
+
+function finishLunchController(){
+  const controller=document.getElementById('lunchController');
+  if(controller)controller.classList.add('is-finished');
+  document.onkeydown=null;
+}
+
+function setLunchExchange(person,darrenText,coworkerText,outcome=""){
+  const darren=document.getElementById('darrenBubble');
+  const coworker=document.getElementById('lunchCoworkerBubble');
+  const result=document.getElementById('lunchOutcome');
+  if(darren&&darrenText){darren.textContent=darrenText;darren.classList.add('show');}
+  if(coworker&&coworkerText)coworker.innerHTML=`<strong>${escapeHtml(person.name)}</strong>${escapeHtml(coworkerText)}`;
+  if(result){result.hidden=!outcome;result.textContent=outcome;}
+}
+
+function chooseLunchOption(person){
+  const option=activeLunchOptions[activeLunchIndex];
+  if(!option)return;
+  finishLunchController();
+  if(option.kind==='premise'){
+    setLunchExchange(person,`“${option.text}”`,"…");
+    scheduleSceneAdvance(()=>runThoughtOnCoworker(person,option.text),320);
+  }else if(option.kind==='small_talk'){
+    setLunchExchange(person,"So what’ve you been up to?","…");
+    scheduleSceneAdvance(()=>makeSmallTalk(person),320);
+  }else{
+    setLunchExchange(person,"","You both eat for a while.","Lunch is quiet.");
+    scheduleSceneAdvance(()=>justEatLunch(person),900);
+  }
+}
+
 function lunchBreak(){
   state.phase='lunch';
+  document.onkeydown=null;
   saveGame();
   clearInterval(tickTimer);
   clearTimeout(boxTimer);
@@ -3248,12 +3537,7 @@ function lunchBreak(){
     saveGame();
   }
 
-  const availablePremises=SOCIAL_ENGINE.untoldPremisesFor(person);
-
-  // Darren may have a huge notebook, but lunch is a conversation—not a database.
-  // Surface at most three things that naturally come to mind:
-  // today's ideas first, then the most recent unheard material.
-  const lunchPremises=availablePremises
+  const lunchPremises=SOCIAL_ENGINE.untoldPremisesFor(person)
     .slice()
     .sort((a,b)=>{
       const aToday=a.createdDay===state.day ? 1 : 0;
@@ -3262,79 +3546,49 @@ function lunchBreak(){
     })
     .slice(0,3);
 
+  activeLunchOptions=[
+    ...lunchPremises.map(p=>({kind:'premise',label:'TRY THE THOUGHT',text:p.text})),
+    {kind:'small_talk',label:`TALK TO ${person.name.toUpperCase()}`,text:`Ask what he’s been up to.`},
+    {kind:'eat',label:'KEEP TO YOURSELF',text:'Eat lunch.'}
+  ];
+  activeLunchIndex=0;
+
   game.innerHTML=topbar()+`
-    <div class="screen">
-      <div class="card">
-        <div class="eyebrow">12:04 PM • BREAK ROOM</div>
-        <h1>Lunch.</h1>
-        <div class="copy">For twenty minutes, nobody is pretending to care about boxes.</div>
-
-        <div class="social-card">
-          <div class="person-head">
-            <div>
-              <div class="person-name">${escapeHtml(person.name)}</div>
-              <div class="person-role">${escapeHtml(person.role)}</div>
-            </div>
-            <div class="small">RELATIONSHIP ${person.relationship}</div>
+    <div class="screen lunch-screen">
+      <div class="lunch-experience">
+        <div class="lunch-meta">12:04 PM • BREAK ROOM • LUNCH</div>
+        <div class="breakroom-scene">
+          <div class="breakroom-clock"></div>
+          <div class="lunch-bubble" id="lunchCoworkerBubble"><strong>${escapeHtml(person.name)}</strong>${escapeHtml(lunchOpeningLine(person))}</div>
+          <div class="darren-bubble" id="darrenBubble"></div>
+          <div class="lunch-person" aria-label="${escapeHtml(person.name)} sitting across from Darren">
+            <div class="lunch-person-head"></div><div class="lunch-person-hair"></div><div class="lunch-person-body"></div>
+            <div class="lunch-person-tag">${escapeHtml(person.name)}</div>
           </div>
-          <div class="person-vibe">${escapeHtml(person.vibe)}</div>
-
-          ${lunchPremises.length ? `
-            <div class="end-note" style="margin-top:14px">
-              ${lunchPremises.length===1
-                ? `One thing comes to mind.`
-                : `A few things come to mind.`}
-            </div>
-          ` : `
-            <div class="mut" style="margin-top:14px">
-              Nothing new comes to mind around ${escapeHtml(person.name)}.
-            </div>
-          `}
-
-          <div class="social-actions" id="socialActions">
-            ${lunchPremises.map((p,i)=>`
-              <button class="social-btn premise-option" data-premise-id="${escapeHtml(p.id)}">
-                Tell ${escapeHtml(person.name)}:
-                <span class="choice-effect">“${escapeHtml(p.text)}”</span>
-              </button>
-            `).join('')}
-            <button class="social-btn" id="smallTalk">
-              Make small talk
-            </button>
-            <button class="social-btn" id="justEat">
-              Just eat lunch
-            </button>
-          </div>
-          <div id="reaction"></div>
+          <div class="lunch-table"><div class="lunch-tray"></div><div class="lunch-cup"></div></div>
+          <div class="lunch-outcome" id="lunchOutcome" hidden></div>
         </div>
-
-        <div class="small" style="margin-top:16px">PEOPLE YOU WORK WITH</div>
-        ${peopleHTML()}
+        <div class="lunch-controller" id="lunchController">
+          <button class="lunch-arrow" id="lunchPrev" aria-label="Previous response">‹</button>
+          <button class="lunch-current" id="lunchCurrent"></button>
+          <button class="lunch-arrow" id="lunchNext" aria-label="Next response">›</button>
+          <div class="lunch-hint"><span id="lunchPosition"></span> • Left/right to browse • Enter to act</div>
+        </div>
       </div>
     </div>`;
 
-  unlockSocialActionsAfterDelay(900);
-
-  document.querySelectorAll('.premise-option').forEach(btn=>{
-    const premiseId=btn.dataset.premiseId;
-    const premise=state.premises.find(p=>p.id===premiseId);
-    if(premise){
-      btn.onclick=()=>runThoughtOnCoworker(person,premise.text);
-    }
-  });
-
-  const smallTalk=document.getElementById('smallTalk');
-  if(smallTalk) smallTalk.onclick=()=>makeSmallTalk(person);
-
-  const eat=document.getElementById('justEat');
-  if(eat) eat.onclick=()=>justEatLunch(person);
+  document.getElementById('lunchPrev').onclick=()=>moveLunchOption(-1);
+  document.getElementById('lunchNext').onclick=()=>moveLunchOption(1);
+  document.getElementById('lunchCurrent').onclick=()=>chooseLunchOption(person);
+  document.onkeydown=e=>{
+    if(e.key==='ArrowLeft'){e.preventDefault();moveLunchOption(-1);}
+    if(e.key==='ArrowRight'){e.preventDefault();moveLunchOption(1);}
+    if(e.key==='Enter'||e.code==='Space'){e.preventDefault();chooseLunchOption(person);}
+  };
+  renderLunchOption();
 }
 
 function makeSmallTalk(person){
-  const actions=document.getElementById('socialActions');
-  if(actions)actions.innerHTML='';
-
-  const reaction=document.getElementById('reaction');
   const info=(person.knowledge||[]).find(k=>k.id==="back_room_open_mic");
   const canDiscover=info && !SOCIAL_ENGINE.knows("back_room_open_mic");
 
@@ -3347,43 +3601,15 @@ function makeSmallTalk(person){
   if(canDiscover && Math.random()<discoverChance){
     SOCIAL_ENGINE.learn(person,info);
     saveGame();
-
-    if(reaction){
-      reaction.innerHTML=`
-        <div class="reaction">
-          You make small talk for a minute. ${escapeHtml(person.name)} says,
-          “You ever been to The Back Room? They do an open mic there Tuesdays.”
-        </div>
-        <div class="knowledge">
-          You learned about <strong>${escapeHtml(info.title)}</strong><br>
-          <span class="mut">${escapeHtml(info.detail)}</span>
-        </div>
-        <button class="action" id="smallTalkContinue" style="margin-top:12px">BACK TO WORK</button>
-      `;
-      document.getElementById('smallTalkContinue').onclick=()=>finishLunch(person,true);
-      return;
-    }
-  }
-
-  if(reaction){
-    reaction.innerHTML=`
-      <div class="reaction">
-        You talk about work for a minute. Nothing important comes up.
-      </div>
-      <button class="action" id="smallTalkContinue" style="margin-top:12px">BACK TO WORK</button>
-    `;
-    document.getElementById('smallTalkContinue').onclick=()=>finishLunch(person,false);
+    setLunchExchange(person,"So what’ve you been up to?",`Not much. You ever been to The Back Room? They do an open mic there Tuesdays.`,`OPEN MIC FOUND • TUESDAY • 7:30`);
+    scheduleSceneAdvance(()=>finishLunch(person,true),1900);
     return;
   }
-
-  finishLunch(person,false);
+  setLunchExchange(person,"So what’ve you been up to?",`Nothing. Same stuff. You?`,`The conversation drifts back to work.`);
+  scheduleSceneAdvance(()=>finishLunch(person,false),1500);
 }
 
 function justEatLunch(person){
-  const actions=document.getElementById('socialActions');
-  if(actions)actions.innerHTML='';
-
-  // Literally do what the button says. No dialogue, no knowledge roll.
   finishLunch(person,false);
 }
 
@@ -3401,25 +3627,25 @@ function runThoughtOnCoworker(person,thought){
 
   if(roll < base*.45){
     reactionText=person.personality==="boss"
-      ? `${person.name} actually laughs. That feels weirdly more important than it should.`
-      : `${person.name} laughs before you finish. “Okay—that’s actually funny.”`;
+      ? `“Alright. That’s funny.”`
+      : `“Okay—that’s actually funny.”`;
     strongLaugh=true;
     materialResult="big_laugh";
     person.relationship=Math.min(100,person.relationship+5);
     state.hidden.confidence=Math.min(1,state.hidden.confidence+.025);
   }else if(roll < base){
     reactionText=person.personality==="boss"
-      ? `${person.name} cracks a smile. “Alright, that was pretty good.”`
-      : `${person.name} smiles. “That’s actually pretty funny.”`;
+      ? `“Alright. That was pretty good.”`
+      : `“That’s pretty funny.”`;
     materialResult="small_laugh";
     person.relationship=Math.min(100,person.relationship+2);
     state.hidden.confidence=Math.min(1,state.hidden.confidence+.01);
   }else{
     if(person.personality==="boss"){
-      reactionText=`${person.name} looks at you for a second. “You done with that pallet yet?”`;
+      reactionText=`“You done with that pallet yet?”`;
       person.relationship=Math.max(0,person.relationship-1);
     }else{
-      reactionText=`${person.name} gives you the little nose-exhale people do when they are being generous.`;
+      reactionText=`“Yeah. I get what you’re saying.”`;
     }
   }
 
@@ -3471,24 +3697,16 @@ function runThoughtOnCoworker(person,thought){
     }
   }
 
-  const reaction=document.getElementById('reaction');
-  if(reaction){
-    const materialNote = materialResult==="big_laugh"
-      ? "That idea got a real laugh."
-      : materialResult==="small_laugh"
-        ? "That idea got something."
-        : "That idea did not really work on him.";
-
-    reaction.innerHTML=`
-      <div class="reaction">${escapeHtml(reactionText)}</div>
-      <div class="knowledge">
-        ${escapeHtml(materialNote)}
-      </div>`;
-  }
+  const materialNote = materialResult==="big_laugh"
+    ? "That got a real laugh."
+    : materialResult==="small_laugh"
+      ? "That got something."
+      : "That did not land.";
+  setLunchExchange(person,`“${thought}”`,reactionText,materialNote);
 
   setTimeout(()=>{
     maybeShareComedyKnowledge(person,strongLaugh,materialResult);
-  },700);
+  },950);
 }
 
 
@@ -3525,15 +3743,14 @@ function showTroyWarning(person,materialResult){
           </div>
         </div>
 
-        <button class="action" id="warningContinue">BACK TO WORK</button>
+        ${autoNextHTML("Break ending",2400)}
       </div>
     </div>`;
-
-  document.getElementById('warningContinue').onclick=()=>{
+  scheduleSceneAdvance(()=>{
     state.phase='after_lunch';
     saveGame();
     finishLunch(person,true);
-  };
+  },2400);
 }
 
 function fireFromWarehouse(person,thought,materialResult,fireChance){
@@ -3572,11 +3789,10 @@ function fireFromWarehouse(person,thought,materialResult,fireChance){
           </div>
         </div>
 
-        <button class="action" id="leaveFired">GET YOUR STUFF</button>
+        ${autoNextHTML("Getting your stuff",2600)}
       </div>
     </div>`;
-
-  document.getElementById('leaveFired').onclick=renderFiredAftermath;
+  scheduleSceneAdvance(renderFiredAftermath,2600);
 }
 
 function renderFiredAftermath(){
@@ -3594,11 +3810,10 @@ function renderFiredAftermath(){
         <div class="end-note">
           Now you are standing in the parking lot with the rest of your day.
         </div>
-        <button class="action" id="goHomeFired">GO HOME</button>
+        ${autoNextHTML("Going home",2200)}
       </div>
     </div>`;
-
-  document.getElementById('goHomeFired').onclick=renderUnemployedNextDay;
+  scheduleSceneAdvance(renderUnemployedNextDay,2200);
 }
 
 function renderUnemployedNextDay(){
@@ -3626,11 +3841,10 @@ function renderUnemployedNextDay(){
                You still have the premises you wrote down.
              </div>`}
 
-        <button class="action" id="unemployedContinue">CONTINUE</button>
+        ${autoNextHTML("The morning passes",2400)}
       </div>
     </div>`;
-
-  document.getElementById('unemployedContinue').onclick=renderUnemployedLabBoundary;
+  scheduleSceneAdvance(renderUnemployedLabBoundary,2400);
 }
 
 function renderUnemployedLabBoundary(){
@@ -3652,73 +3866,48 @@ function renderUnemployedLabBoundary(){
 }
 
 function maybeShareComedyKnowledge(person,strongLaugh,materialResult){
-  const reaction=document.getElementById('reaction');
   const info=person.knowledge.find(k=>k.id==="back_room_open_mic");
-  if(!reaction)return;
-
-  if(info){
+  if(info && !SOCIAL_ENGINE.knows("back_room_open_mic")){
     const line=strongLaugh
-      ? `${person.name} looks at you. “Why don’t you ever do stand-up? There’s an open mic at The Back Room on Tuesdays.”`
+      ? `“Why don’t you ever do stand-up? The Back Room has an open mic Tuesdays.”`
       : materialResult==="miss"
         ? (person.personality==="boss"
-            ? `${person.name} looks back at his food. “You know there’s an open mic at The Back Room, right? Maybe save that one for them.”`
-            : `${person.name} gives you a half-smile. “Oh yeah. Definitely take that one to The Back Room open mic Tuesday. They’ll love it.”`)
-        : `${person.name} says, “You know there’s an open mic at The Back Room, right?”`;
+            ? `“You know The Back Room has an open mic, right? Maybe save that one for them.”`
+            : `“Take that one to The Back Room Tuesday. They’ve got an open mic.”`)
+        : `“You know The Back Room has an open mic, right?”`;
 
     const learned=SOCIAL_ENGINE.learn(person,info);
     saveGame();
-
-    reaction.innerHTML += `
-      <div class="reaction" style="margin-top:9px">
-        ${escapeHtml(line)}
-        ${learned ? `
-          <div class="knowledge">
-            You learned about <strong>${escapeHtml(info.title)}</strong><br>
-            <span class="mut">${escapeHtml(info.detail)}</span>
-          </div>
-        ` : ''}
-      </div>`;
+    setLunchExchange(person,null,line,learned ? `OPEN MIC FOUND • TUESDAY • 7:30` : "");
+    scheduleSceneAdvance(()=>finishLunch(person,true),1900);
   }else{
     const line=strongLaugh
-      ? `${person.name} laughs again, then the conversation drifts back to work.`
-      : `The conversation moves on. ${person.name} does not have anything useful to add.`;
-
-    reaction.innerHTML += `
-      <div class="reaction" style="margin-top:9px">
-        ${escapeHtml(line)}
-      </div>`;
+      ? `“No, seriously. That was good.”`
+      : `“Anyway. I should probably finish eating.”`;
+    setLunchExchange(person,null,line,strongLaugh ? "He is still laughing about it." : "Lunch keeps moving.");
+    scheduleSceneAdvance(()=>finishLunch(person,true),1400);
   }
-
-  reaction.innerHTML += `
-    <button class="action" id="finishLunch" style="margin-top:12px">BACK TO WORK</button>
-  `;
-  document.getElementById('finishLunch').onclick=()=>finishLunch(person,true);
 }
 
 function finishLunch(person,talked){
   state.phase='after_lunch';
+  document.onkeydown=null;
   saveGame();
-  const knowsMic=SOCIAL_ENGINE.knows("back_room_open_mic");
+  const discoveredMic=SOCIAL_ENGINE.learnedToday("back_room_open_mic");
+  const delay=discoveredMic ? 2200 : 1250;
 
   game.innerHTML=topbar()+`
     <div class="screen">
       <div class="card">
-        <div class="eyebrow">12:25 PM</div>
-        <h1>Break’s over.</h1>
-        <div class="copy">${talked
-          ? `You go back to work with something new stuck in your head.`
-          : `You throw your trash away and go back to work.`}</div>
-        ${knowsMic
-          ? `<div class="knowledge" style="margin-top:18px">
-               THE BACK ROOM OPEN MIC<br>
-               <span class="mut">Tuesday • sign-up 7:30</span>
-             </div>`
-          : ''}
-        <button class="action" id="finishDay">FINISH THE SHIFT</button>
+        <div class="eyebrow">${discoveredMic ? `12:08 PM → 5:04 PM` : `12:25 PM • LINE 3`}</div>
+        <h1>${discoveredMic ? `The rest of the shift takes forever.` : `Back on the line.`}</h1>
+        <div class="copy">${discoveredMic
+          ? `You scan boxes and keep hearing the same thing: open mic. Tuesday. 7:30.`
+          : (talked ? `The conversation stays in your head while the afternoon disappears.` : `More boxes. Then eventually, five o’clock.`)}</div>
+        ${autoNextHTML(discoveredMic ? "The workday passes" : "The afternoon passes",delay)}
       </div>
     </div>`;
-
-  document.getElementById('finishDay').onclick=endShift;
+  scheduleSceneAdvance(()=>endShift(),delay);
 }
 
 function renderEveningAfterWork(){
@@ -3736,11 +3925,10 @@ function renderEveningAfterWork(){
           That thing ${escapeHtml(person ? person.name : 'your coworker')} said keeps coming back to you.<br><br>
           <strong>The Back Room. Tuesday. 7:30.</strong>
         </div>
-        <button class="action" id="home">GO HOME</button>
+        ${autoNextHTML("Going home",1100)}
       </div>
     </div>`;
-
-  document.getElementById('home').onclick=renderMicDecision;
+  scheduleSceneAdvance(renderMicDecision,1100);
 }
 
 const OUTFIT_OPTIONS=[
@@ -3766,6 +3954,21 @@ function prepProgressHTML(active){
   const ai=order.indexOf(active);
   return `<div class="prep-progress-row">${steps.map(([id,label],i)=>`<div class="prep-dot ${i<ai||active==='leave'?'done':''} ${id===active?'active':''}">${label}</div>`).join('')}</div>`;
 }
+let outfitPreviewIndex=0;
+function updateOutfitPreview(){
+  const option=OUTFIT_OPTIONS[outfitPreviewIndex];
+  const figure=document.getElementById('outfitFigure');
+  const name=document.getElementById('outfitName');
+  const note=document.getElementById('outfitNote');
+  if(!option)return;
+  if(figure)figure.dataset.outfit=option.id;
+  if(name)name.textContent=option.name;
+  if(note)note.textContent=option.note;
+}
+function moveOutfitPreview(direction){
+  outfitPreviewIndex=(outfitPreviewIndex+direction+OUTFIT_OPTIONS.length)%OUTFIT_OPTIONS.length;
+  updateOutfitPreview();
+}
 function renderMicDecision(){
   state.phase='mic_prep';
   ensureCoreSchema();
@@ -3778,70 +3981,83 @@ function renderMicDecision(){
   let body='';
   if(step==='rush'){
     const n=Math.max(0,Math.min(4,state.micPrep.showerProgress||0));
-    const tasks=['GET OUT OF THE WORK SHIRT','KICK OFF THE BOOTS','SHOWER','DRY OFF','GRAB YOUR KEYS'];
-    body=`<div class="rush-game"><div class="rush-head"><div><h2>Move. You’re going to be late.</h2><p>Hit while the white line is in the green.</p></div><div class="rush-count">${n}/5</div></div>
-      <div class="rush-track"><div class="rush-target"></div><div class="rush-marker" id="rushMarker"></div></div>
-      <button class="rush-action" id="rushAction">${tasks[n]||'DONE'} <small>— SPACE</small></button>
-      <div class="rush-done">${tasks.map((t,i)=>`<span class="rush-chip ${i<n?'done':''}">${i<n?'✓ ':''}${t}</span>`).join('')}</div>
-      <span class="key-hint" id="rushFeedback">Spacebar or click. Missing makes the next one faster.</span></div>`;
+    const taskClasses=['shirt','boots','shower','towel','keys'];
+    const instructions=['TAKE OFF THE WORK SHIRT','KICK OFF THE BOOTS','HOLD TO SHOWER','GRAB THE TOWEL','FIND YOUR KEYS'];
+    const visuals=[
+      `<span class="prep-shirt"></span>`,
+      `<span class="prep-boots"><span class="prep-boot"></span><span class="prep-boot"></span></span>`,
+      `<span class="prep-shower"></span>`,
+      `<span class="prep-towel"></span>`,
+      `<span class="prep-keys"></span>`
+    ];
+    if(state.micPrep.keySpot===null)state.micPrep.keySpot=Math.floor(Math.random()*4);
+    const spot=Math.abs(Number(state.micPrep.keySpot)||0)%4;
+    body=`<div class="prep-action-scene"><div class="prep-bed"></div><div class="prep-dresser"></div><div class="prep-task-count">${n+1}/5</div>
+      <button class="prep-object task-${taskClasses[n]} ${n===4?`spot-${spot}`:''}" id="prepObject" aria-label="${instructions[n]}">${visuals[n]}</button>
+      <div class="prep-instruction">${instructions[n]} ${n===2?'':'• TAP'}</div></div>`;
   }else if(step==='outfit'){
-    body=`<div class="prep-game"><h2>What are you wearing?</h2><p>This should not feel like a major decision. It does.</p><div class="prep-grid">${OUTFIT_OPTIONS.map(o=>`<button class="prep-choice outfit" data-outfit="${o.id}">${escapeHtml(o.name)}<small>${escapeHtml(o.note)}</small></button>`).join('')}</div></div>`;
+    outfitPreviewIndex=0;
+    body=`<div class="closet-scene"><div class="closet-rail">
+      <button class="closet-arrow" id="outfitPrev" aria-label="Previous outfit">‹</button>
+      <div class="outfit-preview"><div class="outfit-figure" id="outfitFigure" data-outfit="${OUTFIT_OPTIONS[0].id}"><span class="outfit-head"></span><span class="outfit-body"></span><span class="outfit-legs"></span></div><div class="outfit-name" id="outfitName">${escapeHtml(OUTFIT_OPTIONS[0].name)}</div><div class="outfit-note" id="outfitNote">${escapeHtml(OUTFIT_OPTIONS[0].note)}</div></div>
+      <button class="closet-arrow" id="outfitNext" aria-label="Next outfit">›</button>
+      </div><button class="wear-outfit" id="wearOutfit">WEAR THIS</button></div>`;
   }else if(step==='set'){
     body=`<div class="prep-game"><h2>Build a set.</h2><p>Your notebook is basic right now. Pick up to three things you might actually say out loud.</p>
       <div class="notebook-paper">${renderMicPremiseChoices()}</div>
       <button class="action" id="lockSet" style="margin-top:12px">${selected.length?'LOCK IN THIS SET':'GO UP WITH NOTHING'}</button>
     </div>`;
-  }else if(step==='keys'){
-    if(state.micPrep.keySpot===null)state.micPrep.keySpot=Math.floor(Math.random()*KEY_SPOTS.length);
-    const attempts=new Set(state.micPrep.keyAttempts||[]);
-    body=`<div class="prep-game"><h2>Where are your keys?</h2><p>You were ready to leave. Of course.</p><div class="key-grid">${KEY_SPOTS.map((spot,i)=>`<button class="key-spot ${attempts.has(i)?'checked':''}" data-keyspot="${i}" ${attempts.has(i)?'disabled':''}>${escapeHtml(spot)}</button>`).join('')}</div><div id="keyFeedback" class="prep-status">${attempts.size ? `${attempts.size} place${attempts.size===1?'':'s'} checked. Not there.` : `Check somewhere.`}</div></div>`;
   }else{
     body=`<div class="prep-game"><h2>Okay. Go.</h2><p>You are clean, dressed, have a set, and somehow found your keys.</p>${outfit?`<div class="outfit-summary">${escapeHtml(outfit.name)}</div>`:''}${selected.length?`<div class="prep-status">SET: ${selected.map(p=>`“${escapeHtml(p.text)}”`).join(' • ')}</div>`:`<div class="prep-status">SET: absolutely nothing</div>`}<button class="action" id="leaveForMic">LEAVE FOR THE BACK ROOM</button></div>`;
   }
 
-  game.innerHTML=topbar()+`<div class="screen"><div class="prep-shell"><div class="eyebrow">${weekdayName().toUpperCase()} • 6:58 PM</div><h1>You’re home.</h1><div class="copy">The mic starts at 8:00. You can still talk yourself out of it.</div>${prepProgressHTML(step)}${body}<button class="boot-btn" id="stayHome">DON’T GO</button></div></div>`;
+  game.innerHTML=topbar()+`<div class="screen prep-screen"><div class="prep-shell"><div class="eyebrow">${weekdayName().toUpperCase()} • 6:58 PM</div><h1>You’re home.</h1><div class="copy">The mic starts at 8:00. You can still talk yourself out of it.</div>${prepProgressHTML(step)}${body}<button class="boot-btn" id="stayHome">DON’T GO</button></div></div>`;
 
-  const rush=document.getElementById('rushAction');
-  if(rush){
-    const hitRush=()=>{
-      const marker=document.getElementById('rushMarker');
-      const track=marker&&marker.parentElement;
-      if(!marker||!track)return;
-      const m=marker.getBoundingClientRect(),t=track.getBoundingClientRect();
-      const center=((m.left+m.right)/2-t.left)/t.width;
-      if(center<.38||center>.62){
-        marker.style.animationDuration='.82s';
-        const feedback=document.getElementById('rushFeedback');if(feedback)feedback.textContent='Missed. Again.';
-        return;
-      }
-      state.micPrep.showerProgress=Math.min(5,(state.micPrep.showerProgress||0)+1);
-      if(state.micPrep.showerProgress>=5){state.micPrep.changed=true;state.micPrep.showered=true;state.micPrep.keysFound=true;}
-      saveGame();renderMicDecision();
+  document.onkeydown=null;
+  document.onkeyup=null;
+  const prepObject=document.getElementById('prepObject');
+  if(prepObject){
+    let holdTimer=null;
+    const completeTask=()=>{
+      clearTimeout(holdTimer);
+      if(prepObject.classList.contains('completing'))return;
+      prepObject.classList.add('completing');
+      scheduleSceneAdvance(()=>{
+        state.micPrep.showerProgress=Math.min(5,(state.micPrep.showerProgress||0)+1);
+        if(state.micPrep.showerProgress>=5){state.micPrep.changed=true;state.micPrep.showered=true;state.micPrep.keysFound=true;}
+        saveGame();renderMicDecision();
+      },380);
     };
-    rush.onclick=hitRush;
-    document.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();hitRush();}};
-  }else document.onkeydown=null;
-  document.querySelectorAll('[data-outfit]').forEach(btn=>btn.onclick=()=>{
-    const o=OUTFIT_OPTIONS.find(x=>x.id===btn.dataset.outfit);if(!o)return;
-    state.micPrep.outfit=o.id;state.micPrep.outfitRoast=o.roast||null;saveGame();renderMicDecision();
-  });
+    if((state.micPrep.showerProgress||0)===2){
+      const beginHold=()=>{prepObject.classList.add('holding');clearTimeout(holdTimer);holdTimer=setTimeout(completeTask,1150);};
+      const cancelHold=()=>{prepObject.classList.remove('holding');clearTimeout(holdTimer);};
+      prepObject.onpointerdown=beginHold;prepObject.onpointerup=cancelHold;prepObject.onpointerleave=cancelHold;prepObject.onpointercancel=cancelHold;
+      document.onkeydown=e=>{if(e.code==='Space'&&!e.repeat){e.preventDefault();beginHold();}};
+      document.onkeyup=e=>{if(e.code==='Space')cancelHold();};
+    }else{
+      prepObject.onclick=completeTask;
+      document.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();completeTask();}};
+    }
+  }
+  const wear=document.getElementById('wearOutfit');
+  if(wear){
+    const chooseOutfit=()=>{const o=OUTFIT_OPTIONS[outfitPreviewIndex];state.micPrep.outfit=o.id;state.micPrep.outfitRoast=o.roast||null;saveGame();renderMicDecision();};
+    document.getElementById('outfitPrev').onclick=()=>moveOutfitPreview(-1);
+    document.getElementById('outfitNext').onclick=()=>moveOutfitPreview(1);
+    wear.onclick=chooseOutfit;
+    document.onkeydown=e=>{if(e.key==='ArrowLeft'){e.preventDefault();moveOutfitPreview(-1);}else if(e.key==='ArrowRight'){e.preventDefault();moveOutfitPreview(1);}else if(e.key==='Enter'){e.preventDefault();chooseOutfit();}};
+  }
   document.querySelectorAll('.note-choice').forEach(btn=>btn.onclick=()=>toggleMicPremise(btn.dataset.premiseId));
   const lock=document.getElementById('lockSet');
   if(lock)lock.onclick=()=>{state.micPrep.setLocked=true;saveGame();renderMicDecision();};
-  document.querySelectorAll('[data-keyspot]').forEach(btn=>btn.onclick=()=>{
-    const i=Number(btn.dataset.keyspot);
-    if(i===state.micPrep.keySpot){state.micPrep.keysFound=true;saveGame();renderMicDecision();return;}
-    if(!state.micPrep.keyAttempts.includes(i))state.micPrep.keyAttempts.push(i);
-    saveGame();renderMicDecision();
-  });
   const leave=document.getElementById('leaveForMic');
   if(leave)leave.onclick=state.firstMicDone && !state.comedianUnlocked ? commitToComedy : renderDriveToMic;
   document.getElementById('stayHome').onclick=()=>{
     state.micPrep=freshMicPrep();state.firstMicPremiseId=null;state.firstMicPremiseIds=[];advanceOneDay();
   };
-  const numbered=[...document.querySelectorAll('button[data-outfit],button.note-choice')].filter(b=>!b.disabled);
+  const numbered=[...document.querySelectorAll('button.note-choice')].filter(b=>!b.disabled);
   numbered.forEach((btn,i)=>{if(i<9){btn.setAttribute('aria-keyshortcuts',String(i+1));btn.title=`Press ${i+1}`;}});
-  if(!rush)document.onkeydown=e=>{
+  if(step==='set')document.onkeydown=e=>{
     if(/^[1-9]$/.test(e.key)){const btn=numbered[Number(e.key)-1];if(btn){e.preventDefault();btn.click();}}
     if(e.key==='ArrowDown'||e.key==='ArrowRight'||e.key==='ArrowUp'||e.key==='ArrowLeft'){
       const buttons=[...document.querySelectorAll('button:not(:disabled)')];const i=buttons.indexOf(document.activeElement);
@@ -4625,11 +4841,10 @@ function renderQuitComedy(){
         <div class="end-note">
           For now, Darren is not a comedian.
         </div>
-        <button class="action" id="quitBoundary">GO TO WORK</button>
+        ${autoNextHTML("The warehouse is still there",2400)}
       </div>
     </div>`;
-
-  document.getElementById('quitBoundary').onclick=()=>{
+  scheduleSceneAdvance(()=>{
     game.innerHTML=topbar()+`
       <div class="screen">
         <div class="card">
@@ -4642,7 +4857,7 @@ function renderQuitComedy(){
         </div>
       </div>`;
     document.getElementById('quitBoot').onclick=renderBoot;
-  };
+  },2400);
 }
 
 function revealComedian(){
@@ -4785,11 +5000,10 @@ function renderPerformanceWarning(troy,trouble){
           </div>
         </div>
 
-        <button class="action" id="performanceWarningContinue">CLOCK OUT</button>
+        ${autoNextHTML("Clocking out",2600)}
       </div>
     </div>`;
-
-  document.getElementById('performanceWarningContinue').onclick=()=>endShift(true,true);
+  scheduleSceneAdvance(()=>endShift(true,true),2600);
 }
 
 function fireForWorkPerformance(troy,trouble){
@@ -4824,11 +5038,10 @@ function fireForWorkPerformance(troy,trouble){
           </div>
         </div>
 
-        <button class="action" id="performanceFiredLeave">GET YOUR STUFF</button>
+        ${autoNextHTML("Getting your stuff",2800)}
       </div>
     </div>`;
-
-  document.getElementById('performanceFiredLeave').onclick=renderFiredAftermath;
+  scheduleSceneAdvance(renderFiredAftermath,2800);
 }
 
 function promotionChance(){
@@ -4940,11 +5153,10 @@ function renderPromotionResult(accepted){
              </div>`
           : ''}
 
-        <button class="action" id="promotionContinue">CLOCK OUT</button>
+        ${autoNextHTML("Clocking out",2100)}
       </div>
     </div>`;
-
-  document.getElementById('promotionContinue').onclick=()=>endShift(true,true);
+  scheduleSceneAdvance(()=>endShift(true,true),2100);
 }
 
 function endShift(skipPromotionCheck=false,skipWorkConsequence=false){
@@ -4975,6 +5187,8 @@ function endShift(skipPromotionCheck=false,skipWorkConsequence=false){
     note=`On the drive home, your brain is completely empty. You mostly think about food.`;
   }
 
+  const micTonight=SOCIAL_ENGINE.knows("back_room_open_mic") && isTuesday();
+  const nextDelay=3000;
   game.innerHTML=topbar()+`
     <div class="screen">
       <div class="card">
@@ -4991,18 +5205,11 @@ function endShift(skipPromotionCheck=false,skipWorkConsequence=false){
           <div class="pill">${state.processed} boxes scanned</div>
           <div class="pill">${state.savedThoughts.length} thought${state.savedThoughts.length===1?'':'s'} kept</div>
         </div>
-        ${SOCIAL_ENGINE.knows("back_room_open_mic") && isTuesday()
-          ? `<button class="action" id="micTonight">GO HOME</button>`
-          : `<button class="action" id="again">NEXT DAY</button>`}
+        ${autoNextHTML(micTonight ? "Going home" : "Tomorrow",nextDelay)}
       </div>
     </div>`;
-
-  const micTonight=document.getElementById('micTonight');
-  if(micTonight){
-    micTonight.onclick=renderMicDecision;
-  }else{
-    document.getElementById('again').onclick=advanceOneDay;
-  }
+  saveGame();
+  scheduleSceneAdvance(micTonight ? renderMicDecision : advanceOneDay,nextDelay);
 }
 
 function escapeHtml(s){
