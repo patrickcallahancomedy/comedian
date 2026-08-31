@@ -1,11 +1,11 @@
 <!doctype html>
-<!-- COMEDIAN BUILD: Lab 34 -->
+<!-- COMEDIAN BUILD: Lab 35 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>COMEDIAN — Beginning Lab 34</title>
-<meta name="comedian-build" content="Lab 34">
+<title>COMEDIAN — Beginning Lab 35</title>
+<meta name="comedian-build" content="Lab 35">
 <style>
 :root{
   --bg:#050505;
@@ -2005,10 +2005,59 @@ h1{font-size:clamp(38px,10vw,64px);line-height:.95;margin:0 0 18px;letter-spacin
   box-shadow:0 7px 17px rgba(0,0,0,.26);
 }
 
+/* LAB 35 — persistent build label and lightweight developer tools */
+.build-badge{
+  position:fixed;
+  left:12px;
+  bottom:calc(10px + env(safe-area-inset-bottom));
+  z-index:10000;
+  padding:6px 9px;
+  border:1px solid #34312d;
+  border-radius:3px;
+  background:rgba(11,10,9,.92);
+  color:#8f8a82;
+  font:700 10px/1 Arial,Helvetica,sans-serif;
+  letter-spacing:1.2px;
+  text-transform:uppercase;
+  cursor:pointer;
+}
+.build-badge:hover,.build-badge[aria-expanded="true"]{color:#d4cfc7;border-color:#5a554e}
+.dev-panel{
+  position:fixed;
+  left:12px;
+  bottom:calc(44px + env(safe-area-inset-bottom));
+  z-index:9999;
+  width:min(360px,calc(100vw - 24px));
+  max-height:70vh;
+  overflow:auto;
+  padding:14px;
+  border:1px solid #3d3934;
+  border-radius:4px;
+  background:rgba(10,9,8,.98);
+  box-shadow:0 16px 40px rgba(0,0,0,.55);
+  color:#d7d2ca;
+}
+.dev-panel[hidden]{display:none}
+.dev-title{font-size:12px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:10px}
+.dev-readout{margin:0;white-space:pre-wrap;font:12px/1.5 Consolas,monospace;color:#aaa49c}
+.dev-actions{display:flex;gap:8px;margin-top:12px}
+.dev-action{flex:1;padding:9px;border:1px solid #3b3732;background:#171512;color:#c9c3ba;font-size:11px;font-weight:800;cursor:pointer}
+.dev-status{min-height:14px;margin-top:8px;color:#7f8b79;font-size:10px}
+
 </style>
 </head>
 <body>
 <div id="game"></div>
+<button class="build-badge" id="buildBadge" type="button" aria-expanded="false" aria-controls="devPanel">LAB 35</button>
+<aside class="dev-panel" id="devPanel" hidden>
+  <div class="dev-title">Developer Tools · Lab 35</div>
+  <pre class="dev-readout" id="devReadout"></pre>
+  <div class="dev-actions">
+    <button class="dev-action" id="devRefresh" type="button">REFRESH</button>
+    <button class="dev-action" id="devCopy" type="button">COPY DEBUG</button>
+  </div>
+  <div class="dev-status" id="devStatus"></div>
+</aside>
 <script>
 const game=document.getElementById('game');
 
@@ -2154,8 +2203,49 @@ function topbar(){
 }
 
 
-const BUILD_VERSION="Lab 34";
+const BUILD_VERSION="Lab 35";
 const SAVE_KEY="comedian_lab32_save";
+
+function developerSnapshot(){
+  return {
+    build:BUILD_VERSION,
+    phase:state.phase,
+    day:state.day,
+    weekday:weekdayName(),
+    timeLeft:state.timeLeft,
+    work:`${state.processed}/${state.quota}`,
+    misses:state.misses,
+    savedThoughts:state.savedThoughts.length,
+    premises:state.premises.length,
+    employed:state.employed,
+    firstMicDone:state.firstMicDone,
+    comedianUnlocked:state.comedianUnlocked
+  };
+}
+function refreshDeveloperPanel(){
+  const readout=document.getElementById('devReadout');
+  if(readout)readout.textContent=JSON.stringify(developerSnapshot(),null,2);
+}
+function setupDeveloperTools(){
+  const badge=document.getElementById('buildBadge');
+  const panel=document.getElementById('devPanel');
+  const status=document.getElementById('devStatus');
+  badge.onclick=()=>{
+    panel.hidden=!panel.hidden;
+    badge.setAttribute('aria-expanded',String(!panel.hidden));
+    if(!panel.hidden)refreshDeveloperPanel();
+  };
+  document.getElementById('devRefresh').onclick=refreshDeveloperPanel;
+  document.getElementById('devCopy').onclick=async()=>{
+    const debugText=JSON.stringify(developerSnapshot(),null,2);
+    try{
+      await navigator.clipboard.writeText(debugText);
+      status.textContent='Debug info copied.';
+    }catch(e){
+      status.textContent='Copy blocked by browser. Select the text above.';
+    }
+  };
+}
 
 function ensureCoreSchema(){
   if(typeof state.storySeen!=="boolean")state.storySeen=true;
@@ -4887,6 +4977,7 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+setupDeveloperTools();
 renderBoot();
 </script>
 </body>
