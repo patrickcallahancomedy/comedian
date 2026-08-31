@@ -1,11 +1,11 @@
 <!doctype html>
-<!-- COMEDIAN BUILD: Lab 33 -->
+<!-- COMEDIAN BUILD: Lab 34 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>COMEDIAN — Beginning Lab 33</title>
-<meta name="comedian-build" content="Lab 33">
+<title>COMEDIAN — Beginning Lab 34</title>
+<meta name="comedian-build" content="Lab 34">
 <style>
 :root{
   --bg:#050505;
@@ -1792,6 +1792,219 @@ h1{font-size:clamp(38px,10vw,64px);line-height:.95;margin:0 0 18px;letter-spacin
 }
 @media(max-width:520px){.stage-core-frame{height:1080px}}
 
+
+/* LAB 34 — dull warehouse art direction */
+.work-head .small{
+  color:#716d67;
+}
+.shift-title{
+  color:#aaa49c;
+  font-weight:850;
+}
+.shift-clock{
+  border-color:#34312d;
+  border-radius:3px;
+  background:#11100f;
+  color:#aaa49c;
+  box-shadow:none;
+}
+.line-meter{
+  height:8px;
+  border-color:#302d29;
+  border-radius:2px;
+  background:#151412;
+}
+.line-fill{
+  border-radius:0;
+  background:#736f65;
+}
+.line-meter.danger .line-fill{
+  background:#74504c;
+  box-shadow:none;
+}
+.station{
+  border-color:#37332e;
+  border-radius:3px;
+  background:#0a0908;
+  box-shadow:inset 0 0 0 1px #11100e;
+}
+.warehouse-scene{
+  border-radius:0;
+  background:
+    linear-gradient(180deg,#171816 0 31%,#121311 31% 61%,#0d0d0c 61% 100%);
+}
+.warehouse-scene::before{
+  background:
+    linear-gradient(90deg,
+      transparent 0 9%,
+      rgba(218,213,194,.055) 9% 22%,
+      transparent 22% 42%,
+      rgba(218,213,194,.045) 42% 57%,
+      transparent 57% 76%,
+      rgba(218,213,194,.05) 76% 91%,
+      transparent 91%);
+}
+.warehouse-backdrop{
+  opacity:.50;
+  filter:saturate(.25) brightness(.78);
+}
+.warehouse-backdrop::before,
+.warehouse-backdrop::after{
+  filter:saturate(.45) brightness(.78);
+}
+.safety-floor{
+  opacity:.20;
+  filter:saturate(.20);
+}
+.scan-zone{
+  border:1px dashed #45423d;
+  border-radius:2px;
+  background:rgba(205,199,183,.015);
+  box-shadow:none;
+}
+.scan-zone::before{
+  color:#777169;
+}
+.scan-zone::after{
+  height:1px;
+  border-radius:0;
+  background:#514d46;
+  opacity:.38;
+  box-shadow:none;
+}
+.station.scan-ready .scan-zone{
+  border-color:#737b6d;
+  background:rgba(115,123,109,.055);
+  box-shadow:none;
+}
+.station.scan-ready .scan-zone::before{
+  color:#959d8e;
+}
+.station.scan-ready .scan-zone::after{
+  background:#858e7d;
+  opacity:.72;
+  box-shadow:none;
+}
+.box{
+  --cardboard-top:#85603d;
+  --cardboard-bottom:#68472c;
+  width:142px;
+  height:102px;
+  border:1px solid #513821;
+  border-radius:2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,239,207,.11),
+    inset -11px -9px 0 rgba(65,39,21,.12),
+    0 8px 18px rgba(0,0,0,.36);
+}
+.box.box-blue{--cardboard-top:#896440;--cardboard-bottom:#6b492d}
+.box.box-orange{--cardboard-top:#805b39;--cardboard-bottom:#624229}
+.box.box-purple{--cardboard-top:#8c6845;--cardboard-bottom:#704e31}
+.box.box-green{--cardboard-top:#795638;--cardboard-bottom:#604028}
+.box.box-pink{--cardboard-top:#84603f;--cardboard-bottom:#67462d}
+.box.box-blue,
+.box.box-orange,
+.box.box-purple,
+.box.box-green,
+.box.box-pink{
+  background:
+    linear-gradient(90deg,
+      transparent 0 43%,
+      rgba(207,179,126,.23) 43% 57%,
+      transparent 57% 100%),
+    linear-gradient(180deg,
+      transparent 0 49%,
+      rgba(64,40,23,.18) 49% 51%,
+      transparent 51% 100%),
+    linear-gradient(180deg,var(--cardboard-top),var(--cardboard-bottom));
+}
+.boxlabel{
+  position:relative;
+  z-index:1;
+  padding:5px 8px;
+  border:1px solid #aca38f;
+  border-radius:1px;
+  background:#d3ccba;
+  color:#302d27;
+  transform:rotate(-1deg);
+}
+.barcode{
+  position:relative;
+  z-index:1;
+  color:rgba(31,27,22,.68);
+}
+.controls{
+  border-top-color:#2b2824;
+  background:#0b0a09;
+}
+.ctrl{
+  border:1px solid #3a3732;
+  border-radius:2px;
+  background:#1a1917;
+  color:#b4aea6;
+  box-shadow:none;
+}
+#scan{
+  border:1px solid #3e3b36;
+  background:#24231f;
+  color:#aaa59d;
+}
+.station.scan-ready #scan{
+  border-color:#62695e;
+  background:#454b42;
+  color:#d5d9d0;
+  box-shadow:none;
+}
+#keep{
+  border:1px solid #554a38;
+  background:#393226;
+  color:#c8bda8;
+}
+#keep:not(:disabled){
+  transform:none;
+  box-shadow:none;
+}
+.station-feedback{
+  border-top-color:#292621;
+  background:#0c0b0a;
+  color:#827d76;
+}
+.station-feedback.good{
+  color:#899682;
+}
+.station-feedback.bad{
+  color:#9e6f6b;
+}
+.station.scan-hit{
+  animation:none;
+}
+.thought{
+  border-color:#bdb7aa;
+  background:#d9d3c4;
+  color:#25231f;
+  box-shadow:0 8px 20px rgba(0,0,0,.28);
+}
+.thought::after{
+  border-color:#bdb7aa;
+  background:#d9d3c4;
+}
+.thought::before{
+  background:#d9d3c4;
+  box-shadow:0 0 0 2px #bdb7aa;
+}
+.thought small{
+  color:#716b61;
+}
+.thought span{
+  color:#25231f;
+}
+.idea-bank,
+.idea-saved-pop{
+  background:#ad945c;
+  color:#292318;
+  box-shadow:0 7px 17px rgba(0,0,0,.26);
+}
+
 </style>
 </head>
 <body>
@@ -1941,7 +2154,7 @@ function topbar(){
 }
 
 
-const BUILD_VERSION="Lab 33";
+const BUILD_VERSION="Lab 34";
 const SAVE_KEY="comedian_lab32_save";
 
 function ensureCoreSchema(){
@@ -2690,13 +2903,13 @@ function setScanReady(ready){
   }
 }
 
-const boxColorClasses=["box-blue","box-orange","box-purple","box-green","box-pink"];
+const boxCardboardClasses=["box-blue","box-orange","box-purple","box-green","box-pink"];
 
-function randomizeBoxColor(){
+function randomizeBoxCardboard(){
   const box=document.getElementById('box');
   if(!box)return;
-  boxColorClasses.forEach(c=>box.classList.remove(c));
-  box.classList.add(boxColorClasses[Math.floor(Math.random()*boxColorClasses.length)]);
+  boxCardboardClasses.forEach(c=>box.classList.remove(c));
+  box.classList.add(boxCardboardClasses[Math.floor(Math.random()*boxCardboardClasses.length)]);
 }
 
 function arcadeFeedback(kind,msg){
@@ -2717,7 +2930,7 @@ function arcadeFeedback(kind,msg){
 }
 
 function spawnBox(){
-  randomizeBoxColor();
+  randomizeBoxCardboard();
   clearTimeout(boxTimer);
   clearTimeout(scanOpenTimer);
   clearTimeout(scanCloseTimer);
