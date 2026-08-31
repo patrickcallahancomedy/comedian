@@ -1,11 +1,11 @@
 <!doctype html>
-<!-- COMEDIAN BUILD: Lab 35 -->
+<!-- COMEDIAN BUILD: Lab 36 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>COMEDIAN — Beginning Lab 35</title>
-<meta name="comedian-build" content="Lab 35">
+<title>COMEDIAN — Beginning Lab 36</title>
+<meta name="comedian-build" content="Lab 36">
 <style>
 :root{
   --bg:#050505;
@@ -20,6 +20,9 @@
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;min-height:100%}
 body{min-height:100vh;overflow-x:hidden;overflow-y:auto}
 button{font:inherit}
+button:not(:disabled){cursor:pointer;transition:background-color .14s ease,border-color .14s ease,color .14s ease,transform .14s ease,box-shadow .14s ease}
+button:not(:disabled):hover,button:not(:disabled):focus-visible{background:#23181b!important;border-color:#b52b42!important;color:#fff!important;box-shadow:0 0 0 2px rgba(208,36,66,.16);outline:none;transform:translateY(-1px)}
+button:not(:disabled):active{transform:translateY(1px)}
 #game{min-height:100vh;display:flex;flex-direction:column}
 .topbar{
   height:52px;
@@ -1754,7 +1757,7 @@ h1{font-size:clamp(38px,10vw,64px);line-height:.95;margin:0 0 18px;letter-spacin
   100%{opacity:0;transform:translateY(-10px) rotate(-1deg) scale(.98)}
 }
 
-.prep-shell{width:min(650px,100%);margin:auto}
+.prep-shell{width:min(900px,100%);margin:auto}
 .prep-progress-row{display:flex;gap:7px;margin:16px 0 20px;flex-wrap:wrap}
 .prep-dot{padding:6px 8px;border:1px solid #292929;border-radius:999px;color:#6f6a65;font-size:9px;font-weight:900;letter-spacing:.7px}
 .prep-dot.done{border-color:#315f55;color:#8ed8c6;background:#07110f}
@@ -1778,6 +1781,20 @@ h1{font-size:clamp(38px,10vw,64px);line-height:.95;margin:0 0 18px;letter-spacin
 .key-spot.checked{opacity:.45;text-decoration:line-through}
 .key-found{padding:13px;border-radius:10px;background:#071711;border:1px solid #2f6b58;color:#a7e7d5;font-weight:900;margin-top:12px}
 .outfit-summary{display:inline-block;padding:6px 9px;border-radius:999px;background:#17151a;color:#bdb5ad;font-size:11px;margin-top:8px}
+.rush-game{border:1px solid #3a3134;border-radius:17px;background:radial-gradient(circle at 50% 0,#1a1114,#09090b 58%);padding:22px;margin-top:12px}
+.rush-head{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}
+.rush-head h2{margin:0;font-size:clamp(27px,4vw,38px)}
+.rush-count{font:900 20px monospace;color:#ff4966;white-space:nowrap}
+.rush-track{height:56px;position:relative;border:1px solid #40383a;background:#101013;overflow:hidden;margin:14px 0 10px}
+.rush-target{position:absolute;top:0;bottom:0;width:24%;left:38%;background:rgba(67,190,151,.17);border-left:2px solid #54c9a5;border-right:2px solid #54c9a5}
+.rush-marker{position:absolute;top:5px;bottom:5px;width:7px;background:#fff;box-shadow:0 0 13px #fff;animation:rushSweep 1.2s linear infinite alternate}
+@keyframes rushSweep{from{left:1%}to{left:98%}}
+.rush-action{width:100%;min-height:72px;border:1px solid #692134;border-left:5px solid #d02442;background:#150a0d;color:#fff;font-size:18px;font-weight:950;letter-spacing:.7px}
+.rush-done{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.rush-chip{padding:6px 9px;border:1px solid #303034;color:#777;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.7px}
+.rush-chip.done{border-color:#357660;color:#9ce4ce;background:#081611}
+.key-hint{display:block;margin-top:8px;color:#777;font-size:11px;text-align:center}
+@media(min-width:900px){.screen{padding-left:46px;padding-right:46px}.prep-game{padding:24px}.prep-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.prep-choice.outfit{min-height:110px;font-size:17px}}
 @media(max-width:520px){.prep-grid,.key-grid{grid-template-columns:1fr 1fr}.story-line{font-size:18px}}
 
 /* LAB 27 — embedded permanent Stage Core v1 */
@@ -2048,9 +2065,9 @@ h1{font-size:clamp(38px,10vw,64px);line-height:.95;margin:0 0 18px;letter-spacin
 </head>
 <body>
 <div id="game"></div>
-<button class="build-badge" id="buildBadge" type="button" aria-expanded="false" aria-controls="devPanel">LAB 35</button>
+<button class="build-badge" id="buildBadge" type="button" aria-expanded="false" aria-controls="devPanel">LAB 36</button>
 <aside class="dev-panel" id="devPanel" hidden>
-  <div class="dev-title">Developer Tools · Lab 35</div>
+  <div class="dev-title">Developer Tools · Lab 36</div>
   <pre class="dev-readout" id="devReadout"></pre>
   <div class="dev-actions">
     <button class="dev-action" id="devRefresh" type="button">REFRESH</button>
@@ -2203,7 +2220,7 @@ function topbar(){
 }
 
 
-const BUILD_VERSION="Lab 35";
+const BUILD_VERSION="Lab 36";
 const SAVE_KEY="comedian_lab32_save";
 
 function developerSnapshot(){
@@ -3385,7 +3402,7 @@ function runThoughtOnCoworker(person,thought){
   if(roll < base*.45){
     reactionText=person.personality==="boss"
       ? `${person.name} actually laughs. That feels weirdly more important than it should.`
-      : `${person.name} laughs immediately. Not politely. You feel the difference.`;
+      : `${person.name} laughs before you finish. “Okay—that’s actually funny.”`;
     strongLaugh=true;
     materialResult="big_laugh";
     person.relationship=Math.min(100,person.relationship+5);
@@ -3738,15 +3755,13 @@ function freshMicPrep(){
   return {changed:false,changeItems:[],showerProgress:0,showered:false,outfit:null,outfitRoast:null,setLocked:false,keysFound:false,keySpot:null,keyAttempts:[],keySearchActive:false};
 }
 function prepStep(){
-  if(!state.micPrep.changed)return 'change';
-  if(!state.micPrep.showered)return 'shower';
+  if(!state.micPrep.changed||!state.micPrep.showered||!state.micPrep.keysFound)return 'rush';
   if(!state.micPrep.outfit)return 'outfit';
   if(!state.micPrep.setLocked)return 'set';
-  if(!state.micPrep.keysFound)return 'keys';
   return 'leave';
 }
 function prepProgressHTML(active){
-  const steps=[['change','CHANGE'],['shower','SHOWER'],['outfit','OUTFIT'],['set','SET'],['keys','KEYS']];
+  const steps=[['rush','GET READY'],['outfit','OUTFIT'],['set','SET']];
   const order=steps.map(x=>x[0]);
   const ai=order.indexOf(active);
   return `<div class="prep-progress-row">${steps.map(([id,label],i)=>`<div class="prep-dot ${i<ai||active==='leave'?'done':''} ${id===active?'active':''}">${label}</div>`).join('')}</div>`;
@@ -3761,18 +3776,14 @@ function renderMicDecision(){
   const outfit=OUTFIT_OPTIONS.find(o=>o.id===state.micPrep.outfit);
 
   let body='';
-  if(step==='change'){
-    const chosen=new Set(state.micPrep.changeItems||[]);
-    body=`<div class="prep-game"><h2>Get out of work clothes.</h2><p>You still smell like cardboard and pallet dust.</p><div class="prep-grid">
-      <button class="prep-choice ${chosen.has('shirt')?'done':''}" data-change="shirt">${chosen.has('shirt')?'✓ WORK SHIRT OFF':'TAKE OFF WORK SHIRT'}</button>
-      <button class="prep-choice ${chosen.has('boots')?'done':''}" data-change="boots">${chosen.has('boots')?'✓ BOOTS OFF':'KICK OFF BOOTS'}</button>
-    </div></div>`;
-  }else if(step==='shower'){
-    const n=Math.max(0,Math.min(3,state.micPrep.showerProgress||0));
-    const labels=['TURN ON THE WATER','WASH OFF WORK','RINSE','GET OUT'];
-    body=`<div class="prep-game"><h2>Shower.</h2><p>The mic is in less than an hour. This is somehow when you start moving slowly.</p>
-      <div class="shower-meter"><div style="width:${(n/3)*100}%"></div></div>
-      <button class="action" id="showerAction">${labels[n]}</button></div>`;
+  if(step==='rush'){
+    const n=Math.max(0,Math.min(4,state.micPrep.showerProgress||0));
+    const tasks=['GET OUT OF THE WORK SHIRT','KICK OFF THE BOOTS','SHOWER','DRY OFF','GRAB YOUR KEYS'];
+    body=`<div class="rush-game"><div class="rush-head"><div><h2>Move. You’re going to be late.</h2><p>Hit while the white line is in the green.</p></div><div class="rush-count">${n}/5</div></div>
+      <div class="rush-track"><div class="rush-target"></div><div class="rush-marker" id="rushMarker"></div></div>
+      <button class="rush-action" id="rushAction">${tasks[n]||'DONE'} <small>— SPACE</small></button>
+      <div class="rush-done">${tasks.map((t,i)=>`<span class="rush-chip ${i<n?'done':''}">${i<n?'✓ ':''}${t}</span>`).join('')}</div>
+      <span class="key-hint" id="rushFeedback">Spacebar or click. Missing makes the next one faster.</span></div>`;
   }else if(step==='outfit'){
     body=`<div class="prep-game"><h2>What are you wearing?</h2><p>This should not feel like a major decision. It does.</p><div class="prep-grid">${OUTFIT_OPTIONS.map(o=>`<button class="prep-choice outfit" data-outfit="${o.id}">${escapeHtml(o.name)}<small>${escapeHtml(o.note)}</small></button>`).join('')}</div></div>`;
   }else if(step==='set'){
@@ -3788,16 +3799,28 @@ function renderMicDecision(){
     body=`<div class="prep-game"><h2>Okay. Go.</h2><p>You are clean, dressed, have a set, and somehow found your keys.</p>${outfit?`<div class="outfit-summary">${escapeHtml(outfit.name)}</div>`:''}${selected.length?`<div class="prep-status">SET: ${selected.map(p=>`“${escapeHtml(p.text)}”`).join(' • ')}</div>`:`<div class="prep-status">SET: absolutely nothing</div>`}<button class="action" id="leaveForMic">LEAVE FOR THE BACK ROOM</button></div>`;
   }
 
-  game.innerHTML=topbar()+`<div class="screen"><div class="prep-shell"><div class="eyebrow">${weekdayName().toUpperCase()} • 6:58 PM</div><h1>You’re home.</h1><div class="copy">The mic starts at 8:00. Going to it now requires several tiny acts of commitment.</div>${prepProgressHTML(step)}${body}<button class="boot-btn" id="stayHome">DON’T GO</button></div></div>`;
+  game.innerHTML=topbar()+`<div class="screen"><div class="prep-shell"><div class="eyebrow">${weekdayName().toUpperCase()} • 6:58 PM</div><h1>You’re home.</h1><div class="copy">The mic starts at 8:00. You can still talk yourself out of it.</div>${prepProgressHTML(step)}${body}<button class="boot-btn" id="stayHome">DON’T GO</button></div></div>`;
 
-  document.querySelectorAll('[data-change]').forEach(btn=>btn.onclick=()=>{
-    const item=btn.dataset.change;
-    const items=new Set(state.micPrep.changeItems||[]);items.add(item);state.micPrep.changeItems=[...items];
-    if(items.has('shirt')&&items.has('boots'))state.micPrep.changed=true;
-    saveGame();renderMicDecision();
-  });
-  const shower=document.getElementById('showerAction');
-  if(shower)shower.onclick=()=>{state.micPrep.showerProgress=Math.min(3,(state.micPrep.showerProgress||0)+1);if(state.micPrep.showerProgress>=3)state.micPrep.showered=true;saveGame();renderMicDecision();};
+  const rush=document.getElementById('rushAction');
+  if(rush){
+    const hitRush=()=>{
+      const marker=document.getElementById('rushMarker');
+      const track=marker&&marker.parentElement;
+      if(!marker||!track)return;
+      const m=marker.getBoundingClientRect(),t=track.getBoundingClientRect();
+      const center=((m.left+m.right)/2-t.left)/t.width;
+      if(center<.38||center>.62){
+        marker.style.animationDuration='.82s';
+        const feedback=document.getElementById('rushFeedback');if(feedback)feedback.textContent='Missed. Again.';
+        return;
+      }
+      state.micPrep.showerProgress=Math.min(5,(state.micPrep.showerProgress||0)+1);
+      if(state.micPrep.showerProgress>=5){state.micPrep.changed=true;state.micPrep.showered=true;state.micPrep.keysFound=true;}
+      saveGame();renderMicDecision();
+    };
+    rush.onclick=hitRush;
+    document.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();hitRush();}};
+  }else document.onkeydown=null;
   document.querySelectorAll('[data-outfit]').forEach(btn=>btn.onclick=()=>{
     const o=OUTFIT_OPTIONS.find(x=>x.id===btn.dataset.outfit);if(!o)return;
     state.micPrep.outfit=o.id;state.micPrep.outfitRoast=o.roast||null;saveGame();renderMicDecision();
@@ -3815,6 +3838,15 @@ function renderMicDecision(){
   if(leave)leave.onclick=state.firstMicDone && !state.comedianUnlocked ? commitToComedy : renderDriveToMic;
   document.getElementById('stayHome').onclick=()=>{
     state.micPrep=freshMicPrep();state.firstMicPremiseId=null;state.firstMicPremiseIds=[];advanceOneDay();
+  };
+  const numbered=[...document.querySelectorAll('button[data-outfit],button.note-choice')].filter(b=>!b.disabled);
+  numbered.forEach((btn,i)=>{if(i<9){btn.setAttribute('aria-keyshortcuts',String(i+1));btn.title=`Press ${i+1}`;}});
+  if(!rush)document.onkeydown=e=>{
+    if(/^[1-9]$/.test(e.key)){const btn=numbered[Number(e.key)-1];if(btn){e.preventDefault();btn.click();}}
+    if(e.key==='ArrowDown'||e.key==='ArrowRight'||e.key==='ArrowUp'||e.key==='ArrowLeft'){
+      const buttons=[...document.querySelectorAll('button:not(:disabled)')];const i=buttons.indexOf(document.activeElement);
+      const d=(e.key==='ArrowDown'||e.key==='ArrowRight')?1:-1;buttons[(i+d+buttons.length)%buttons.length]?.focus();e.preventDefault();
+    }
   };
 }
 
