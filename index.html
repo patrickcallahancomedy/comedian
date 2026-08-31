@@ -1,11 +1,11 @@
 <!doctype html>
-<!-- COMEDIAN BUILD: Lab 32 -->
+<!-- COMEDIAN BUILD: Lab 33 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>COMEDIAN — Beginning Lab 32</title>
-<meta name="comedian-build" content="Lab 32">
+<title>COMEDIAN — Beginning Lab 33</title>
+<meta name="comedian-build" content="Lab 33">
 <style>
 :root{
   --bg:#050505;
@@ -1721,6 +1721,65 @@ h1{font-size:clamp(38px,10vw,64px);line-height:.95;margin:0 0 18px;letter-spacin
 }
 
 
+
+/* LAB 33 — story + home-prep bridge */
+.story-shell{width:min(620px,100%);margin:auto}
+.story-card{
+  border:1px solid #292826;
+  border-radius:18px;
+  padding:24px 22px;
+  background:linear-gradient(180deg,#0b0b0b,#080808);
+  box-shadow:0 18px 55px rgba(0,0,0,.32);
+}
+.story-kicker{font-size:10px;letter-spacing:2px;color:#77716b;text-transform:uppercase;margin-bottom:16px}
+.story-line{font-size:20px;line-height:1.55;color:#dfd9d1;margin:0 0 13px}
+.story-line.muted{color:#948e88;font-size:16px}
+.story-date{margin-top:24px;color:#c9c2ba;font-size:12px;letter-spacing:1.7px;text-transform:uppercase}
+
+.idea-bank{
+  position:absolute;right:12px;top:10px;z-index:8;
+  padding:6px 9px;border-radius:8px;background:#ffd166;color:#2b2415;
+  font-size:10px;font-weight:950;letter-spacing:.8px;box-shadow:0 7px 18px rgba(0,0,0,.28)
+}
+.idea-saved-pop{
+  position:absolute;right:14px;top:46px;z-index:20;width:min(250px,72%);
+  padding:12px 13px;border-radius:5px;background:#ffd166;color:#2b2415;
+  box-shadow:0 13px 28px rgba(0,0,0,.38);font-size:12px;line-height:1.35;font-weight:800;
+  transform:rotate(1.5deg);animation:ideaSavedPop 1.35s ease forwards;pointer-events:none
+}
+.idea-saved-pop small{display:block;font-size:9px;letter-spacing:1.2px;margin-bottom:5px}
+@keyframes ideaSavedPop{
+  0%{opacity:0;transform:translateY(10px) rotate(4deg) scale(.92)}
+  18%,72%{opacity:1;transform:translateY(0) rotate(1.5deg) scale(1)}
+  100%{opacity:0;transform:translateY(-10px) rotate(-1deg) scale(.98)}
+}
+
+.prep-shell{width:min(650px,100%);margin:auto}
+.prep-progress-row{display:flex;gap:7px;margin:16px 0 20px;flex-wrap:wrap}
+.prep-dot{padding:6px 8px;border:1px solid #292929;border-radius:999px;color:#6f6a65;font-size:9px;font-weight:900;letter-spacing:.7px}
+.prep-dot.done{border-color:#315f55;color:#8ed8c6;background:#07110f}
+.prep-dot.active{border-color:#5a547d;color:#c9c4ff;background:#0c0b16}
+.prep-game{border:1px solid #302f32;border-radius:17px;background:#0a0a0c;padding:18px;margin-top:10px}
+.prep-game h2{font-size:25px;margin:0 0 9px}
+.prep-game p{color:#9c9791;line-height:1.45;margin:0 0 15px}
+.prep-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.prep-choice{min-height:68px;border:1px solid #343238;border-radius:12px;background:#121216;color:#eee9e3;font-weight:900;padding:11px;text-align:left}
+.prep-choice.done{border-color:#2d6559;background:#091713;color:#9fe1d0}
+.prep-choice.outfit{min-height:92px}
+.prep-choice.outfit small{display:block;margin-top:7px;color:#8f8984;font-weight:600;line-height:1.25}
+.shower-meter{height:12px;border:1px solid #30303c;background:#0d0e14;border-radius:999px;overflow:hidden;margin:14px 0}
+.shower-meter>div{height:100%;background:linear-gradient(90deg,#4c6fff,#73c7ff);transition:width .25s ease}
+.notebook-paper{background:#eee7d5;color:#28241e;border-radius:6px;padding:17px;box-shadow:0 10px 25px rgba(0,0,0,.28)}
+.notebook-paper .note-choice{background:transparent;color:#28241e;border-color:#bdb4a0;border-radius:4px}
+.notebook-paper .note-choice.selected{background:#ffd166;border-color:#8a6d23;border-left:5px solid #8a6d23;color:#241e11}
+.notebook-count{font-size:11px;color:#6f675b;margin:0 0 10px;font-weight:800}
+.key-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.key-spot{min-height:62px;border:1px solid #353238;border-radius:12px;background:#121116;color:#e8e1db;font-weight:850}
+.key-spot.checked{opacity:.45;text-decoration:line-through}
+.key-found{padding:13px;border-radius:10px;background:#071711;border:1px solid #2f6b58;color:#a7e7d5;font-weight:900;margin-top:12px}
+.outfit-summary{display:inline-block;padding:6px 9px;border-radius:999px;background:#17151a;color:#bdb5ad;font-size:11px;margin-top:8px}
+@media(max-width:520px){.prep-grid,.key-grid{grid-template-columns:1fr 1fr}.story-line{font-size:18px}}
+
 /* LAB 27 — embedded permanent Stage Core v1 */
 .stage-core-host{width:min(780px,100%);margin:0 auto}
 .stage-core-frame{
@@ -1781,7 +1840,9 @@ const state={
   firstMicDone:false,
   comedianUnlocked:false,
   firstMicPremiseId:null,
-  micPrep:{dressed:false,notesOpened:false,keys:false},
+  firstMicPremiseIds:[],
+  storySeen:false,
+  micPrep:{changed:false,changeItems:[],showerProgress:0,showered:false,outfit:null,outfitRoast:null,setLocked:false,keysFound:false,keySpot:null,keyAttempts:[],keySearchActive:false},
   firstSetScores:[],
   firstSetResult:null,
   comedy:freshComedyState(false),
@@ -1880,10 +1941,28 @@ function topbar(){
 }
 
 
-const BUILD_VERSION="Lab 32";
+const BUILD_VERSION="Lab 33";
 const SAVE_KEY="comedian_lab32_save";
 
 function ensureCoreSchema(){
+  if(typeof state.storySeen!=="boolean")state.storySeen=true;
+  if(!Array.isArray(state.firstMicPremiseIds)){
+    state.firstMicPremiseIds=state.firstMicPremiseId?[state.firstMicPremiseId]:[];
+  }
+  const oldPrep=(state.micPrep&&typeof state.micPrep==="object")?state.micPrep:{};
+  state.micPrep={
+    changed:!!(oldPrep.changed||oldPrep.dressed),
+    changeItems:Array.isArray(oldPrep.changeItems)?oldPrep.changeItems:[],
+    showerProgress:Number.isFinite(oldPrep.showerProgress)?oldPrep.showerProgress:0,
+    showered:!!oldPrep.showered,
+    outfit:oldPrep.outfit||null,
+    outfitRoast:oldPrep.outfitRoast||null,
+    setLocked:!!(oldPrep.setLocked||oldPrep.notesOpened),
+    keysFound:!!(oldPrep.keysFound||oldPrep.keys),
+    keySpot:Number.isFinite(oldPrep.keySpot)?oldPrep.keySpot:null,
+    keyAttempts:Array.isArray(oldPrep.keyAttempts)?oldPrep.keyAttempts:[],
+    keySearchActive:!!oldPrep.keySearchActive
+  };
   if(!state.hidden)state.hidden={};
   if(!Number.isFinite(state.hidden.confidence))state.hidden.confidence=.26;
   if(!Number.isFinite(state.hidden.nerves))state.hidden.nerves=.72;
@@ -1955,7 +2034,9 @@ function newGame(){
   state.firstMicDone=false;
   state.comedianUnlocked=false;
   state.firstMicPremiseId=null;
-  state.micPrep={dressed:false,notesOpened:false,keys:false};
+  state.firstMicPremiseIds=[];
+  state.storySeen=false;
+  state.micPrep={changed:false,changeItems:[],showerProgress:0,showered:false,outfit:null,outfitRoast:null,setLocked:false,keysFound:false,keySpot:null,keyAttempts:[],keySearchActive:false};
   state.firstSetScores=[];
   state.firstSetResult=null;
   state.comedy=freshComedyState(true);
@@ -1997,7 +2078,7 @@ function newGame(){
   };
   SOCIAL_ENGINE.makeStartingPeople();
   saveGame();
-  renderIntro();
+  renderOpeningStory();
 }
 function renderBoot(){
   clearTimers();
@@ -2036,6 +2117,7 @@ function resumeGame(){
     case 'mic_decision': renderMicDecision(); break;
     case 'mic_prep': renderMicDecision(); break;
     case 'driving_to_mic': renderDriveToMic(); break;
+    case 'drive_turnaround': renderTurnAroundDecision(); break;
     case 'drive_complete': renderDriveComplete(); break;
     case 'first_mic': renderFirstMicArrival(); break;
     case 'signup_game': renderSignupGame(); break;
@@ -2363,8 +2445,9 @@ function waitForNextTuesday(){
   state.phase='mic_prep';
   state.currentCoworker=null;
   state.lunchDay=null;
-  state.micPrep={dressed:false,notesOpened:false,keys:false};
+  state.micPrep={changed:false,changeItems:[],showerProgress:0,showered:false,outfit:null,outfitRoast:null,setLocked:false,keysFound:false,keySpot:null,keyAttempts:[],keySearchActive:false};
   state.firstMicPremiseId=null;
+  state.firstMicPremiseIds=[];
   saveGame();
   renderMicDecision();
 }
@@ -2422,7 +2505,31 @@ function renderWeekend(){
   if(wait)wait.onclick=waitForNextTuesday;
 }
 
+function renderOpeningStory(){
+  state.phase='opening_story';
+  saveGame();
+  game.innerHTML=`
+    <div class="boot">
+      <div class="story-shell">
+        <div class="story-card">
+          <div class="story-kicker">BEFORE ANY OF THIS</div>
+          <p class="story-line">Darren is 28. He has worked at Boxes for six years.</p>
+          <p class="story-line">He is the guy people look at when lunch gets quiet.</p>
+          <p class="story-line muted">He thinks of things all day and forgets most of them before he gets home. Lately, something about that has started bothering him.</p>
+          <div class="story-date">MONDAY • 6:47 AM</div>
+          <button class="action" id="beginMonday">GET UP</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('beginMonday').onclick=()=>{
+    state.storySeen=true;
+    saveGame();
+    renderIntro();
+  };
+}
+
 function renderIntro(){
+  if(!state.storySeen && state.day===1){renderOpeningStory();return;}
   state.phase='intro';
   if(!state.people.length) SOCIAL_ENGINE.makeStartingPeople();
 
@@ -2525,6 +2632,7 @@ function renderWork(){
             <div class="warehouse-backdrop"></div>
 
             <div class="thought-lane">
+              <div class="idea-bank" id="ideaBank">NOTEBOOK <span id="ideaCount">${state.premises.length}</span></div>
               <div class="thought" id="thought">
                 <small>THOUGHT</small>
                 <span id="thoughtText"></span>
@@ -2730,6 +2838,19 @@ function hideThought(expired){
   currentThought='';
 }
 
+function showIdeaSaved(text){
+  const bank=document.getElementById('ideaCount');
+  if(bank)bank.textContent=state.premises.length;
+  const station=document.getElementById('station');
+  if(!station || !text)return;
+  const pop=document.createElement('div');
+  pop.className='idea-saved-pop';
+  const short=text.length>90?text.slice(0,87)+'…':text;
+  pop.innerHTML='<small>✓ IDEA SAVED TO NOTEBOOK</small>'+escapeHtml(short);
+  station.appendChild(pop);
+  setTimeout(()=>pop.remove(),1400);
+}
+
 function keepThought(){
   if(!thoughtActive || !currentThought || state.writingThought)return;
 
@@ -2759,6 +2880,7 @@ function keepThought(){
       state.savedThoughts.push(saved);
       SOCIAL_ENGINE.addPremise(saved);
       saveGame();
+      showIdeaSaved(saved);
     }
 
     state.writingThought=false;
@@ -2776,7 +2898,7 @@ function keepThought(){
     if(scan)scan.disabled=!boxScannable;
     if(station)station.classList.remove('writing');
 
-    flash(saved ? "Saved. Catch up." : "You lost it halfway through.");
+    flash(saved ? "In the notebook. Catch up." : "You lost it halfway through.");
     updateHUD();
   },1350);
 }
@@ -3301,107 +3423,107 @@ function renderEveningAfterWork(){
   document.getElementById('home').onclick=renderMicDecision;
 }
 
+const OUTFIT_OPTIONS=[
+  {id:'black_tee',name:'Black tee + jeans',note:'Simple. You look like you meant to leave the house.',roast:null},
+  {id:'graphic_tee',name:'Graphic tee + jeans',note:'A little louder, still normal.',roast:null},
+  {id:'button_up',name:'Clean button-up',note:'Slightly overdressed for a back-room mic.',roast:'A comic looks you over. “You got a job interview after this?”'},
+  {id:'fedora_vest',name:'Vest + fedora',note:'You feel weirdly confident about this.',roast:'A comic looks at the fedora. “First mic or magic show?”'}
+];
+const KEY_SPOTS=['Kitchen counter','Work pants','Couch cushions','Bathroom sink','Nightstand','Jacket pocket'];
+
+function freshMicPrep(){
+  return {changed:false,changeItems:[],showerProgress:0,showered:false,outfit:null,outfitRoast:null,setLocked:false,keysFound:false,keySpot:null,keyAttempts:[],keySearchActive:false};
+}
+function prepStep(){
+  if(!state.micPrep.changed)return 'change';
+  if(!state.micPrep.showered)return 'shower';
+  if(!state.micPrep.outfit)return 'outfit';
+  if(!state.micPrep.setLocked)return 'set';
+  if(!state.micPrep.keysFound)return 'keys';
+  return 'leave';
+}
+function prepProgressHTML(active){
+  const steps=[['change','CHANGE'],['shower','SHOWER'],['outfit','OUTFIT'],['set','SET'],['keys','KEYS']];
+  const order=steps.map(x=>x[0]);
+  const ai=order.indexOf(active);
+  return `<div class="prep-progress-row">${steps.map(([id,label],i)=>`<div class="prep-dot ${i<ai||active==='leave'?'done':''} ${id===active?'active':''}">${label}</div>`).join('')}</div>`;
+}
 function renderMicDecision(){
   state.phase='mic_prep';
-
-  if(!state.micPrep || typeof state.micPrep!=="object"){
-    state.micPrep={dressed:false,notesOpened:false,keys:false};
-  }
-
+  ensureCoreSchema();
   saveGame();
 
-  const selected=state.premises.find(p=>p.id===state.firstMicPremiseId) || null;
-  const hasPremises=state.premises.length>0;
-  const ready=
-    state.micPrep.dressed &&
-    state.micPrep.keys &&
-    (!hasPremises || !!selected);
+  const step=prepStep();
+  const selected=getSelectedMicPremises();
+  const outfit=OUTFIT_OPTIONS.find(o=>o.id===state.micPrep.outfit);
 
-  game.innerHTML=topbar()+`
-    <div class="screen">
-      <div class="card">
-        <div class="eyebrow">${weekdayName().toUpperCase()} • 6:58 PM</div>
-        <h1>You’re home.</h1>
-        <div class="copy">
-          ${state.firstMicDone && !state.comedianUnlocked
-            ? `The Back Room is doing it again tonight. You already know what getting on stage feels like.`
-            : `The mic starts at 8:00. If you’re going, you should probably leave soon.`}
-        </div>
-
-        <div class="mic-prep">
-          <button class="prep-step ${state.micPrep.dressed?'done':''}" id="changeShirt">
-            ${state.micPrep.dressed?'Changed out of work clothes':'Change out of work clothes'}
-          </button>
-
-          <button class="prep-step ${state.micPrep.notesOpened?'done':''}" id="openNotes">
-            ${state.micPrep.notesOpened?'Notes open':'Open your notes'}
-          </button>
-
-          <div id="notesArea">
-            ${state.micPrep.notesOpened ? renderMicPremiseChoices() : ''}
-          </div>
-
-          <button class="prep-step ${state.micPrep.keys?'done':''}" id="grabKeys">
-            ${state.micPrep.keys?'Keys in pocket':'Grab your keys'}
-          </button>
-        </div>
-
-        <div class="prep-status">
-          ${selected
-            ? `You’re planning to try: “${escapeHtml(selected.text)}”`
-            : hasPremises
-              ? `Pick one thing you’re willing to say out loud.`
-              : `You have no material. That is technically allowed.`}
-        </div>
-
-        <button class="action" id="leaveForMic" ${ready?'':'disabled'}>
-          ${state.firstMicDone && !state.comedianUnlocked
-            ? `GO BACK TO THE BACK ROOM`
-            : `LEAVE FOR THE BACK ROOM`}
-        </button>
-        <button class="boot-btn" id="stayHome">DON’T GO</button>
-      </div>
+  let body='';
+  if(step==='change'){
+    const chosen=new Set(state.micPrep.changeItems||[]);
+    body=`<div class="prep-game"><h2>Get out of work clothes.</h2><p>You still smell like cardboard and pallet dust.</p><div class="prep-grid">
+      <button class="prep-choice ${chosen.has('shirt')?'done':''}" data-change="shirt">${chosen.has('shirt')?'✓ WORK SHIRT OFF':'TAKE OFF WORK SHIRT'}</button>
+      <button class="prep-choice ${chosen.has('boots')?'done':''}" data-change="boots">${chosen.has('boots')?'✓ BOOTS OFF':'KICK OFF BOOTS'}</button>
+    </div></div>`;
+  }else if(step==='shower'){
+    const n=Math.max(0,Math.min(3,state.micPrep.showerProgress||0));
+    const labels=['TURN ON THE WATER','WASH OFF WORK','RINSE','GET OUT'];
+    body=`<div class="prep-game"><h2>Shower.</h2><p>The mic is in less than an hour. This is somehow when you start moving slowly.</p>
+      <div class="shower-meter"><div style="width:${(n/3)*100}%"></div></div>
+      <button class="action" id="showerAction">${labels[n]}</button></div>`;
+  }else if(step==='outfit'){
+    body=`<div class="prep-game"><h2>What are you wearing?</h2><p>This should not feel like a major decision. It does.</p><div class="prep-grid">${OUTFIT_OPTIONS.map(o=>`<button class="prep-choice outfit" data-outfit="${o.id}">${escapeHtml(o.name)}<small>${escapeHtml(o.note)}</small></button>`).join('')}</div></div>`;
+  }else if(step==='set'){
+    body=`<div class="prep-game"><h2>Build a set.</h2><p>Your notebook is basic right now. Pick up to three things you might actually say out loud.</p>
+      <div class="notebook-paper">${renderMicPremiseChoices()}</div>
+      <button class="action" id="lockSet" style="margin-top:12px">${selected.length?'LOCK IN THIS SET':'GO UP WITH NOTHING'}</button>
     </div>`;
-
-  document.getElementById('changeShirt').onclick=()=>{
-    state.micPrep.dressed=true;
-    saveGame();
-    renderMicDecision();
-  };
-
-  document.getElementById('openNotes').onclick=()=>{
-    state.micPrep.notesOpened=true;
-    saveGame();
-    renderMicDecision();
-  };
-
-  document.getElementById('grabKeys').onclick=()=>{
-    state.micPrep.keys=true;
-    saveGame();
-    renderMicDecision();
-  };
-
-  document.querySelectorAll('.note-choice').forEach(btn=>{
-    btn.onclick=()=>{
-      state.firstMicPremiseId=btn.dataset.premiseId;
-      saveGame();
-      renderMicDecision();
-    };
-  });
-
-  const leave=document.getElementById('leaveForMic');
-  if(leave && ready){
-    leave.onclick=state.firstMicDone && !state.comedianUnlocked
-      ? commitToComedy
-      : renderDriveToMic;
+  }else if(step==='keys'){
+    if(state.micPrep.keySpot===null)state.micPrep.keySpot=Math.floor(Math.random()*KEY_SPOTS.length);
+    const attempts=new Set(state.micPrep.keyAttempts||[]);
+    body=`<div class="prep-game"><h2>Where are your keys?</h2><p>You were ready to leave. Of course.</p><div class="key-grid">${KEY_SPOTS.map((spot,i)=>`<button class="key-spot ${attempts.has(i)?'checked':''}" data-keyspot="${i}" ${attempts.has(i)?'disabled':''}>${escapeHtml(spot)}</button>`).join('')}</div><div id="keyFeedback" class="prep-status">${attempts.size ? `${attempts.size} place${attempts.size===1?'':'s'} checked. Not there.` : `Check somewhere.`}</div></div>`;
+  }else{
+    body=`<div class="prep-game"><h2>Okay. Go.</h2><p>You are clean, dressed, have a set, and somehow found your keys.</p>${outfit?`<div class="outfit-summary">${escapeHtml(outfit.name)}</div>`:''}${selected.length?`<div class="prep-status">SET: ${selected.map(p=>`“${escapeHtml(p.text)}”`).join(' • ')}</div>`:`<div class="prep-status">SET: absolutely nothing</div>`}<button class="action" id="leaveForMic">LEAVE FOR THE BACK ROOM</button></div>`;
   }
 
+  game.innerHTML=topbar()+`<div class="screen"><div class="prep-shell"><div class="eyebrow">${weekdayName().toUpperCase()} • 6:58 PM</div><h1>You’re home.</h1><div class="copy">The mic starts at 8:00. Going to it now requires several tiny acts of commitment.</div>${prepProgressHTML(step)}${body}<button class="boot-btn" id="stayHome">DON’T GO</button></div></div>`;
+
+  document.querySelectorAll('[data-change]').forEach(btn=>btn.onclick=()=>{
+    const item=btn.dataset.change;
+    const items=new Set(state.micPrep.changeItems||[]);items.add(item);state.micPrep.changeItems=[...items];
+    if(items.has('shirt')&&items.has('boots'))state.micPrep.changed=true;
+    saveGame();renderMicDecision();
+  });
+  const shower=document.getElementById('showerAction');
+  if(shower)shower.onclick=()=>{state.micPrep.showerProgress=Math.min(3,(state.micPrep.showerProgress||0)+1);if(state.micPrep.showerProgress>=3)state.micPrep.showered=true;saveGame();renderMicDecision();};
+  document.querySelectorAll('[data-outfit]').forEach(btn=>btn.onclick=()=>{
+    const o=OUTFIT_OPTIONS.find(x=>x.id===btn.dataset.outfit);if(!o)return;
+    state.micPrep.outfit=o.id;state.micPrep.outfitRoast=o.roast||null;saveGame();renderMicDecision();
+  });
+  document.querySelectorAll('.note-choice').forEach(btn=>btn.onclick=()=>toggleMicPremise(btn.dataset.premiseId));
+  const lock=document.getElementById('lockSet');
+  if(lock)lock.onclick=()=>{state.micPrep.setLocked=true;saveGame();renderMicDecision();};
+  document.querySelectorAll('[data-keyspot]').forEach(btn=>btn.onclick=()=>{
+    const i=Number(btn.dataset.keyspot);
+    if(i===state.micPrep.keySpot){state.micPrep.keysFound=true;saveGame();renderMicDecision();return;}
+    if(!state.micPrep.keyAttempts.includes(i))state.micPrep.keyAttempts.push(i);
+    saveGame();renderMicDecision();
+  });
+  const leave=document.getElementById('leaveForMic');
+  if(leave)leave.onclick=state.firstMicDone && !state.comedianUnlocked ? commitToComedy : renderDriveToMic;
   document.getElementById('stayHome').onclick=()=>{
-    state.micPrep={dressed:false,notesOpened:false,keys:false};
-    state.firstMicPremiseId=null;
-    advanceOneDay();
+    state.micPrep=freshMicPrep();state.firstMicPremiseId=null;state.firstMicPremiseIds=[];advanceOneDay();
   };
 }
+
+function toggleMicPremise(id){
+  if(!Array.isArray(state.firstMicPremiseIds))state.firstMicPremiseIds=[];
+  const ix=state.firstMicPremiseIds.indexOf(id);
+  if(ix>=0)state.firstMicPremiseIds.splice(ix,1);
+  else if(state.firstMicPremiseIds.length<3)state.firstMicPremiseIds.push(id);
+  state.firstMicPremiseId=state.firstMicPremiseIds[0]||null;
+  saveGame();renderMicDecision();
+}
+
 
 function micPremiseScore(p){
   const reactions=p.reactions||[];
@@ -3444,26 +3566,14 @@ function micPremisesToShow(){
 
 function renderMicPremiseChoices(){
   if(!state.premises.length){
-    return `<div class="mut" style="margin:2px 0 6px">There is nothing in here.</div>`;
+    return `<div class="mut" style="color:#6f675b">There is nothing in here yet. You can still go up with nothing.</div>`;
   }
-
   const shown=micPremisesToShow();
-
-  return `
-    <div class="notes-list">
-      ${shown.map(p=>`
-        <button
-          class="note-choice ${state.firstMicPremiseId===p.id?'selected':''}"
-          data-premise-id="${escapeHtml(p.id)}">
-          “${escapeHtml(p.text)}”
-        </button>
-      `).join('')}
-    </div>
-    ${state.premises.length>shown.length
-      ? `<div class="mut" style="margin-top:8px">
-           You have more in your notes. These are the ones that come to mind.
-         </div>`
-      : ''}`;
+  const selected=new Set(state.firstMicPremiseIds||[]);
+  return `<div class="notebook-count">${selected.size}/3 JOKES IN TONIGHT'S SET</div><div class="notes-list">${shown.map(p=>`
+    <button class="note-choice ${selected.has(p.id)?'selected':''}" data-premise-id="${escapeHtml(p.id)}" ${!selected.has(p.id)&&selected.size>=3?'disabled':''}>
+      ${selected.has(p.id)?'✓ ':''}“${escapeHtml(p.text)}”
+    </button>`).join('')}</div>${state.premises.length>shown.length?`<div style="margin-top:8px;color:#756d60;font-size:11px">More notes exist. These are the ones that come to mind tonight.</div>`:''}`;
 }
 
 let driveAnimFrame=null;
@@ -3515,12 +3625,14 @@ function renderDriveToMic(){
         <div class="drive-controls">
           <button id="driveLeft">← LEFT</button>
           <button id="driveRight">RIGHT →</button>
+          <button id="driveTurnAround" style="grid-column:1/-1;background:#21161a;color:#f2c6ce;font-size:14px">TURN AROUND</button>
         </div>
       </div>
     </div>`;
 
   document.getElementById('driveLeft').onclick=()=>moveDriveLane(-1);
   document.getElementById('driveRight').onclick=()=>moveDriveLane(1);
+  document.getElementById('driveTurnAround').onclick=renderTurnAroundDecision;
 
   driveLane=1;
   driveHits=0;
@@ -3636,6 +3748,15 @@ function driveCollisionFeedback(){
   }
 }
 
+function renderTurnAroundDecision(){
+  stopDriveGame();
+  state.phase='drive_turnaround';
+  saveGame();
+  game.innerHTML=topbar()+`<div class="screen"><div class="card"><div class="eyebrow">7:22 PM • PARKING LOT</div><h1>You can still bail.</h1><div class="copy">You pull into an empty lot. Home is one direction. The Back Room is the other.</div><button class="action" id="keepGoingMic">KEEP GOING</button><button class="boot-btn" id="actuallyGoHome">GO HOME</button></div></div>`;
+  document.getElementById('keepGoingMic').onclick=renderDriveToMic;
+  document.getElementById('actuallyGoHome').onclick=()=>{state.micPrep=freshMicPrep();state.firstMicPremiseId=null;state.firstMicPremiseIds=[];advanceOneDay();};
+}
+
 function renderDriveComplete(){
   state.phase='drive_complete';
   saveGame();
@@ -3685,6 +3806,7 @@ function renderFirstMicArrival(){
           A few people are sitting around. Somebody has a clipboard.
           You do not know anybody here.
         </div>
+        ${state.micPrep.outfitRoast ? `<div class="end-note">${escapeHtml(state.micPrep.outfitRoast)}</div>` : ''}
 
         <button class="action" id="signUp">TAKE THE CLIPBOARD</button>
         <button class="boot-btn" id="leave">GO BACK TO YOUR CAR</button>
@@ -3815,12 +3937,18 @@ function decodeStageCoreTemplate(){
 }
 function clamp01(v){return Math.max(0,Math.min(1,v))}
 
-function getFirstMicPremise(){
+function getSelectedMicPremises(){
+  const ids=Array.isArray(state.firstMicPremiseIds)?state.firstMicPremiseIds:[];
+  const chosen=ids.map(id=>state.premises.find(p=>p.id===id)).filter(Boolean);
+  if(chosen.length)return chosen;
   if(state.firstMicPremiseId){
-    const chosen=state.premises.find(p=>p.id===state.firstMicPremiseId);
-    if(chosen)return chosen;
+    const one=state.premises.find(p=>p.id===state.firstMicPremiseId);
+    if(one)return [one];
   }
-  return state.premises[0] || null;
+  return [];
+}
+function getFirstMicPremise(){
+  return getSelectedMicPremises()[0] || null;
 }
 function stageMaterialName(p){
   if(!p)return "NO MATERIAL";
@@ -3841,12 +3969,12 @@ function stageQualityFromPremise(p){
 function buildBeginningStageInput(){
   ensureCoreSchema();
 
-  const premise=getFirstMicPremise();
+  const premises=getSelectedMicPremises();
   const comedy=state.comedy;
   const crowd=comedy.crowds.back_room_tuesday;
   const isFirstEver=comedy.totalSets===0;
 
-  const material=premise ? [{
+  const material=premises.map(premise=>({
     id:premise.id,
     premiseId:premise.id,
     revision:Number.isFinite(premise.revision)?premise.revision:0,
@@ -3854,7 +3982,7 @@ function buildBeginningStageInput(){
     text:premise.text,
     quality:stageQualityFromPremise(premise),
     tested:(premise.reactions||[]).length
-  }] : [];
+  }));
 
   const sessionId="beginning-stage-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
@@ -3912,7 +4040,7 @@ function renderFirstSet(){
   state.firstSetResult=null;
   saveGame();
 
-  const premise=getFirstMicPremise();
+  const premises=getSelectedMicPremises();
   game.innerHTML=topbar()+`
     <div class="screen">
       <div class="card">
@@ -3920,8 +4048,8 @@ function renderFirstSet(){
         <h1>Your name gets called.</h1>
         <div class="copy">You hear “Darren” and stand up before you can decide not to.</div>
         <div class="end-note">
-          ${premise
-            ? `<em>“${escapeHtml(premise.text)}”</em>`
+          ${premises.length
+            ? premises.map((p,i)=>`${i+1}. <em>“${escapeHtml(p.text)}”</em>`).join('<br><br>')
             : `You have no material. You are about to discover why that matters.`}
         </div>
         <button class="action" id="stepOnStage">STEP ON STAGE</button>
@@ -4125,8 +4253,9 @@ function renderFirstSetResult(){
 
 function returnToRegularLife(){
   state.comedianUnlocked=false;
-  state.micPrep={dressed:false,notesOpened:false,keys:false};
+  state.micPrep=freshMicPrep();
   state.firstMicPremiseId=null;
+  state.firstMicPremiseIds=[];
   advanceOneDay();
 }
 
