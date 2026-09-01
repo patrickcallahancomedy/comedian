@@ -1,0 +1,1742 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="theme-color" content="#171a1d">
+  <title>COMEDIAN - M01-Mechanics-A</title>
+  <style>
+    :root {
+      --ink: #171a1d;
+      --paper: #eee7d8;
+      --muted: #9c978d;
+      --steel: #31363a;
+      --steel-2: #202529;
+      --line: #555b5e;
+      --box: #9a6a3e;
+      --box-dark: #654224;
+      --box-light: #b9824d;
+      --scan: #9ad5b2;
+      --amber: #d7a549;
+      --danger: #cf5f53;
+      --notebook: #e8d59d;
+      --shadow: rgba(0, 0, 0, .4);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #0f1113;
+      color: var(--paper);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+
+    button, canvas { font: inherit; }
+    button { color: inherit; }
+
+    #app {
+      position: relative;
+      width: min(100vw, 430px);
+      height: 100svh;
+      min-height: 620px;
+      margin: 0 auto;
+      overflow: hidden;
+      background: #22272a;
+      box-shadow: 0 0 55px #000;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+    }
+
+    .screen.active { display: flex; }
+
+    .start-screen,
+    .result-screen {
+      z-index: 40;
+      flex-direction: column;
+      justify-content: center;
+      padding: max(28px, env(safe-area-inset-top)) 24px max(26px, env(safe-area-inset-bottom));
+      background:
+        linear-gradient(rgba(17, 20, 22, .78), rgba(17, 20, 22, .92)),
+        repeating-linear-gradient(90deg, #3b3b37 0 55px, #31312e 55px 58px);
+    }
+
+    .start-screen::after,
+    .result-screen::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 28%;
+      pointer-events: none;
+      background:
+        linear-gradient(160deg, transparent 0 49%, rgba(0,0,0,.24) 50% 52%, transparent 53%),
+        linear-gradient(#292725, #17191a);
+      opacity: .9;
+    }
+
+    .start-content,
+    .result-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .lab-label {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      width: fit-content;
+      padding: 6px 9px;
+      border: 1px solid #8e6844;
+      background: rgba(28, 30, 31, .86);
+      color: #d8b27d;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 330px;
+      margin: 18px 0 10px;
+      font-size: clamp(35px, 10vw, 46px);
+      line-height: .97;
+      letter-spacing: -.04em;
+    }
+
+    .start-lede {
+      max-width: 340px;
+      margin: 0 0 22px;
+      color: #d7d2c8;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    .objective-card {
+      margin: 4px 0 22px;
+      padding: 15px;
+      border-left: 4px solid var(--amber);
+      background: rgba(20, 22, 23, .88);
+      box-shadow: 0 10px 24px rgba(0,0,0,.2);
+    }
+
+    .objective-card strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #f4e5bd;
+      font-size: 14px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .objective-card span {
+      display: block;
+      color: #eeece5;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+
+    .primary-button {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      min-height: 58px;
+      border: 1px solid #c59350;
+      border-radius: 8px;
+      background: linear-gradient(#a46f3d, #7f512c);
+      box-shadow: 0 8px 0 #4b301c, 0 14px 26px rgba(0,0,0,.32);
+      color: #fff8e8;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .primary-button:active {
+      transform: translateY(4px);
+      box-shadow: 0 4px 0 #4b301c, 0 8px 20px rgba(0,0,0,.28);
+    }
+
+    .build-note {
+      margin-top: 18px;
+      color: #aaa69d;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .game-screen {
+      flex-direction: column;
+      background: #292d2f;
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      min-height: 52px;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(8px, env(safe-area-inset-top)) 12px 7px;
+      border-bottom: 1px solid #4b4e4e;
+      background: #171a1c;
+    }
+
+    .topbar-title {
+      color: #d2aa75;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .shift-clock {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      color: #eee8db;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .shift-clock small {
+      color: #95999b;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+
+    .shift-clock b { font-size: 20px; }
+
+    .warehouse {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 365px;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px) 0 50px / 100% 84px,
+        repeating-linear-gradient(90deg, transparent 0 72px, rgba(0,0,0,.18) 73px 77px),
+        linear-gradient(#4d4d47, #363a3b 58%, #282c2e 59%);
+    }
+
+    .warehouse::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 48px;
+      background: linear-gradient(90deg, transparent 10%, rgba(235,229,202,.13) 28% 72%, transparent 90%);
+      filter: blur(5px);
+    }
+
+    .shelf-boxes {
+      position: absolute;
+      inset: 54px 0 auto;
+      height: 116px;
+      opacity: .78;
+      background:
+        linear-gradient(#232628 0 7px, transparent 7px 58px, #232628 59px 66px, transparent 66px 112px, #232628 112px),
+        repeating-linear-gradient(90deg,
+          #745033 0 42px,
+          #5d402b 43px 49px,
+          transparent 50px 61px,
+          #80583a 62px 109px,
+          transparent 110px 124px);
+      filter: saturate(.65);
+    }
+
+    .supervisor-rig {
+      position: absolute;
+      z-index: 12;
+      top: 9px;
+      left: 50%;
+      width: min(82%, 335px);
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .supervisor-window {
+      position: relative;
+      height: 55px;
+      overflow: hidden;
+      border: 3px solid #25292b;
+      background: linear-gradient(#272d30, #15191b);
+      box-shadow: 0 7px 18px rgba(0,0,0,.32);
+      transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+
+    .supervisor-window::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(90deg, transparent 0 23px, rgba(255,255,255,.045) 24px 25px);
+    }
+
+    .supervisor-silhouette {
+      position: absolute;
+      right: -44px;
+      bottom: -15px;
+      width: 37px;
+      height: 51px;
+      border-radius: 48% 48% 12px 12px;
+      background: #080a0b;
+      transition: right .65s ease;
+    }
+
+    .supervisor-silhouette::before {
+      content: "";
+      position: absolute;
+      top: -15px;
+      left: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #080a0b;
+    }
+
+    .supervisor-window.warning {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 3px rgba(215,165,73,.18), 0 8px 20px rgba(0,0,0,.35);
+      background: linear-gradient(#453b29, #211d18);
+    }
+
+    .supervisor-window.warning .supervisor-silhouette { right: 12px; }
+
+    .supervisor-window.watching {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 4px rgba(207,95,83,.2), 0 0 28px rgba(207,95,83,.3);
+      background: linear-gradient(#4a2926, #211716);
+    }
+
+    .supervisor-window.watching .supervisor-silhouette { right: 48%; }
+
+    .supervisor-status {
+      display: flex;
+      min-height: 25px;
+      align-items: center;
+      justify-content: center;
+      margin: 3px auto 0;
+      width: fit-content;
+      max-width: 100%;
+      padding: 4px 10px;
+      border-radius: 3px;
+      background: rgba(20,22,23,.88);
+      color: #c9c6bd;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .supervisor-status.warning { color: #f1cb84; }
+    .supervisor-status.watching { color: #ff9b91; }
+
+    .scanner-rig {
+      position: absolute;
+      z-index: 8;
+      top: 145px;
+      left: 50%;
+      width: calc(100% - 20px);
+      max-width: 405px;
+      transform: translateX(-50%);
+    }
+
+    .scanner {
+      position: relative;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      min-height: 77px;
+      padding: 8px 10px 7px;
+      border: 4px solid #191d1f;
+      border-radius: 12px 12px 5px 5px;
+      background: linear-gradient(145deg, #454b4e, #262b2e);
+      box-shadow: 0 8px 15px rgba(0,0,0,.38), inset 0 1px rgba(255,255,255,.1);
+    }
+
+    .scanner::after {
+      content: "DARREN - STATION 04";
+      position: absolute;
+      right: 11px;
+      bottom: 3px;
+      color: #858b8d;
+      font: 700 7px/1 monospace;
+      letter-spacing: .05em;
+    }
+
+    .scanner-display {
+      position: relative;
+      overflow: hidden;
+      padding: 7px 8px;
+      border: 2px solid #11191a;
+      border-radius: 4px;
+      background: #a9c5a7;
+      color: #172219;
+      box-shadow: inset 0 0 12px rgba(0,0,0,.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .scanner-display.flash { animation: scanner-flash .32s ease; }
+
+    .quota-line {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .quota-line small {
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .06em;
+    }
+
+    .quota-value {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -.06em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pace-line {
+      margin-top: 5px;
+      font-size: 9px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .pace-line.ahead { color: #173f27; }
+    .pace-line.behind { color: #74271f; }
+
+    .pace-track {
+      height: 4px;
+      margin-top: 4px;
+      overflow: hidden;
+      background: rgba(0,0,0,.25);
+    }
+
+    .pace-fill {
+      height: 100%;
+      width: 0;
+      background: #243d29;
+      transition: width .25s, background .25s;
+    }
+
+    .scanner-instruction {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      padding: 5px 8px 13px;
+      color: #ece7dc;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .07em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .scanner-instruction.pulse { animation: text-pulse .72s ease-in-out infinite alternate; }
+
+    .belt {
+      position: relative;
+      height: 118px;
+      margin-top: -2px;
+      overflow: visible;
+      border: 8px solid #1d2022;
+      border-radius: 7px;
+      background:
+        repeating-linear-gradient(90deg, #313638 0 20px, #484e50 21px 34px, #2a2f31 35px 47px);
+      box-shadow: 0 12px 18px rgba(0,0,0,.4);
+    }
+
+    .belt.running { animation: belt-move .55s linear infinite; }
+
+    .scan-zone {
+      position: absolute;
+      z-index: 2;
+      top: -5px;
+      left: 50%;
+      width: 142px;
+      height: 112px;
+      transform: translateX(-50%);
+      border: 2px dashed rgba(154,213,178,.58);
+      background: rgba(84,147,112,.07);
+      pointer-events: none;
+    }
+
+    .scan-zone::before {
+      content: "SCAN ZONE";
+      position: absolute;
+      left: 50%;
+      top: -20px;
+      transform: translateX(-50%);
+      color: #8bb79a;
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      white-space: nowrap;
+    }
+
+    .box-layer {
+      position: absolute;
+      z-index: 4;
+      inset: 0;
+      overflow: visible;
+    }
+
+    .box {
+      position: absolute;
+      top: 12px;
+      left: 0;
+      width: 116px;
+      height: 88px;
+      border: 3px solid var(--box-dark);
+      border-radius: 3px;
+      background:
+        linear-gradient(90deg, transparent 48%, rgba(87,55,28,.28) 49% 52%, transparent 53%),
+        linear-gradient(155deg, var(--box-light), var(--box) 58%, #81552f);
+      box-shadow: 0 7px 0 #4f341f, 0 12px 16px rgba(0,0,0,.32);
+      transform: translate3d(-130px, 0, 0);
+      will-change: transform, opacity;
+      touch-action: none;
+    }
+
+    .box::before {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border: 1px solid rgba(91,56,27,.24);
+      pointer-events: none;
+    }
+
+    .box.scanned {
+      box-shadow: 0 0 0 4px rgba(154,213,178,.5), 0 7px 0 #4f341f, 0 12px 16px rgba(0,0,0,.32);
+    }
+
+    .barcode {
+      position: absolute;
+      z-index: 2;
+      right: 10px;
+      top: 19px;
+      width: 55px;
+      height: 36px;
+      padding: 0;
+      border: 3px solid #eee9db;
+      border-radius: 2px;
+      background:
+        repeating-linear-gradient(90deg, #1a1a19 0 2px, #f2eddf 2px 4px, #252522 4px 7px, #f2eddf 7px 9px);
+      box-shadow: 0 2px 4px rgba(0,0,0,.32);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .box.guided .barcode { animation: barcode-pulse .75s ease-in-out infinite alternate; }
+    .box.scanned .barcode { animation: none; filter: sepia(.2) hue-rotate(70deg) saturate(1.8); }
+
+    .destination {
+      position: absolute;
+      z-index: 3;
+      left: 9px;
+      bottom: 8px;
+      min-width: 42px;
+      padding: 4px 5px;
+      border: 2px solid #e7ddca;
+      background: #2b3032;
+      color: #fff9e9;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      text-align: center;
+      opacity: 0;
+      transform: scale(.85);
+      transition: opacity .15s, transform .15s;
+    }
+
+    .box.scanned .destination { opacity: 1; transform: scale(1); }
+
+    .lane {
+      position: absolute;
+      z-index: 6;
+      bottom: -58px;
+      display: flex;
+      width: 45%;
+      min-height: 53px;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #4f575a;
+      border-radius: 5px;
+      background: #252a2d;
+      color: #b7b4ab;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      transition: border-color .15s, background .15s, color .15s, transform .15s;
+    }
+
+    .lane-left { left: 0; }
+    .lane-right { right: 0; }
+
+    .lane.target {
+      border-color: var(--scan);
+      background: #294136;
+      color: #d7f4e2;
+      transform: scale(1.025);
+      animation: lane-pulse .6s ease-in-out infinite alternate;
+    }
+
+    .feedback {
+      position: absolute;
+      z-index: 30;
+      top: 106px;
+      left: 50%;
+      width: max-content;
+      max-width: calc(100% - 28px);
+      min-height: 39px;
+      padding: 10px 13px;
+      border: 1px solid #596064;
+      border-radius: 4px;
+      background: rgba(19,22,24,.94);
+      box-shadow: 0 8px 22px rgba(0,0,0,.42);
+      color: #f0ece3;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-align: center;
+      text-transform: uppercase;
+      opacity: 0;
+      transform: translate(-50%, -9px);
+      transition: opacity .14s, transform .14s;
+      pointer-events: none;
+    }
+
+    .feedback.show { opacity: 1; transform: translate(-50%, 0); }
+    .feedback.good { border-color: var(--scan); color: #c8efd8; }
+    .feedback.bad { border-color: var(--danger); color: #ffb5ad; }
+    .feedback.warn { border-color: var(--amber); color: #f5d89d; }
+
+    .thought-dock {
+      position: relative;
+      z-index: 18;
+      flex: 0 0 202px;
+      padding: 13px 12px max(12px, env(safe-area-inset-bottom));
+      border-top: 5px solid #171a1b;
+      background:
+        linear-gradient(rgba(25,28,29,.9), rgba(19,21,22,.98)),
+        repeating-linear-gradient(90deg, #413f3a 0 54px, #353431 55px 57px);
+      box-shadow: 0 -12px 25px rgba(0,0,0,.34);
+    }
+
+    .notebook-closed {
+      display: flex;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      gap: 11px;
+      color: #858782;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
+    .notebook-icon {
+      position: relative;
+      width: 39px;
+      height: 48px;
+      border: 2px solid #806b47;
+      border-radius: 3px;
+      background: #b7a273;
+      box-shadow: 4px 5px 0 rgba(0,0,0,.25);
+    }
+
+    .notebook-icon::before {
+      content: "";
+      position: absolute;
+      inset: 8px 6px;
+      background: repeating-linear-gradient(#756849 0 1px, transparent 1px 8px);
+      opacity: .5;
+    }
+
+    .thought-card {
+      display: none;
+      height: 100%;
+      grid-template-columns: .95fr 1.25fr;
+      gap: 10px;
+      opacity: 1;
+      transition: opacity .18s, filter .18s;
+    }
+
+    .thought-card.active { display: grid; }
+    .thought-card.fading { filter: saturate(.45); }
+
+    .thought-copy {
+      position: relative;
+      min-width: 0;
+      padding: 11px 10px;
+      border: 1px solid #8a7c58;
+      border-radius: 9px 9px 9px 2px;
+      background: #e8dfc5;
+      color: #2d2a24;
+      box-shadow: 0 6px 12px rgba(0,0,0,.25);
+    }
+
+    .thought-copy small {
+      display: block;
+      margin-bottom: 6px;
+      color: #806c43;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .thought-text {
+      font-family: Georgia, serif;
+      font-size: 14px;
+      font-style: italic;
+      line-height: 1.25;
+    }
+
+    .fade-track {
+      position: absolute;
+      right: 9px;
+      bottom: 8px;
+      left: 9px;
+      height: 5px;
+      overflow: hidden;
+      background: rgba(75,61,35,.2);
+    }
+
+    .fade-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--amber);
+      transform-origin: left center;
+    }
+
+    .scratch-wrap {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      border: 2px solid #8b7446;
+      border-radius: 4px;
+      background:
+        repeating-linear-gradient(#e9dda9 0 21px, #b9a875 22px 23px),
+        #e9dda9;
+      box-shadow: inset 0 0 15px rgba(93,72,31,.15), 0 6px 12px rgba(0,0,0,.22);
+    }
+
+    .scratch-label {
+      position: absolute;
+      z-index: 2;
+      top: 8px;
+      left: 9px;
+      padding: 4px 6px;
+      background: rgba(54,46,31,.83);
+      color: #fff0b9;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .stroke-count {
+      position: absolute;
+      z-index: 2;
+      right: 8px;
+      top: 8px;
+      min-width: 41px;
+      padding: 4px 6px;
+      border-radius: 10px;
+      background: rgba(54,46,31,.83);
+      color: #fff4cd;
+      font: 900 10px/1 ui-monospace, monospace;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    #scratchCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .ghost-strokes {
+      position: absolute;
+      z-index: 1;
+      right: 17%;
+      bottom: 24%;
+      width: 64px;
+      height: 50px;
+      opacity: .42;
+      pointer-events: none;
+    }
+
+    .ghost-strokes i {
+      position: absolute;
+      left: 0;
+      width: 58px;
+      height: 3px;
+      border-radius: 3px;
+      background: #51472e;
+      transform: rotate(-17deg) scaleX(0);
+      transform-origin: left;
+      animation: ghost-scratch 1.25s ease-in-out infinite;
+    }
+
+    .ghost-strokes i:nth-child(1) { top: 6px; }
+    .ghost-strokes i:nth-child(2) { top: 22px; animation-delay: .17s; transform: rotate(14deg) scaleX(0); }
+    .ghost-strokes i:nth-child(3) { top: 38px; animation-delay: .34s; }
+
+    .thought-counter {
+      position: absolute;
+      right: 9px;
+      bottom: 7px;
+      color: #8f918c;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .pause-shade {
+      position: absolute;
+      z-index: 60;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,12,13,.88);
+      color: #f0ece3;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .pause-shade.active { display: flex; }
+
+    .result-screen {
+      justify-content: flex-start;
+      overflow-y: auto;
+    }
+
+    .result-content { width: 100%; padding-top: 4vh; }
+
+    .result-title {
+      margin: 15px 0 3px;
+      font-size: 33px;
+      line-height: 1;
+    }
+
+    .result-summary {
+      margin: 0 0 17px;
+      color: #d3cec4;
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 13px;
+    }
+
+    .result-stat {
+      min-height: 91px;
+      padding: 11px;
+      border: 1px solid #53585a;
+      background: rgba(28,31,32,.9);
+      box-shadow: 0 7px 16px rgba(0,0,0,.2);
+    }
+
+    .result-stat small {
+      display: block;
+      color: #a9a59b;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .result-stat strong {
+      display: block;
+      margin-top: 7px;
+      color: #f2ebdd;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .result-stat span {
+      display: block;
+      margin-top: 5px;
+      color: #aaa69d;
+      font-size: 10px;
+    }
+
+    .result-lesson {
+      margin: 0 0 18px;
+      padding: 12px;
+      border-left: 4px solid var(--amber);
+      background: rgba(40,37,31,.92);
+      color: #eee4cb;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    @keyframes belt-move {
+      from { background-position: 0 0; }
+      to { background-position: 47px 0; }
+    }
+
+    @keyframes scanner-flash {
+      0%, 100% { filter: none; }
+      50% { filter: brightness(1.55); }
+    }
+
+    @keyframes barcode-pulse {
+      from { transform: scale(1); box-shadow: 0 2px 4px rgba(0,0,0,.32); }
+      to { transform: scale(1.12); box-shadow: 0 0 0 5px rgba(255,238,184,.28), 0 2px 4px rgba(0,0,0,.32); }
+    }
+
+    @keyframes text-pulse {
+      from { color: #d4cfc4; }
+      to { color: #fff0b3; }
+    }
+
+    @keyframes lane-pulse {
+      from { box-shadow: 0 0 0 rgba(154,213,178,0); }
+      to { box-shadow: 0 0 18px rgba(154,213,178,.4); }
+    }
+
+    @keyframes ghost-scratch {
+      0%, 18% { transform: rotate(-17deg) scaleX(0); opacity: 0; }
+      45%, 70% { transform: rotate(-17deg) scaleX(1); opacity: 1; }
+      100% { transform: rotate(-17deg) scaleX(1); opacity: 0; }
+    }
+
+    @media (max-height: 720px) {
+      .topbar { min-height: 45px; }
+      .warehouse { min-height: 340px; }
+      .scanner-rig { top: 133px; }
+      .thought-dock { flex-basis: 172px; padding-top: 9px; }
+      .thought-text { font-size: 12px; }
+      .scratch-label { font-size: 8px; }
+      .result-stat { min-height: 78px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .belt.running { animation-duration: 1.5s; }
+      .barcode, .lane, .ghost-strokes i, .scanner-instruction { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main id="app" aria-live="polite">
+    <section id="startScreen" class="screen start-screen active">
+      <div class="start-content">
+        <div class="lab-label">M01-Mechanics-A</div>
+        <h1>Monday at Boxes</h1>
+        <p class="start-lede">A 75-second mechanics test.</p>
+        <div class="objective-card">
+          <strong>Clock-out goal</strong>
+          <span>Meet the scanner quota. Funny thoughts will not wait.</span>
+        </div>
+        <button id="startButton" class="primary-button" type="button">Clock In</button>
+        <div class="build-note">Temporary production art - mobile portrait test</div>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen game-screen" aria-label="Warehouse mechanics test">
+      <header class="topbar">
+        <div class="topbar-title">M01-Mechanics-A</div>
+        <div class="shift-clock"><small>CLOCK-OUT</small><b id="clockValue">1:15</b></div>
+      </header>
+
+      <div class="warehouse">
+        <div class="shelf-boxes" aria-hidden="true"></div>
+
+        <div class="supervisor-rig">
+          <div id="supervisorWindow" class="supervisor-window">
+            <div class="supervisor-silhouette"></div>
+          </div>
+          <div id="supervisorStatus" class="supervisor-status">Supervisor away</div>
+        </div>
+
+        <div class="scanner-rig">
+          <div class="scanner">
+            <div id="scannerDisplay" class="scanner-display">
+              <div class="quota-line">
+                <small>ACCEPTED / QUOTA</small>
+                <div class="quota-value"><span id="acceptedValue">0</span>/<span id="quotaValue">10</span></div>
+              </div>
+              <div id="paceLine" class="pace-line">On pace</div>
+              <div class="pace-track"><div id="paceFill" class="pace-fill"></div></div>
+            </div>
+            <div id="scannerInstruction" class="scanner-instruction pulse">First box incoming</div>
+          </div>
+
+          <div id="belt" class="belt running">
+            <div class="scan-zone"></div>
+            <div id="boxLayer" class="box-layer"></div>
+          </div>
+          <div id="laneLeft" class="lane lane-left">&larr; Lane L</div>
+          <div id="laneRight" class="lane lane-right">Lane R &rarr;</div>
+        </div>
+
+        <div id="feedback" class="feedback" role="status"></div>
+      </div>
+
+      <section class="thought-dock" aria-label="Darren's notebook">
+        <div id="notebookClosed" class="notebook-closed">
+          <div class="notebook-icon"></div>
+          <span>Notebook ready</span>
+          <div id="thoughtCounter" class="thought-counter">0 / 2 saved</div>
+        </div>
+
+        <div id="thoughtCard" class="thought-card">
+          <div class="thought-copy">
+            <small>Raw thought - disappearing</small>
+            <div id="thoughtText" class="thought-text"></div>
+            <div class="fade-track"><div id="fadeFill" class="fade-fill"></div></div>
+          </div>
+          <div class="scratch-wrap">
+            <div id="scratchLabel" class="scratch-label">Scratch it down</div>
+            <div id="strokeCount" class="stroke-count">0 / 3</div>
+            <div id="ghostStrokes" class="ghost-strokes"><i></i><i></i><i></i></div>
+            <canvas id="scratchCanvas" aria-label="Scratch the thought into Darren's notebook"></canvas>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section id="resultScreen" class="screen result-screen">
+      <div class="result-content">
+        <div class="lab-label">M01-Mechanics-A - Result</div>
+        <h2 id="resultTitle" class="result-title">Clocked Out</h2>
+        <p id="resultSummary" class="result-summary"></p>
+        <div class="result-grid">
+          <div class="result-stat"><small>Productivity</small><strong id="resultProductivity"></strong><span id="resultProductivityNote"></span></div>
+          <div class="result-stat"><small>Accuracy</small><strong id="resultAccuracy"></strong><span id="resultAccuracyNote"></span></div>
+          <div class="result-stat"><small>Thoughts saved</small><strong id="resultThoughts"></strong><span>Notebook total</span></div>
+          <div class="result-stat"><small>Distraction</small><strong id="resultDistraction"></strong><span id="resultDistractionNote"></span></div>
+        </div>
+        <div id="resultLesson" class="result-lesson"></div>
+        <button id="restartButton" class="primary-button" type="button">Run Test Again</button>
+      </div>
+    </section>
+
+    <div id="pauseShade" class="pause-shade">Shift paused</div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const BUILD_LABEL = "M01-Mechanics-A";
+      const DURATION_MS = 75000;
+      const QUOTA = 10;
+      const BOX_INTERVAL_MS = 5000;
+      const BOX_INCOMING_MS = 900;
+      const BOX_WAIT_MS = 3300;
+      const BOX_LEAVING_MS = 850;
+      const THOUGHTS = [
+        { at: 17000, life: 8500, strokes: 3, text: "This scanner only believes me when I beep." },
+        { at: 48500, life: 9000, strokes: 4, text: "My boss can smell an unfinished thought." }
+      ];
+      const WATCH_WINDOWS = [
+        { warn: 24500, start: 28000, end: 34000 },
+        { warn: 45500, start: 51000, end: 57500 }
+      ];
+      const ROUTES = ["left", "right", "right", "left", "right", "left", "left", "right", "left", "right", "right", "left", "right", "left", "right"];
+
+      const $ = (id) => document.getElementById(id);
+      const el = {
+        startScreen: $("startScreen"),
+        gameScreen: $("gameScreen"),
+        resultScreen: $("resultScreen"),
+        startButton: $("startButton"),
+        restartButton: $("restartButton"),
+        clockValue: $("clockValue"),
+        acceptedValue: $("acceptedValue"),
+        quotaValue: $("quotaValue"),
+        paceLine: $("paceLine"),
+        paceFill: $("paceFill"),
+        scannerDisplay: $("scannerDisplay"),
+        scannerInstruction: $("scannerInstruction"),
+        belt: $("belt"),
+        boxLayer: $("boxLayer"),
+        laneLeft: $("laneLeft"),
+        laneRight: $("laneRight"),
+        feedback: $("feedback"),
+        supervisorWindow: $("supervisorWindow"),
+        supervisorStatus: $("supervisorStatus"),
+        notebookClosed: $("notebookClosed"),
+        thoughtCounter: $("thoughtCounter"),
+        thoughtCard: $("thoughtCard"),
+        thoughtText: $("thoughtText"),
+        fadeFill: $("fadeFill"),
+        scratchCanvas: $("scratchCanvas"),
+        scratchLabel: $("scratchLabel"),
+        strokeCount: $("strokeCount"),
+        ghostStrokes: $("ghostStrokes"),
+        pauseShade: $("pauseShade"),
+        resultTitle: $("resultTitle"),
+        resultSummary: $("resultSummary"),
+        resultProductivity: $("resultProductivity"),
+        resultProductivityNote: $("resultProductivityNote"),
+        resultAccuracy: $("resultAccuracy"),
+        resultAccuracyNote: $("resultAccuracyNote"),
+        resultThoughts: $("resultThoughts"),
+        resultDistraction: $("resultDistraction"),
+        resultDistractionNote: $("resultDistractionNote"),
+        resultLesson: $("resultLesson")
+      };
+
+      let run = null;
+      let rafId = 0;
+      let feedbackTimer = 0;
+      let scratchCtx = null;
+
+      function freshRun() {
+        return {
+          active: false,
+          paused: false,
+          pauseStarted: 0,
+          startAt: 0,
+          elapsed: 0,
+          nextSpawnAt: 700,
+          boxIndex: 0,
+          box: null,
+          accepted: 0,
+          scans: 0,
+          wrongRoutes: 0,
+          misses: 0,
+          thoughtIndex: 0,
+          thought: null,
+          thoughtsSaved: 0,
+          thoughtsLost: 0,
+          scratchMs: 0,
+          caught: 0,
+          caughtWindows: new Set(),
+          supervisorState: "away",
+          tutorialStep: 0
+        };
+      }
+
+      function showScreen(target) {
+        [el.startScreen, el.gameScreen, el.resultScreen].forEach(node => node.classList.toggle("active", node === target));
+      }
+
+      function startGame() {
+        cancelAnimationFrame(rafId);
+        clearTimeout(feedbackTimer);
+        run = freshRun();
+        run.active = true;
+        run.startAt = performance.now();
+        el.quotaValue.textContent = QUOTA;
+        el.boxLayer.replaceChildren();
+        resetThoughtUI();
+        updateScanner();
+        updateSupervisor("away", 0);
+        el.scannerInstruction.textContent = "First box incoming";
+        el.scannerInstruction.classList.add("pulse");
+        showScreen(el.gameScreen);
+        resizeCanvas();
+        rafId = requestAnimationFrame(frame);
+      }
+
+      function frame(now) {
+        if (!run || !run.active) return;
+        if (run.paused) {
+          rafId = requestAnimationFrame(frame);
+          return;
+        }
+
+        run.elapsed = Math.min(DURATION_MS, now - run.startAt);
+        updateClock();
+        updatePace();
+        updateSupervisorFromTime();
+        updateThought(now);
+        updateBox(now);
+
+        if (run.elapsed >= DURATION_MS) {
+          finishGame();
+          return;
+        }
+        rafId = requestAnimationFrame(frame);
+      }
+
+      function updateClock() {
+        const remaining = Math.max(0, Math.ceil((DURATION_MS - run.elapsed) / 1000));
+        const min = Math.floor(remaining / 60);
+        const sec = String(remaining % 60).padStart(2, "0");
+        el.clockValue.textContent = `${min}:${sec}`;
+      }
+
+      function expectedByNow() {
+        return Math.min(QUOTA, Math.floor((run.elapsed / DURATION_MS) * QUOTA));
+      }
+
+      function updatePace() {
+        const expected = expectedByNow();
+        const delta = run.accepted - expected;
+        el.paceLine.classList.remove("ahead", "behind");
+        if (delta > 0) {
+          el.paceLine.textContent = `${delta} ahead of pace`;
+          el.paceLine.classList.add("ahead");
+        } else if (delta < 0) {
+          el.paceLine.textContent = `${Math.abs(delta)} behind pace`;
+          el.paceLine.classList.add("behind");
+        } else {
+          el.paceLine.textContent = "On pace";
+        }
+        const pct = Math.min(100, (run.accepted / QUOTA) * 100);
+        el.paceFill.style.width = `${pct}%`;
+        el.paceFill.style.background = delta < 0 ? "#7b3027" : "#243d29";
+      }
+
+      function updateScanner() {
+        el.acceptedValue.textContent = run ? run.accepted : 0;
+        el.thoughtCounter.textContent = `${run ? run.thoughtsSaved : 0} / ${THOUGHTS.length} saved`;
+        el.scannerDisplay.classList.remove("flash");
+        void el.scannerDisplay.offsetWidth;
+        el.scannerDisplay.classList.add("flash");
+        updatePace();
+      }
+
+      function currentWatchWindow() {
+        for (let i = 0; i < WATCH_WINDOWS.length; i += 1) {
+          const w = WATCH_WINDOWS[i];
+          if (run.elapsed >= w.warn && run.elapsed < w.end) return { ...w, index: i };
+        }
+        return null;
+      }
+
+      function updateSupervisorFromTime() {
+        const w = currentWatchWindow();
+        if (!w) {
+          updateSupervisor("away", 0);
+          return;
+        }
+        if (run.elapsed < w.start) {
+          const seconds = Math.max(1, Math.ceil((w.start - run.elapsed) / 1000));
+          updateSupervisor("warning", seconds);
+        } else {
+          updateSupervisor("watching", Math.ceil((w.end - run.elapsed) / 1000));
+        }
+      }
+
+      function updateSupervisor(state, seconds) {
+        if (run && run.supervisorState === state && state === "away") return;
+        if (run) run.supervisorState = state;
+        el.supervisorWindow.className = `supervisor-window ${state === "away" ? "" : state}`.trim();
+        el.supervisorStatus.className = `supervisor-status ${state === "away" ? "" : state}`.trim();
+        if (state === "warning") el.supervisorStatus.textContent = `Supervisor approaching - ${seconds}`;
+        else if (state === "watching") el.supervisorStatus.textContent = `Supervisor watching - ${seconds}`;
+        else el.supervisorStatus.textContent = "Supervisor away";
+      }
+
+      function spawnBox(now) {
+        const index = run.boxIndex;
+        const route = ROUTES[index % ROUTES.length];
+        const guided = index < 2;
+        const node = document.createElement("div");
+        node.className = `box${guided ? " guided" : ""}`;
+        node.setAttribute("aria-label", `Box for ${route} lane`);
+        node.innerHTML = `<button class="barcode" type="button" aria-label="Tap barcode to scan"></button><div class="destination">${route === "left" ? "L  ←" : "→  R"}</div>`;
+        el.boxLayer.appendChild(node);
+
+        run.box = {
+          index,
+          route,
+          guided,
+          node,
+          barcode: node.querySelector(".barcode"),
+          phase: "incoming",
+          phaseAt: now,
+          scanned: false,
+          resolved: false,
+          drag: null,
+          missCounted: false
+        };
+        run.boxIndex += 1;
+        run.nextSpawnAt += BOX_INTERVAL_MS;
+
+        run.box.barcode.addEventListener("pointerdown", event => event.stopPropagation());
+        run.box.barcode.addEventListener("pointerup", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          scanCurrentBox();
+        });
+        node.addEventListener("pointerdown", boxPointerDown);
+        node.addEventListener("pointermove", boxPointerMove);
+        node.addEventListener("pointerup", boxPointerUp);
+        node.addEventListener("pointercancel", boxPointerCancel);
+
+        if (guided) {
+          el.scannerInstruction.textContent = "Tap the barcode";
+          el.scannerInstruction.classList.add("pulse");
+        } else {
+          el.scannerInstruction.textContent = "Scan, then route";
+          el.scannerInstruction.classList.remove("pulse");
+        }
+      }
+
+      function updateBox(now) {
+        if (!run.box && run.elapsed >= run.nextSpawnAt && run.elapsed < DURATION_MS - 1600) {
+          spawnBox(now);
+        }
+        const box = run.box;
+        if (!box) return;
+
+        const trackWidth = el.belt.clientWidth;
+        const boxWidth = box.node.offsetWidth || 116;
+        const scanX = (trackWidth - boxWidth) / 2;
+        const age = now - box.phaseAt;
+
+        if (box.phase === "incoming") {
+          const p = Math.min(1, age / BOX_INCOMING_MS);
+          const eased = 1 - Math.pow(1 - p, 3);
+          const x = -boxWidth - 8 + (scanX + boxWidth + 8) * eased;
+          box.node.style.transform = `translate3d(${x}px,0,0)`;
+          if (p >= 1) {
+            box.phase = "waiting";
+            box.phaseAt = now;
+            box.node.style.transform = `translate3d(${scanX}px,0,0)`;
+          }
+          return;
+        }
+
+        if (box.phase === "waiting") {
+          box.node.style.transform = `translate3d(${scanX}px,0,0)`;
+          const allowed = BOX_WAIT_MS + (box.guided ? 1300 : 0) + (box.scanned ? 900 : 0);
+          if (age >= allowed) {
+            if (!box.resolved) {
+              run.misses += 1;
+              box.missCounted = true;
+              showFeedback(box.scanned ? "Routing missed - no quota credit" : "Box missed - no quota credit", "bad");
+            }
+            clearLaneTarget();
+            box.phase = "leaving";
+            box.phaseAt = now;
+            box.node.classList.remove("guided");
+          }
+          return;
+        }
+
+        if (box.phase === "leaving") {
+          const p = Math.min(1, age / BOX_LEAVING_MS);
+          const x = scanX + (trackWidth + boxWidth - scanX) * p;
+          box.node.style.transform = `translate3d(${x}px,0,0)`;
+          box.node.style.opacity = String(1 - p * .65);
+          if (p >= 1) removeCurrentBox();
+        }
+      }
+
+      function scanCurrentBox() {
+        const box = run && run.box;
+        if (!box || box.resolved) return;
+        if (box.phase !== "waiting") {
+          showFeedback("Wait for the scan zone", "warn");
+          return;
+        }
+        if (box.scanned) {
+          showFeedback(`Already scanned - flick ${box.route}`, "warn");
+          return;
+        }
+        box.scanned = true;
+        run.scans += 1;
+        box.node.classList.add("scanned");
+        box.node.classList.remove("guided");
+        setLaneTarget(box.route);
+        el.scannerInstruction.textContent = `Flick ${box.route}`;
+        el.scannerInstruction.classList.add("pulse");
+        showFeedback(`Scanned - route ${box.route}`, "good");
+      }
+
+      function boxPointerDown(event) {
+        const box = run && run.box;
+        if (!box || event.currentTarget !== box.node || box.resolved) return;
+        if (!box.scanned) {
+          showFeedback("Tap the barcode first", "warn");
+          return;
+        }
+        event.preventDefault();
+        box.node.setPointerCapture(event.pointerId);
+        box.drag = { id: event.pointerId, x: event.clientX, lastX: event.clientX, at: performance.now(), lastAt: performance.now() };
+      }
+
+      function boxPointerMove(event) {
+        const box = run && run.box;
+        if (!box || !box.drag || box.drag.id !== event.pointerId) return;
+        event.preventDefault();
+        const dx = event.clientX - box.drag.x;
+        box.drag.lastX = event.clientX;
+        box.drag.lastAt = performance.now();
+        const baseX = (el.belt.clientWidth - box.node.offsetWidth) / 2;
+        box.node.style.transform = `translate3d(${baseX + dx}px,0,0) rotate(${dx * .045}deg)`;
+      }
+
+      function boxPointerUp(event) {
+        const box = run && run.box;
+        if (!box || !box.drag || box.drag.id !== event.pointerId) return;
+        event.preventDefault();
+        const dx = event.clientX - box.drag.x;
+        const direction = dx < 0 ? "left" : "right";
+        const enough = Math.abs(dx) >= 42;
+        box.drag = null;
+        if (!enough) {
+          const baseX = (el.belt.clientWidth - box.node.offsetWidth) / 2;
+          box.node.style.transform = `translate3d(${baseX}px,0,0)`;
+          showFeedback(`Flick farther ${box.route}`, "warn");
+          return;
+        }
+        resolveRoute(direction);
+      }
+
+      function boxPointerCancel(event) {
+        const box = run && run.box;
+        if (!box || !box.drag || box.drag.id !== event.pointerId) return;
+        box.drag = null;
+        const baseX = (el.belt.clientWidth - box.node.offsetWidth) / 2;
+        box.node.style.transform = `translate3d(${baseX}px,0,0)`;
+      }
+
+      function resolveRoute(direction) {
+        const box = run && run.box;
+        if (!box || box.resolved) return;
+        box.resolved = true;
+        clearLaneTarget();
+        const correct = direction === box.route;
+        const travel = direction === "left" ? -el.belt.clientWidth * .7 : el.belt.clientWidth * .7;
+        const baseX = (el.belt.clientWidth - box.node.offsetWidth) / 2;
+        box.node.style.transition = "transform .34s ease-in, opacity .34s";
+        box.node.style.transform = `translate3d(${baseX + travel}px,72px,0) rotate(${direction === "left" ? -13 : 13}deg)`;
+        box.node.style.opacity = ".4";
+
+        if (correct) {
+          run.accepted += 1;
+          const guideCopy = box.index < 2 ? "Guided box counts" : "Correct route";
+          showFeedback(`${guideCopy} - +1 quota`, "good");
+          updateScanner();
+          run.tutorialStep = Math.max(run.tutorialStep, box.index + 1);
+        } else {
+          run.wrongRoutes += 1;
+          showFeedback(`Wrong lane - needed ${box.route}`, "bad");
+        }
+        el.scannerInstruction.textContent = run.tutorialStep < 2 ? "Next guided box" : "Next box incoming";
+        el.scannerInstruction.classList.remove("pulse");
+        setTimeout(() => {
+          if (run && run.box === box) removeCurrentBox();
+        }, 360);
+      }
+
+      function removeCurrentBox() {
+        if (!run || !run.box) return;
+        run.box.node.remove();
+        run.box = null;
+        clearLaneTarget();
+      }
+
+      function setLaneTarget(route) {
+        el.laneLeft.classList.toggle("target", route === "left");
+        el.laneRight.classList.toggle("target", route === "right");
+      }
+
+      function clearLaneTarget() {
+        el.laneLeft.classList.remove("target");
+        el.laneRight.classList.remove("target");
+      }
+
+      function updateThought(now) {
+        if (!run.thought && run.thoughtIndex < THOUGHTS.length) {
+          const spec = THOUGHTS[run.thoughtIndex];
+          if (run.elapsed >= spec.at) showThought(spec, now);
+        }
+        const thought = run.thought;
+        if (!thought) return;
+        const age = now - thought.shownAt;
+        const remain = Math.max(0, 1 - age / thought.spec.life);
+        el.fadeFill.style.transform = `scaleX(${remain})`;
+        el.thoughtCard.style.opacity = String(.35 + remain * .65);
+        el.thoughtCard.classList.toggle("fading", remain < .45);
+        if (remain < .48 && thought.strokes === 0 && !thought.fadeWarned) {
+          thought.fadeWarned = true;
+          showFeedback("Thought fading - scratch now", "warn");
+          el.scratchLabel.textContent = "Almost gone";
+        }
+        if (age >= thought.spec.life) loseThought();
+      }
+
+      function showThought(spec, now) {
+        run.thought = {
+          spec,
+          shownAt: now,
+          strokes: 0,
+          drawing: false,
+          lastPoint: null,
+          pathLength: 0,
+          scratchStartedAt: 0,
+          fadeWarned: false,
+          caughtThisThought: false
+        };
+        run.thoughtIndex += 1;
+        el.thoughtText.textContent = `“${spec.text}”`;
+        el.strokeCount.textContent = `0 / ${spec.strokes}`;
+        el.scratchLabel.textContent = run.thoughtIndex === 1 ? "Scratch before it fades" : "Scratch it down";
+        el.fadeFill.style.transform = "scaleX(1)";
+        el.thoughtCard.style.opacity = "1";
+        el.thoughtCard.className = "thought-card active";
+        el.notebookClosed.style.display = "none";
+        el.ghostStrokes.style.display = "block";
+        resizeCanvas();
+        clearCanvas();
+        showFeedback("Raw thought - disappearing", "warn");
+      }
+
+      function loseThought() {
+        if (!run || !run.thought) return;
+        if (run.thought.scratchStartedAt) run.scratchMs += performance.now() - run.thought.scratchStartedAt;
+        run.thoughtsLost += 1;
+        showFeedback("Thought lost", "bad");
+        closeThoughtUI();
+      }
+
+      function saveThought() {
+        const thought = run && run.thought;
+        if (!thought) return;
+        if (thought.scratchStartedAt) run.scratchMs += performance.now() - thought.scratchStartedAt;
+        run.thoughtsSaved += 1;
+        showFeedback("Saved to notebook - belt kept moving", "good");
+        updateScanner();
+        closeThoughtUI();
+      }
+
+      function closeThoughtUI() {
+        run.thought = null;
+        el.thoughtCard.className = "thought-card";
+        el.thoughtCard.style.opacity = "1";
+        el.notebookClosed.style.display = "flex";
+        clearCanvas();
+      }
+
+      function resetThoughtUI() {
+        el.notebookClosed.style.display = "flex";
+        el.thoughtCard.className = "thought-card";
+        el.thoughtCard.style.opacity = "1";
+        el.thoughtCounter.textContent = `0 / ${THOUGHTS.length} saved`;
+        clearCanvas();
+      }
+
+      function resizeCanvas() {
+        const canvas = el.scratchCanvas;
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+        canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+        scratchCtx = canvas.getContext("2d");
+        scratchCtx.scale(ratio, ratio);
+        scratchCtx.lineCap = "round";
+        scratchCtx.lineJoin = "round";
+        scratchCtx.lineWidth = 4;
+        scratchCtx.strokeStyle = "#443b29";
+      }
+
+      function clearCanvas() {
+        if (!scratchCtx) return;
+        scratchCtx.save();
+        scratchCtx.setTransform(1, 0, 0, 1, 0, 0);
+        scratchCtx.clearRect(0, 0, el.scratchCanvas.width, el.scratchCanvas.height);
+        scratchCtx.restore();
+      }
+
+      function canvasPoint(event) {
+        const rect = el.scratchCanvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      }
+
+      function scratchStart(event) {
+        const thought = run && run.thought;
+        if (!thought || run.paused) return;
+        event.preventDefault();
+        el.scratchCanvas.setPointerCapture(event.pointerId);
+        thought.drawing = true;
+        thought.pointerId = event.pointerId;
+        thought.lastPoint = canvasPoint(event);
+        thought.pathLength = 0;
+        if (!thought.scratchStartedAt) {
+          thought.scratchStartedAt = performance.now();
+          el.ghostStrokes.style.display = "none";
+          showFeedback("Writing - conveyor still moving", "warn");
+        }
+        checkCaughtWriting();
+      }
+
+      function scratchMove(event) {
+        const thought = run && run.thought;
+        if (!thought || !thought.drawing || thought.pointerId !== event.pointerId) return;
+        event.preventDefault();
+        const point = canvasPoint(event);
+        const dx = point.x - thought.lastPoint.x;
+        const dy = point.y - thought.lastPoint.y;
+        thought.pathLength += Math.hypot(dx, dy);
+        scratchCtx.beginPath();
+        scratchCtx.moveTo(thought.lastPoint.x, thought.lastPoint.y);
+        scratchCtx.lineTo(point.x, point.y);
+        scratchCtx.stroke();
+        thought.lastPoint = point;
+        checkCaughtWriting();
+      }
+
+      function scratchEnd(event) {
+        const thought = run && run.thought;
+        if (!thought || !thought.drawing || thought.pointerId !== event.pointerId) return;
+        event.preventDefault();
+        thought.drawing = false;
+        if (thought.pathLength >= 30) {
+          thought.strokes += 1;
+          el.strokeCount.textContent = `${thought.strokes} / ${thought.spec.strokes}`;
+          if (thought.strokes >= thought.spec.strokes) {
+            saveThought();
+          } else {
+            el.scratchLabel.textContent = `${thought.spec.strokes - thought.strokes} quick stroke${thought.spec.strokes - thought.strokes === 1 ? "" : "s"} left`;
+          }
+        } else {
+          showFeedback("Make a longer scratch", "warn");
+        }
+      }
+
+      function checkCaughtWriting() {
+        if (!run || !run.thought || run.supervisorState !== "watching") return;
+        const w = currentWatchWindow();
+        if (!w || run.caughtWindows.has(w.index)) return;
+        run.caughtWindows.add(w.index);
+        run.caught += 1;
+        run.thought.caughtThisThought = true;
+        showFeedback("Caught writing - distraction flagged", "bad");
+        el.supervisorWindow.animate(
+          [{ transform: "translateX(0)" }, { transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "translateX(0)" }],
+          { duration: 260 }
+        );
+      }
+
+      function showFeedback(message, tone = "") {
+        clearTimeout(feedbackTimer);
+        el.feedback.textContent = message;
+        el.feedback.className = `feedback show ${tone}`.trim();
+        feedbackTimer = setTimeout(() => {
+          el.feedback.className = "feedback";
+        }, 1450);
+      }
+
+      function finishGame() {
+        if (!run || !run.active) return;
+        run.active = false;
+        cancelAnimationFrame(rafId);
+        if (run.thought && run.thought.scratchStartedAt) run.scratchMs += performance.now() - run.thought.scratchStartedAt;
+
+        const productivity = Math.round((run.accepted / QUOTA) * 100);
+        const totalOutcomes = run.accepted + run.wrongRoutes + run.misses;
+        const accuracy = totalOutcomes ? Math.round((run.accepted / totalOutcomes) * 100) : 0;
+        const distractionSeconds = run.scratchMs / 1000;
+        const metQuota = run.accepted >= QUOTA;
+
+        el.resultTitle.textContent = metQuota ? "Quota Met" : "Clocked Out";
+        const quotaDelta = run.accepted - QUOTA;
+        el.resultSummary.textContent = quotaDelta > 0
+          ? `You finished ${quotaDelta} box${quotaDelta === 1 ? "" : "es"} ahead of quota.`
+          : quotaDelta === 0
+            ? "You met the quota exactly."
+            : `You finished ${Math.abs(quotaDelta)} box${Math.abs(quotaDelta) === 1 ? "" : "es"} short of quota.`;
+        el.resultProductivity.textContent = `${run.accepted}/${QUOTA}`;
+        el.resultProductivityNote.textContent = `${productivity}% of quota`;
+        el.resultAccuracy.textContent = `${accuracy}%`;
+        el.resultAccuracyNote.textContent = `${run.wrongRoutes} wrong lane - ${run.misses} missed`;
+        el.resultThoughts.textContent = `${run.thoughtsSaved}/${THOUGHTS.length}`;
+        el.resultDistraction.textContent = `${distractionSeconds.toFixed(1)} sec`;
+        el.resultDistractionNote.textContent = run.caught ? `Caught ${run.caught} time${run.caught === 1 ? "" : "s"}` : "Not caught";
+
+        if (run.thoughtsSaved > 0 && !metQuota) {
+          el.resultLesson.textContent = "You saved comedy, but the conveyor never stopped. The notebook cost work progress.";
+        } else if (run.thoughtsSaved > 0) {
+          el.resultLesson.textContent = "You saved comedy and kept pace. The next shift will ask more of both.";
+        } else if (run.thoughtsLost > 0) {
+          el.resultLesson.textContent = "You protected the quota, but the thoughts disappeared before they reached the notebook.";
+        } else {
+          el.resultLesson.textContent = "The quota kept moving whether Darren was ready or not.";
+        }
+
+        showScreen(el.resultScreen);
+      }
+
+      function pauseGame() {
+        if (!run || !run.active || run.paused) return;
+        run.paused = true;
+        run.pauseStarted = performance.now();
+        el.pauseShade.classList.add("active");
+      }
+
+      function resumeGame() {
+        if (!run || !run.active || !run.paused) return;
+        const delta = performance.now() - run.pauseStarted;
+        run.startAt += delta;
+        if (run.box) run.box.phaseAt += delta;
+        if (run.thought) {
+          run.thought.shownAt += delta;
+          if (run.thought.scratchStartedAt) run.thought.scratchStartedAt += delta;
+        }
+        run.paused = false;
+        el.pauseShade.classList.remove("active");
+      }
+
+      el.startButton.addEventListener("click", startGame);
+      el.restartButton.addEventListener("click", startGame);
+      el.scratchCanvas.addEventListener("pointerdown", scratchStart);
+      el.scratchCanvas.addEventListener("pointermove", scratchMove);
+      el.scratchCanvas.addEventListener("pointerup", scratchEnd);
+      el.scratchCanvas.addEventListener("pointercancel", scratchEnd);
+      window.addEventListener("resize", () => {
+        if (run && run.active) resizeCanvas();
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) pauseGame();
+        else resumeGame();
+      });
+
+      window.M01Lab = {
+        build: BUILD_LABEL,
+        getSnapshot: () => run ? {
+          elapsed: run.elapsed,
+          accepted: run.accepted,
+          scans: run.scans,
+          wrongRoutes: run.wrongRoutes,
+          misses: run.misses,
+          thoughtsSaved: run.thoughtsSaved,
+          thoughtsLost: run.thoughtsLost,
+          caught: run.caught,
+          supervisorState: run.supervisorState
+        } : null
+      };
+    })();
+  </script>
+</body>
+</html>
