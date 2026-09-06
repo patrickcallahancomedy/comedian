@@ -1,0 +1,38 @@
+name: Export Lab 37 donor
+
+on:
+  push:
+    paths:
+      - '.github/workflows/export-lab37-donor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract exact Lab 37 HTML
+        run: |
+          set -euo pipefail
+          git show 67e37381bc4e768ffe604b8b8181f02711fddd9f:index.html > lab37.html
+          grep -q 'COMEDIAN BUILD: Lab 37' lab37.html
+          grep -q 'function lunchBreak' lab37.html
+          echo "Lab 37 bytes: $(wc -c < lab37.html)"
+          sha256sum lab37.html > lab37.sha256
+
+      - name: Upload donor artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab37-exact-donor
+          path: |
+            lab37.html
+            lab37.sha256
+          if-no-files-found: error
+          retention-days: 7
