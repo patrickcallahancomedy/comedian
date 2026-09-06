@@ -1,0 +1,421 @@
+name: Build Index Integration v1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-index-integration-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch exact opening alpha source
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://comedian-opening-alpha.patrickcallahan.chatgpt.site/' \
+            -o /tmp/opening.html
+          echo "opening bytes: $(wc -c < /tmp/opening.html)"
+          grep -q 'comedian:integration-test-complete' /tmp/opening.html
+          grep -q 'comedian.integration.bridge.v1' /tmp/opening.html
+
+      - name: Extract pinned Lab 37 donor
+        run: |
+          set -euo pipefail
+          git show 67e37381bc4e768ffe604b8b8181f02711fddd9f:index.html > /tmp/lab37.html
+          echo "Lab 37 bytes: $(wc -c < /tmp/lab37.html)"
+          grep -q 'COMEDIAN BUILD: Lab 37' /tmp/lab37.html
+          grep -q 'function lunchBreak' /tmp/lab37.html
+
+      - name: Compile one-file integration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, html
+
+          opening = Path('/tmp/opening.html').read_text(encoding='utf-8')
+          lab37 = Path('/tmp/lab37.html').read_text(encoding='utf-8')
+
+          # V1 duplicate-system cleanup: the new opening owns Story + Boxes.
+          # Lab 37's old opening/work entry path remains dormant donor code so
+          # we do not accidentally cut a dependency needed by its later loop.
+          # Replace only the old two-file handoff with an in-file parent signal.
+          replacement = "window.parent.postMessage({type:'comedian:integration:continue-lab37'}, '*');"
+          candidates = [
+              "window.location.href = 'continuation.html';",
+              'window.location.href = "continuation.html";',
+              "location.href = 'continuation.html';",
+              'location.href = "continuation.html";',
+          ]
+          replaced = 0
+          for old in candidates:
+              if old in opening:
+                  opening = opening.replace(old, replacement)
+                  replaced += 1
+          if replaced == 0:
+              raise SystemExit('Opening source did not contain the expected continuation.html handoff')
+
+          opening_b64 = base64.b64encode(opening.encode('utf-8')).decode('ascii')
+          lab37_b64 = base64.b64encode(lab37.encode('utf-8')).decode('ascii')
+
+          master = r'''<!doctype html>
+          <!--
+            COMEDIAN — Index_Integration v.1
+
+            PURPOSE
+            -------
+            First ugly master compile proving the two game generations can be one game.
+
+            ACTIVE STRUCTURE
+            1) STORY MODULE — current opening Story 1 + Story 2
+            2) MODULE 1 — current Boxes v10.10
+            3) MODULE 2 (TEMP) — Lab 37 continuation beginning at Lunch
+
+            Lab 37's older story/work entry path is intentionally NOT RUN.
+            Its later systems are preserved intact for the first integration pass.
+          -->
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+            <title>COMEDIAN — Index_Integration v.1</title>
+            <style>
+              *{box-sizing:border-box}
+              html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050505}
+              #stage{position:fixed;inset:0;width:100%;height:100%;border:0;background:#050505}
+              #status{position:fixed;left:6px;bottom:6px;z-index:99999;padding:4px 6px;background:rgba(0,0,0,.72);color:#fff;font:10px/1.2 monospace;display:none}
+              body[data-debug="1"] #status{display:block}
+            </style>
+          </head>
+          <body>
+            <iframe id="stage" title="COMEDIAN"></iframe>
+            <div id="status">boot</div>
+            <script>
+            (() => {
+              'use strict';
+
+              /* ============================================================
+                 CURRENT INDEX CODE BASE STARTS HERE
+                 Source: comedian-opening-alpha.patrickcallahan.chatgpt.site
+                 Contains Story Module + Module 1 (Boxes)
+                 ============================================================ */
+              const OPENING_B64 = '__OPENING_B64__';
+
+              /* ============================================================
+                 CURRENT INDEX CODE BASE ENDS HERE
+                 ============================================================ */
+
+              /* ============================================================
+                 GITHUB LAB 37 CODE BASE STARTS HERE
+                 Repository: patrickcallahancomedy/comedian
+                 Pinned commit: 67e37381bc4e768ffe604b8b8181f02711fddd9f
+
+                 V1 RULE:
+                 Lab 37's OLD opening/work route is bypassed. The donor begins
+                 at lunchBreak(), so the active game is Story -> Boxes -> Lunch.
+                 ============================================================ */
+              const LAB37_B64 = '__LAB37_B64__';
+
+              /* ============================================================
+                 GITHUB LAB 37 CODE BASE ENDS HERE
+                 INTEGRATION / STATE ADAPTER STARTS HERE
+                 ============================================================ */
+
+              const frame = document.getElementById('stage');
+              const status = document.getElementById('status');
+              const params = new URLSearchParams(location.search);
+              if (params.get('debug') === '1') document.body.dataset.debug = '1';
+
+              let openingUrl = null;
+              let lab37Url = null;
+              let activeStage = 'boot';
+
+              function note(text){ status.textContent = text; }
+              function decodeHtml(b64){
+                const binary = atob(b64);
+                const bytes = new Uint8Array(binary.length);
+                for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+                return new TextDecoder().decode(bytes);
+              }
+              function blobUrl(b64){
+                return URL.createObjectURL(new Blob([decodeHtml(b64)], {type:'text/html;charset=utf-8'}));
+              }
+              function readBridge(){
+                try{
+                  const raw = localStorage.getItem('comedian.integration.bridge.v1');
+                  if(raw) return JSON.parse(raw);
+                }catch(error){ console.error('bridge localStorage read failed', error); }
+
+                // Fallback: read the current opening's shared state directly.
+                try{
+                  const w = frame.contentWindow;
+                  if(w && w.COMEDIAN_GAME_STATE){
+                    const shared = w.COMEDIAN_GAME_STATE.get();
+                    return {
+                      version:1,
+                      source:'Index_Integration v.1 direct-state fallback',
+                      savedIdeas:Array.isArray(shared.savedIdeas)?[...shared.savedIdeas]:[],
+                      boxesResult:shared.boxesResult||null,
+                      misses:Number(shared.misses||0),
+                      wrongRoutes:Number(shared.wrongRoutes||0),
+                      caughtByTroy:!!shared.caughtByTroy,
+                      coworkerRelationships:shared.coworkerRelationships||{},
+                      firstMicDone:!!shared.firstMicDone,
+                      comedianUnlocked:!!shared.comedianUnlocked
+                    };
+                  }
+                }catch(error){ console.error('direct opening state read failed', error); }
+                return null;
+              }
+
+              function seedLab37(bridge){
+                const payload = JSON.stringify(bridge || {}).replace(/</g,'\\u003c');
+                const source = `
+                  (() => {
+                    const opening = ${payload};
+                    if(typeof newGame !== 'function') throw new Error('Lab 37 newGame() not found');
+                    if(typeof lunchBreak !== 'function') throw new Error('Lab 37 lunchBreak() not found');
+                    if(typeof SOCIAL_ENGINE !== 'object') throw new Error('Lab 37 SOCIAL_ENGINE not found');
+
+                    newGame();
+
+                    const micKnowledge = {
+                      id:'back_room_open_mic',
+                      type:'open_mic',
+                      title:'The Back Room Open Mic',
+                      detail:'Tuesday nights. Sign-up at 7:30.',
+                      reliability:1
+                    };
+                    (state.people||[]).forEach((person)=>{
+                      person.knowledge = Array.isArray(person.knowledge) ? person.knowledge : [];
+                      if(!person.knowledge.some((item)=>item && item.id===micKnowledge.id)){
+                        person.knowledge.push({...micKnowledge});
+                      }
+                    });
+
+                    const relationships = opening.coworkerRelationships && typeof opening.coworkerRelationships==='object'
+                      ? opening.coworkerRelationships : {};
+                    (state.people||[]).forEach((person)=>{
+                      const value = relationships[person.id] ?? relationships[person.name];
+                      if(Number.isFinite(Number(value))) person.relationship = Number(value);
+                    });
+
+                    const ideas = Array.isArray(opening.savedIdeas) ? opening.savedIdeas : [];
+                    state.savedThoughts = [];
+                    state.premises = [];
+                    ideas.forEach((value)=>{
+                      const text = String(value||'').trim();
+                      if(!text) return;
+                      state.savedThoughts.push(text);
+                      SOCIAL_ENGINE.addPremise(text);
+                    });
+
+                    const boxes = opening.boxesResult && typeof opening.boxesResult==='object' ? opening.boxesResult : {};
+                    const accepted = Number(boxes.accepted||0);
+                    const target = Math.max(1,Number(boxes.quota||8));
+                    const misses = Math.max(0,Number(opening.misses||0));
+                    const wrongRoutes = Math.max(0,Number(opening.wrongRoutes||0));
+                    const caught = !!opening.caughtByTroy;
+
+                    state.openingBoxesResult = {
+                      accepted,
+                      quota:target,
+                      passed:!!boxes.passed,
+                      misses,
+                      wrongRoutes,
+                      caughtByTroy:caught,
+                      savedIdeas:[...ideas]
+                    };
+
+                    const performance = Math.max(0,Math.min(1.25,accepted/target));
+                    state.processed = accepted;
+                    state.misses = misses + wrongRoutes;
+                    state.quota = Math.round(Math.max(25,Math.min(100,52 + performance*38 - misses*5 - wrongRoutes*4)));
+                    if(caught) state.workWarnings = Math.max(1,Number(state.workWarnings||0));
+                    state.firstMicDone = !!opening.firstMicDone;
+                    state.comedianUnlocked = !!opening.comedianUnlocked;
+                    state.phase = 'lunch';
+                    saveGame();
+                    lunchBreak();
+
+                    return {ok:true,phase:state.phase,ideas:state.savedThoughts.length,premises:state.premises.length};
+                  })()
+                `;
+                return frame.contentWindow.eval(source);
+              }
+
+              function loadLab37(bridgeOverride){
+                if(activeStage === 'lab37') return;
+                const bridge = bridgeOverride || readBridge();
+                if(!bridge){
+                  alert('Integration handoff failed: no Module 1 result was available.');
+                  return;
+                }
+                activeStage = 'lab37';
+                note('loading Lab 37 -> lunch');
+                frame.onload = () => {
+                  try{
+                    const result = seedLab37(bridge);
+                    note('Lab 37 lunch: '+JSON.stringify(result));
+                  }catch(error){
+                    console.error(error);
+                    note('ERROR: '+(error && error.message ? error.message : error));
+                    alert('Lab 37 loaded but the Lunch handoff failed. '+(error && error.message ? error.message : error));
+                  }
+                };
+                frame.src = lab37Url;
+              }
+
+              function loadOpening(){
+                activeStage = 'opening';
+                note('Story -> Module 1');
+                frame.onload = () => note('opening loaded');
+                frame.src = openingUrl;
+              }
+
+              window.addEventListener('message',(event)=>{
+                if(event.source !== frame.contentWindow) return;
+                if(event.data && event.data.type === 'comedian:integration:continue-lab37'){
+                  loadLab37();
+                }
+              });
+
+              openingUrl = blobUrl(OPENING_B64);
+              lab37Url = blobUrl(LAB37_B64);
+
+              // QA path used by the build smoke test. Normal players never see it.
+              if(params.get('qa')==='1' && params.get('stage')==='lab37'){
+                loadLab37({
+                  version:1,
+                  source:'integration-smoke-test',
+                  savedIdeas:['The forklift sounds disappointed in me.','Every warehouse sign assumes I can read.'],
+                  boxesResult:{accepted:8,quota:8,passed:true},
+                  misses:0,
+                  wrongRoutes:0,
+                  caughtByTroy:false,
+                  coworkerRelationships:{},
+                  firstMicDone:false,
+                  comedianUnlocked:false
+                });
+              }else{
+                loadOpening();
+              }
+
+              window.COMEDIAN_INTEGRATION_V1 = {
+                getStage:()=>activeStage,
+                loadOpening,
+                loadLab37,
+                readBridge,
+                build:'Index_Integration v.1',
+                lab37Commit:'67e37381bc4e768ffe604b8b8181f02711fddd9f'
+              };
+
+              window.addEventListener('beforeunload',()=>{
+                if(openingUrl) URL.revokeObjectURL(openingUrl);
+                if(lab37Url) URL.revokeObjectURL(lab37Url);
+              });
+            })();
+            </script>
+          </body>
+          </html>
+          '''
+
+          master = master.replace('__OPENING_B64__', opening_b64).replace('__LAB37_B64__', lab37_b64)
+          target = Path('Index_Integration v.1.html')
+          target.write_text(master, encoding='utf-8')
+          print(f'wrote {target} ({target.stat().st_size:,} bytes)')
+          print(f'opening handoff replacements: {replaced}')
+          PY
+
+      - name: Static verification
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re, base64
+          text = Path('Index_Integration v.1.html').read_text(encoding='utf-8')
+          assert 'CURRENT INDEX CODE BASE ENDS HERE' in text
+          assert 'GITHUB LAB 37 CODE BASE STARTS HERE' in text
+          assert 'function seedLab37' in text
+          opening = re.search(r"const OPENING_B64 = '([^']+)';", text).group(1)
+          lab = re.search(r"const LAB37_B64 = '([^']+)';", text).group(1)
+          opening_html = base64.b64decode(opening).decode('utf-8')
+          lab_html = base64.b64decode(lab).decode('utf-8')
+          assert 'comedian:integration:continue-lab37' in opening_html
+          assert 'COMEDIAN BUILD: Lab 37' in lab_html
+          assert 'function lunchBreak' in lab_html
+          print('embedded opening bytes:', len(opening_html.encode()))
+          print('embedded Lab37 bytes:', len(lab_html.encode()))
+          print('static integration verification passed')
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path('Index_Integration v.1.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>([\s\S]*?)</script>',text)
+          Path('/tmp/integration_outer.js').write_text(scripts[-1],encoding='utf-8')
+          PY
+          node --check /tmp/integration_outer.js
+
+      - name: Browser smoke test
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright@1.55.0
+          npx playwright install --with-deps chromium >/dev/null
+          python3 -m http.server 8765 >/tmp/comedian-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          sleep 2
+          cat > /tmp/smoke.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:430,height:764}});
+
+          // Verify the real current opening boots inside the integrated master.
+          await page.goto('http://127.0.0.1:8765/Index_Integration%20v.1.html?debug=1', {waitUntil:'load'});
+          await page.waitForFunction(() => window.COMEDIAN_INTEGRATION_V1?.getStage() === 'opening');
+          const openingFrame = page.frames().find(f => f !== page.mainFrame());
+          if(!openingFrame) throw new Error('opening iframe did not load');
+          await openingFrame.waitForLoadState('domcontentloaded');
+          const openingText = (await openingFrame.locator('body').innerText()).trim();
+          if(!openingText) throw new Error('opening rendered no text');
+          console.log('opening smoke passed:', openingText.slice(0,80).replace(/\s+/g,' '));
+
+          // Verify the exact pinned Lab 37 donor can be seeded directly into Lunch.
+          await page.goto('http://127.0.0.1:8765/Index_Integration%20v.1.html?qa=1&stage=lab37&debug=1', {waitUntil:'load'});
+          await page.waitForFunction(() => window.COMEDIAN_INTEGRATION_V1?.getStage() === 'lab37');
+          await page.waitForFunction(() => document.getElementById('status')?.textContent.includes('"phase":"lunch"'), null, {timeout:10000});
+          const labFrame = page.frames().find(f => f !== page.mainFrame());
+          if(!labFrame) throw new Error('Lab 37 iframe did not load');
+          const labText = (await labFrame.locator('body').innerText()).trim();
+          if(!/lunch/i.test(labText)) throw new Error('Lab 37 did not render Lunch');
+          console.log('Lab 37 lunch smoke passed:', labText.slice(0,120).replace(/\s+/g,' '));
+
+          await page.screenshot({path:'integration-v1-smoke.png',fullPage:true});
+          await browser.close();
+          JS
+          node /tmp/smoke.mjs
+
+      - name: Commit compiled integration
+        run: |
+          set -euo pipefail
+          git config user.name 'COMEDIAN integration builder'
+          git config user.email 'actions@users.noreply.github.com'
+          git add 'Index_Integration v.1.html'
+          if git diff --cached --quiet; then
+            echo 'No compiled-file change to commit.'
+          else
+            git commit -m 'Compile Index Integration v1'
+            git push
+          fi
