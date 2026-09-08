@@ -6,13 +6,18 @@ extends Control
 @onready var left_hitbox: Button = $GameplayLayer/LeftHitbox
 @onready var right_hitbox: Button = $GameplayLayer/RightHitbox
 
+@onready var belt: TextureRect = $GameplayLayer/Belt
 @onready var box_current: TextureRect = $GameplayLayer/BoxCurrent
 @onready var box_routed: TextureRect = $GameplayLayer/BoxRouted
 @onready var destination_label: Label = $GameplayLayer/BoxCurrent/DestinationTag/DestinationLabel
 
+var belt_start_position: Vector2
 var box_spawn_position: Vector2
 var box_ready_position: Vector2
 var current_destination := "left"
+
+const ROUTE_DURATION := 0.5
+const BELT_SHIFT_RATIO := 0.06
 
 var left_normal = preload("res://assets/boxes/left_button.png")
 var left_pressed = preload("res://assets/boxes/left_button_pressed.png")
@@ -22,6 +27,7 @@ var right_pressed = preload("res://assets/boxes/right_button_pressed.png")
 
 
 func _ready() -> void:
+	belt_start_position = belt.position
 	box_spawn_position = box_current.position
 	box_ready_position = box_routed.position
 	_assign_destination()
@@ -51,6 +57,7 @@ func _on_box_ready() -> void:
 	left_hitbox.disabled = false
 	right_hitbox.disabled = false
 
+
 func _on_left_down() -> void:
 	left_button_art.texture = left_pressed
 	
@@ -58,6 +65,7 @@ func _on_left_down() -> void:
 func _on_left_up() -> void:
 	left_button_art.texture = left_normal
 	_route_box("left")
+
 
 func _on_right_down() -> void:
 	right_button_art.texture = right_pressed
@@ -67,6 +75,7 @@ func _on_right_up() -> void:
 	right_button_art.texture = right_normal
 	_route_box("right")
 	
+
 func _route_box(direction: String) -> void:
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
@@ -75,19 +84,30 @@ func _route_box(direction: String) -> void:
 	box_routed.show()
 
 	var target_x: float
+	var belt_shift := belt.size.x * BELT_SHIFT_RATIO
+	var target_belt_x: float
 
 	if direction == "left":
 		target_x = -120
+		target_belt_x = belt_start_position.x - belt_shift
 	else:
 		target_x = 480
+		target_belt_x = belt_start_position.x + belt_shift
 
+	# Match the old HTML trick: the frame stays fixed while the oversized
+	# belt surface shifts only about 6% inside the cropped game frame.
 	var tween = create_tween()
-	tween.tween_property(box_routed, "position:x", target_x, 0.6)
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_LINEAR)
+	tween.tween_property(box_routed, "position:x", target_x, ROUTE_DURATION)
+	tween.tween_property(belt, "position:x", target_belt_x, ROUTE_DURATION)
 	tween.finished.connect(_reset_box)
+
 
 func _reset_box() -> void:
 	box_routed.hide()
 	box_routed.position = box_ready_position
+	belt.position = belt_start_position
 
 	box_current.show()
 	box_current.position = box_spawn_position
