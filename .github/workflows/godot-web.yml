@@ -1,0 +1,52 @@
+name: COMEDIAN Godot Web Build
+
+on:
+  push:
+    branches:
+      - godot-alpha
+    paths:
+      - "godot/**"
+      - ".github/workflows/godot-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  export-web:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Godot export templates
+        shell: bash
+        run: |
+          mkdir -p /root/.local/share/godot/export_templates
+          if [ -d "/root/.local/share/godot/templates/${GODOT_VERSION}.stable" ] && [ ! -d "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" ]; then
+            mv "/root/.local/share/godot/templates/${GODOT_VERSION}.stable" "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          fi
+          ls -la /root/.local/share/godot/export_templates
+
+      - name: Export COMEDIAN for Web
+        shell: bash
+        working-directory: godot
+        run: |
+          rm -rf build/web
+          mkdir -p build/web
+          godot --headless --path . --export-release "Web" build/web/index.html
+          touch build/web/.nojekyll
+
+      - name: Deploy playable build to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: godot/build/web
+          clean: true
+          single-commit: true
