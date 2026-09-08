@@ -28,11 +28,9 @@ jobs:
       - name: Prepare Godot export templates
         shell: bash
         run: |
-          mkdir -p /root/.local/share/godot/export_templates
-          if [ -d "/root/.local/share/godot/templates/${GODOT_VERSION}.stable" ] && [ ! -d "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" ]; then
-            mv "/root/.local/share/godot/templates/${GODOT_VERSION}.stable" "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
-          fi
-          ls -la /root/.local/share/godot/export_templates
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/"
+          ls -la "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
 
       - name: Export COMEDIAN for Web
         shell: bash
