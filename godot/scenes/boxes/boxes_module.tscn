@@ -170,6 +170,20 @@ texture = ExtResource("11_rea3k")
 expand_mode = 1
 stretch_mode = 5
 
+[node name="RouteFeedback" type="Label" parent="GameplayLayer"]
+visible = false
+layout_mode = 0
+offset_left = 145.0
+offset_top = 520.0
+offset_right = 285.0
+offset_bottom = 544.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.58, 0.78, 0.62, 1)
+theme_override_font_sizes/font_size = 12
+text = "CORRECT"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="HUDLayer" type="Control" parent="." unique_id=1742308144]
 visible = false
 layout_mode = 1
