@@ -8,9 +8,11 @@ extends Control
 
 @onready var box_current: TextureRect = $GameplayLayer/BoxCurrent
 @onready var box_routed: TextureRect = $GameplayLayer/BoxRouted
+@onready var destination_label: Label = $GameplayLayer/BoxCurrent/DestinationTag/DestinationLabel
 
 var box_spawn_position: Vector2
 var box_ready_position: Vector2
+var current_destination := "left"
 
 var left_normal = preload("res://assets/boxes/left_button.png")
 var left_pressed = preload("res://assets/boxes/left_button_pressed.png")
@@ -22,6 +24,7 @@ var right_pressed = preload("res://assets/boxes/right_button_pressed.png")
 func _ready() -> void:
 	box_spawn_position = box_current.position
 	box_ready_position = box_routed.position
+	_assign_destination()
 	
 	left_hitbox.button_down.connect(_on_left_down)
 	left_hitbox.button_up.connect(_on_left_up)
@@ -37,6 +40,11 @@ func _ready() -> void:
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
 	tween.finished.connect(_on_box_ready)
+	
+
+func _assign_destination() -> void:
+	current_destination = ["left", "right"].pick_random()
+	destination_label.text = current_destination.to_upper()
 	
 	
 func _on_box_ready() -> void:
@@ -83,6 +91,7 @@ func _reset_box() -> void:
 
 	box_current.show()
 	box_current.position = box_spawn_position
+	_assign_destination()
 
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
