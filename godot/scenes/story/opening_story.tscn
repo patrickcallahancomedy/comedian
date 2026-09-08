@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://d1cshkkkqlks7"]
+
+[ext_resource type="Script" uid="uid://c15use3fgxiw" path="res://scripts/story/opening_story.gd" id="1_g3yrh"]
+
+[node name="OpeningStory" type="Control" unique_id=1327239444]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_g3yrh")
+
+[node name="Background" type="ColorRect" parent="." unique_id=43217800]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.25, 0.12916666, 0, 1)
+
+[node name="StoryMargin" type="MarginContainer" parent="." unique_id=1373131082]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 35
+theme_override_constants/margin_top = 80
+theme_override_constants/margin_right = 35
+theme_override_constants/margin_bottom = 60
+
+[node name="StoryLayout" type="VBoxContainer" parent="StoryMargin" unique_id=1007039006]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="ChapterLabel" type="Label" parent="StoryMargin/StoryLayout" unique_id=201909049]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "BEFORE ANY OF THIS"
+
+[node name="StoryText" type="RichTextLabel" parent="StoryMargin/StoryLayout" unique_id=1415036516]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/normal_font_size = 22
+text = "THIS IS DARREN"
+scroll_active = false
+
+[node name="ContinueButton" type="Button" parent="StoryMargin/StoryLayout" unique_id=366681914]
+custom_minimum_size = Vector2(0, 55)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "CONTINUE"
