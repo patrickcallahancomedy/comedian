@@ -16,7 +16,7 @@ var box_spawn_position: Vector2
 var box_ready_position: Vector2
 var current_destination := "left"
 
-const ROUTE_DURATION := 0.75
+const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
 
 var left_normal = preload("res://assets/boxes/left_button.png")
