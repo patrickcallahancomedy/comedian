@@ -140,9 +140,9 @@ stretch_mode = 5
 [node name="DestinationTag" type="ColorRect" parent="GameplayLayer/BoxCurrent"]
 layout_mode = 0
 offset_left = 8.0
-offset_top = 43.0
+offset_top = 40.0
 offset_right = 62.0
-offset_bottom = 59.0
+offset_bottom = 56.0
 mouse_filter = 2
 color = Color(0.87, 0.78, 0.59, 0.96)
 
