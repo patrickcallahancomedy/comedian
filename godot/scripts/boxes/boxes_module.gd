@@ -10,11 +10,14 @@ extends Control
 @onready var box_current: TextureRect = $GameplayLayer/BoxCurrent
 @onready var box_routed: TextureRect = $GameplayLayer/BoxRouted
 @onready var destination_label: Label = $GameplayLayer/BoxCurrent/DestinationTag/DestinationLabel
+@onready var route_feedback: Label = $GameplayLayer/RouteFeedback
 
 var belt_start_position: Vector2
 var box_spawn_position: Vector2
 var box_ready_position: Vector2
 var current_destination := "left"
+var correct_routes := 0
+var wrong_routes := 0
 
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
@@ -31,6 +34,7 @@ func _ready() -> void:
 	box_spawn_position = box_current.position
 	box_ready_position = box_routed.position
 	_assign_destination()
+	route_feedback.hide()
 	
 	left_hitbox.button_down.connect(_on_left_down)
 	left_hitbox.button_up.connect(_on_left_up)
@@ -80,6 +84,13 @@ func _route_box(direction: String) -> void:
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
 
+	var is_correct := direction == current_destination
+	if is_correct:
+		correct_routes += 1
+	else:
+		wrong_routes += 1
+	_show_route_feedback(is_correct)
+
 	box_current.hide()
 	box_routed.show()
 
@@ -102,6 +113,21 @@ func _route_box(direction: String) -> void:
 	tween.tween_property(box_routed, "position:x", target_x, ROUTE_DURATION)
 	tween.tween_property(belt, "position:x", target_belt_x, ROUTE_DURATION)
 	tween.finished.connect(_reset_box)
+
+
+func _show_route_feedback(is_correct: bool) -> void:
+	route_feedback.modulate.a = 1.0
+	route_feedback.text = "CORRECT" if is_correct else "WRONG WAY"
+	route_feedback.add_theme_color_override(
+		"font_color",
+		Color(0.58, 0.78, 0.62, 1.0) if is_correct else Color(0.86, 0.46, 0.43, 1.0)
+	)
+	route_feedback.show()
+
+	var tween = create_tween()
+	tween.tween_interval(0.55)
+	tween.tween_property(route_feedback, "modulate:a", 0.0, 0.25)
+	tween.finished.connect(route_feedback.hide)
 
 
 func _reset_box() -> void:
