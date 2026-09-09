@@ -2,6 +2,8 @@ extends Control
 
 const THOUGHT_BUBBLE_TEXTURE = preload("res://assets/boxes/E45CC4E6-9696-43E3-8029-2CAAF946E8B9.png")
 const FIRST_THOUGHT := "I wonder why they call it a lunch break when I never stop being tired."
+# Placeholder copy for the second tutorial thought. Easy to swap later.
+const SECOND_THOUGHT := "Every box has somewhere to be before I do."
 
 @onready var left_button_art: TextureRect = $GameplayLayer/LeftButton
 @onready var right_button_art: TextureRect = $GameplayLayer/RightButton
@@ -33,7 +35,10 @@ var correct_routes := 0
 var wrong_routes := 0
 var boxes_routed := 0
 var premises_saved := 0
+var behind_count := 0
 var first_thought_shown := false
+var second_thought_shown := false
+var work_pressure_active := false
 var active_thought := ""
 var pending_save_text := ""
 var notebook_open := false
@@ -55,6 +60,7 @@ var tested_jokes: Array[String] = []
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
 const PRACTICE_BOXES_BEFORE_THOUGHT := 3
+const SECOND_THOUGHT_AT_BOX := 5
 
 var left_normal = preload("res://assets/boxes/left_button.png")
 var left_pressed = preload("res://assets/boxes/left_button_pressed.png")
@@ -107,6 +113,13 @@ func _on_box_ready() -> void:
 	left_hitbox.disabled = false
 	right_hitbox.disabled = false
 	notebook_hitbox.disabled = false
+
+	# The first idea was completely safe. Two boxes later, introduce the next
+	# lesson: thoughts can happen while work is still waiting on Darren.
+	if premises_saved > 0 and boxes_routed >= SECOND_THOUGHT_AT_BOX and not second_thought_shown:
+		second_thought_shown = true
+		work_pressure_active = true
+		_show_pressure_thought()
 
 
 func _on_left_down() -> void:
@@ -182,6 +195,18 @@ func _show_route_feedback(is_correct: bool) -> void:
 	tween.finished.connect(route_feedback.hide)
 
 
+func _show_distraction_feedback() -> void:
+	route_feedback.modulate.a = 1.0
+	route_feedback.text = "FALLING BEHIND"
+	route_feedback.add_theme_color_override("font_color", Color(0.88, 0.66, 0.34, 1.0))
+	route_feedback.show()
+
+	var tween = create_tween()
+	tween.tween_interval(0.8)
+	tween.tween_property(route_feedback, "modulate:a", 0.0, 0.25)
+	tween.finished.connect(route_feedback.hide)
+
+
 func _reset_box() -> void:
 	box_routed.hide()
 	box_routed.position = box_ready_position
@@ -212,12 +237,25 @@ func _start_next_box() -> void:
 
 func _show_first_thought() -> void:
 	active_thought = FIRST_THOUGHT
+	thought_text.text = FIRST_THOUGHT
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
 	notebook_hitbox.disabled = false
 	thought_bubble.modulate.a = 0.0
 	thought_bubble.show()
 
+	var tween = create_tween()
+	tween.tween_property(thought_bubble, "modulate:a", 1.0, 0.2)
+
+
+func _show_pressure_thought() -> void:
+	active_thought = SECOND_THOUGHT
+	thought_text.text = SECOND_THOUGHT
+	thought_bubble.modulate.a = 0.0
+	thought_bubble.show()
+
+	# Unlike the first tutorial thought, the work controls stay live here.
+	# The player can route the waiting box first, or stop to use the notebook.
 	var tween = create_tween()
 	tween.tween_property(thought_bubble, "modulate:a", 1.0, 0.2)
 
@@ -237,6 +275,13 @@ func _on_thought_bubble_input(event: InputEvent) -> void:
 func _open_notebook() -> void:
 	if notebook_open:
 		return
+
+	# After the safe tutorial, stopping work while a box is waiting adds to
+	# Darren's behind count. Later Troy can react to this same state.
+	if work_pressure_active and box_waiting_for_route:
+		behind_count += 1
+		print("Behind count: ", behind_count)
+		_show_distraction_feedback()
 
 	notebook_open = true
 	left_hitbox.disabled = true
@@ -290,8 +335,16 @@ func _close_notebook() -> void:
 	if not active_thought.is_empty():
 		active_thought = ""
 		thought_bubble.hide()
-		notebook_hitbox.disabled = true
-		_start_next_box()
+
+		# During the first safe thought there is no box waiting, so resume by
+		# feeding a new one. During pressure, return to the box already waiting.
+		if box_waiting_for_route:
+			left_hitbox.disabled = false
+			right_hitbox.disabled = false
+			notebook_hitbox.disabled = false
+		else:
+			notebook_hitbox.disabled = true
+			_start_next_box()
 		return
 
 	if box_waiting_for_route:
@@ -337,8 +390,16 @@ func _finish_notebook_save_and_resume() -> void:
 	notebook_open = false
 	notebook_overlay.hide()
 	thought_bubble.hide()
-	notebook_hitbox.disabled = true
-	_start_next_box()
+
+	# If this idea happened while a box was already waiting, return to that
+	# same box instead of silently skipping it. Otherwise feed the next box.
+	if box_waiting_for_route:
+		left_hitbox.disabled = false
+		right_hitbox.disabled = false
+		notebook_hitbox.disabled = false
+	else:
+		notebook_hitbox.disabled = true
+		_start_next_box()
 
 
 # Future home/later notebook behavior: a tested premise can graduate into a
