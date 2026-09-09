@@ -40,13 +40,14 @@ func _ready() -> void:
 	_assign_destination()
 	route_feedback.hide()
 	thought_bubble.hide()
-	
+
 	left_hitbox.button_down.connect(_on_left_down)
 	left_hitbox.button_up.connect(_on_left_up)
 
 	right_hitbox.button_down.connect(_on_right_down)
 	right_hitbox.button_up.connect(_on_right_up)
-	
+	thought_bubble.gui_input.connect(_on_thought_bubble_input)
+
 	box_routed.hide()
 
 	left_hitbox.disabled = true
@@ -55,13 +56,13 @@ func _ready() -> void:
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
 	tween.finished.connect(_on_box_ready)
-	
+
 
 func _assign_destination() -> void:
 	current_destination = ["left", "right"].pick_random()
 	destination_label.text = current_destination.to_upper()
-	
-	
+
+
 func _on_box_ready() -> void:
 	left_hitbox.disabled = false
 	right_hitbox.disabled = false
@@ -69,7 +70,7 @@ func _on_box_ready() -> void:
 
 func _on_left_down() -> void:
 	left_button_art.texture = left_pressed
-	
+
 
 func _on_left_up() -> void:
 	left_button_art.texture = left_normal
@@ -78,12 +79,12 @@ func _on_left_up() -> void:
 
 func _on_right_down() -> void:
 	right_button_art.texture = right_pressed
-	
+
 
 func _on_right_up() -> void:
 	right_button_art.texture = right_normal
 	_route_box("right")
-	
+
 
 func _route_box(direction: String) -> void:
 	left_hitbox.disabled = true
@@ -149,6 +150,10 @@ func _reset_box() -> void:
 		_show_first_thought()
 		return
 
+	_start_next_box()
+
+
+func _start_next_box() -> void:
 	box_current.show()
 	box_current.position = box_spawn_position
 	_assign_destination()
@@ -164,4 +169,25 @@ func _reset_box() -> void:
 func _show_first_thought() -> void:
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
+	thought_bubble.modulate.a = 0.0
 	thought_bubble.show()
+
+	var tween = create_tween()
+	tween.tween_property(thought_bubble, "modulate:a", 1.0, 0.2)
+
+
+func _on_thought_bubble_input(event: InputEvent) -> void:
+	if not thought_bubble.visible:
+		return
+
+	if event is InputEventMouseButton:
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_dismiss_first_thought()
+	elif event is InputEventScreenTouch:
+		if event.pressed:
+			_dismiss_first_thought()
+
+
+func _dismiss_first_thought() -> void:
+	thought_bubble.hide()
+	_start_next_box()
