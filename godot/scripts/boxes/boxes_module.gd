@@ -19,9 +19,7 @@ const FIRST_THOUGHT := "I wonder why they call it a lunch break when I never sto
 @onready var thought_bubble: TextureRect = $HUDLayer/ThoughtBubble
 @onready var thought_text: Label = $HUDLayer/ThoughtBubble/ThoughtText
 @onready var notebook_overlay: Control = $HUDLayer/NotebookOverlay
-@onready var tested_ideas_label: Label = $HUDLayer/NotebookOverlay/TestedIdeas
 @onready var premises_list_label: Label = $HUDLayer/NotebookOverlay/PremisesList
-@onready var new_thought_title: Label = $HUDLayer/NotebookOverlay/NewThoughtTitle
 @onready var active_thought_label: Label = $HUDLayer/NotebookOverlay/ActiveThought
 @onready var write_idea_button: Button = $HUDLayer/NotebookOverlay/WriteIdeaButton
 @onready var close_notebook_button: Button = $HUDLayer/NotebookOverlay/CloseNotebookButton
@@ -34,17 +32,25 @@ var current_destination := "left"
 var correct_routes := 0
 var wrong_routes := 0
 var boxes_routed := 0
-var ideas_saved := 0
+var premises_saved := 0
 var first_thought_shown := false
 var active_thought := ""
 var pending_save_text := ""
 var notebook_open := false
 var box_waiting_for_route := false
 
-# Right page = saved premises. Left page = ideas that have been tested later.
-# The thought itself is temporary and only enters premises if WRITE IT DOWN is pressed.
+# Work notebook:
+#   left page  = PREMISES already written down
+#   right page = IDEAS currently in Darren's head
+# Writing an idea down moves it from the right page to the left page.
+#
+# Later/home notebook:
+#   left page  = TESTED JOKES
+#   right page = PREMISES
+# These arrays will eventually move into persistent GameState so every module
+# sees the same material.
 var premises: Array[String] = []
-var tested_ideas: Array[String] = []
+var tested_jokes: Array[String] = []
 
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
@@ -153,8 +159,6 @@ func _route_box(direction: String) -> void:
 		target_x = 480
 		target_belt_x = belt_start_position.x + belt_shift
 
-	# Match the old HTML trick: the frame stays fixed while the oversized
-	# belt surface shifts only about 6% inside the cropped game frame.
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_LINEAR)
@@ -183,8 +187,6 @@ func _reset_box() -> void:
 	box_routed.position = box_ready_position
 	belt.position = belt_start_position
 
-	# The opening is intentionally quiet: after a few practice boxes, stop
-	# the conveyor and let Darren's first thought become the player's focus.
 	if boxes_routed >= PRACTICE_BOXES_BEFORE_THOUGHT and not first_thought_shown:
 		first_thought_shown = true
 		_show_first_thought()
@@ -251,19 +253,17 @@ func _open_notebook() -> void:
 
 
 func _refresh_notebook_pages() -> void:
-	tested_ideas_label.text = _format_idea_list(tested_ideas, "Nothing tested yet.")
-	premises_list_label.text = _format_idea_list(premises, "No premises saved yet.")
+	premises_list_label.text = _format_idea_list(premises, "No premises yet.")
 
 	active_thought_label.position = active_thought_start_position
 	active_thought_label.modulate.a = 1.0
 	write_idea_button.disabled = false
 
 	if active_thought.is_empty():
-		new_thought_title.hide()
-		active_thought_label.hide()
+		active_thought_label.text = "No new ideas."
+		active_thought_label.show()
 		write_idea_button.hide()
 	else:
-		new_thought_title.show()
 		active_thought_label.text = active_thought
 		active_thought_label.show()
 		write_idea_button.show()
@@ -286,8 +286,7 @@ func _close_notebook() -> void:
 	notebook_open = false
 	notebook_overlay.hide()
 
-	# Thoughts are temporary. If the player closes the notebook without
-	# writing one down, that thought is gone and never becomes a premise.
+	# An unwritten idea is temporary. Closing the notebook loses it.
 	if not active_thought.is_empty():
 		active_thought = ""
 		thought_bubble.hide()
@@ -308,29 +307,29 @@ func _write_active_thought() -> void:
 	pending_save_text = active_thought
 	write_idea_button.disabled = true
 
-	# Simple first-pass save animation: the temporary thought slides upward
-	# toward the premises list and fades, so it feels like it is entering the notebook.
+	# The idea visibly crosses the spiral from the right IDEAS page into the
+	# left PREMISES page. Once the movement finishes, it becomes persistent material.
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD)
-	tween.set_ease(Tween.EASE_IN)
-	tween.tween_property(active_thought_label, "position:y", premises_list_label.position.y, 0.35)
-	tween.tween_property(active_thought_label, "modulate:a", 0.0, 0.35)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(active_thought_label, "position:x", premises_list_label.position.x, 0.4)
+	tween.tween_property(active_thought_label, "position:y", premises_list_label.position.y, 0.4)
+	tween.tween_property(active_thought_label, "modulate:a", 0.15, 0.4)
 	tween.finished.connect(_finish_write_active_thought)
 
 
 func _finish_write_active_thought() -> void:
 	premises.append(pending_save_text)
-	ideas_saved += 1
-	print("Ideas saved: ", ideas_saved)
+	premises_saved += 1
+	print("Premises saved: ", premises_saved)
 
 	pending_save_text = ""
 	active_thought = ""
 	_refresh_notebook_pages()
 
-	# Leave the newly saved premise visible for a beat before returning to work.
 	var tween = create_tween()
-	tween.tween_interval(0.35)
+	tween.tween_interval(0.45)
 	tween.finished.connect(_finish_notebook_save_and_resume)
 
 
@@ -342,10 +341,12 @@ func _finish_notebook_save_and_resume() -> void:
 	_start_next_box()
 
 
-# Later modules can call this after a premise has been tried on someone or onstage.
+# Future home/later notebook behavior: a tested premise can graduate into a
+# tested joke. That later notebook view will show tested jokes on the left and
+# remaining premises on the right.
 func mark_premise_tested(premise_index: int) -> void:
 	if premise_index < 0 or premise_index >= premises.size():
 		return
 
-	var tested_idea := premises.pop_at(premise_index)
-	tested_ideas.append(tested_idea)
+	var tested_joke := premises.pop_at(premise_index)
+	tested_jokes.append(tested_joke)
