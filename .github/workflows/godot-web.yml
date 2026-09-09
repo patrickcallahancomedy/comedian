@@ -41,6 +41,23 @@ jobs:
           godot --headless --path . --export-release "Web" build/web/index.html
           touch build/web/.nojekyll
 
+      - name: Cache-bust Godot runtime files
+        shell: bash
+        working-directory: godot
+        run: |
+          BUILD_NAME="game-${GITHUB_SHA:0:8}"
+
+          mv build/web/index.js "build/web/${BUILD_NAME}.js"
+          mv build/web/index.wasm "build/web/${BUILD_NAME}.wasm"
+          mv build/web/index.pck "build/web/${BUILD_NAME}.pck"
+
+          sed -i "s#src=\"index.js\"#src=\"${BUILD_NAME}.js\"#" build/web/index.html
+          sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/web/index.html
+          sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/web/index.html
+          sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/web/index.html
+
+          grep -o "${BUILD_NAME}[^\" ]*" build/web/index.html | sort -u
+
       - name: Deploy playable build to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
