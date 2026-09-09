@@ -12,6 +12,7 @@
 [ext_resource type="Texture2D" uid="uid://dom7bwaohu7x" path="res://assets/boxes/box_three_quarter.png" id="10_h56rq"]
 [ext_resource type="Texture2D" uid="uid://drns6e2oo3vos" path="res://assets/boxes/label.png" id="11_adcug"]
 [ext_resource type="Texture2D" uid="uid://c28ygf02e6p5d" path="res://assets/boxes/box_side_view.png" id="11_rea3k"]
+[ext_resource type="Texture2D" path="res://assets/boxes/IMG_2495.png" id="12_notebook_open"]
 
 [node name="BoxesModule" type="Control" unique_id=10154382]
 layout_mode = 3
@@ -135,6 +136,15 @@ texture = ExtResource("9_h56rq")
 expand_mode = 1
 stretch_mode = 5
 
+[node name="NotebookHitbox" type="Button" parent="GameplayLayer"]
+layout_mode = 0
+offset_left = 292.0
+offset_top = 585.0
+offset_right = 420.0
+offset_bottom = 720.0
+mouse_default_cursor_shape = 2
+flat = true
+
 [node name="BoxCurrent" type="TextureRect" parent="GameplayLayer" unique_id=2123755704]
 layout_mode = 1
 offset_left = 178.0
@@ -237,5 +247,61 @@ offset_bottom = 274.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.35, 0.32, 0.28, 0.8)
 theme_override_font_sizes/font_size = 9
-text = "TAP TO CONTINUE"
+text = "TAP TO WRITE IT DOWN"
 horizontal_alignment = 1
+
+[node name="NotebookOverlay" type="Control" parent="HUDLayer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="OpenNotebook" type="TextureRect" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 65.0
+offset_right = 415.0
+offset_bottom = 715.0
+mouse_filter = 2
+texture = ExtResource("12_notebook_open")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NotebookThought" type="Label" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 72.0
+offset_top = 245.0
+offset_right = 358.0
+offset_bottom = 455.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.16, 0.13, 0.1, 1)
+theme_override_font_sizes/font_size = 18
+text = "No ideas to write down yet."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="WriteIdeaButton" type="Button" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 122.0
+offset_top = 535.0
+offset_right = 308.0
+offset_bottom = 584.0
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 14
+text = "WRITE IT DOWN"
+
+[node name="CloseNotebookButton" type="Button" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 365.0
+offset_top = 93.0
+offset_right = 410.0
+offset_bottom = 138.0
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 18
+text = "×"
+flat = true
