@@ -33,16 +33,17 @@ var active_thought_start_position: Vector2
 var current_destination := "left"
 var correct_routes := 0
 var wrong_routes := 0
+var missed_boxes := 0
 var boxes_routed := 0
 var premises_saved := 0
-var behind_count := 0
 var first_thought_shown := false
 var second_thought_shown := false
-var work_pressure_active := false
 var active_thought := ""
 var pending_save_text := ""
 var notebook_open := false
 var box_waiting_for_route := false
+var auto_route_enabled := false
+var box_cycle_id := 0
 
 # Work notebook:
 #   left page  = PREMISES already written down
@@ -61,6 +62,7 @@ const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
 const PRACTICE_BOXES_BEFORE_THOUGHT := 3
 const SECOND_THOUGHT_AT_BOX := 5
+const AUTO_ROUTE_DELAY := 2.0
 
 var left_normal = preload("res://assets/boxes/left_button.png")
 var left_pressed = preload("res://assets/boxes/left_button_pressed.png")
@@ -110,16 +112,43 @@ func _assign_destination() -> void:
 
 func _on_box_ready() -> void:
 	box_waiting_for_route = true
-	left_hitbox.disabled = false
-	right_hitbox.disabled = false
-	notebook_hitbox.disabled = false
 
-	# The first idea was completely safe. Two boxes later, introduce the next
-	# lesson: thoughts can happen while work is still waiting on Darren.
+	# Once the safe tutorial is over, work keeps moving whether Darren pays
+	# attention or not. Each ready box gets its own deadline.
+	if auto_route_enabled:
+		box_cycle_id += 1
+		_start_auto_route_countdown(box_cycle_id)
+
+	if notebook_open:
+		left_hitbox.disabled = true
+		right_hitbox.disabled = true
+		notebook_hitbox.disabled = true
+	else:
+		left_hitbox.disabled = false
+		right_hitbox.disabled = false
+		notebook_hitbox.disabled = false
+
+	# Two boxes after the first saved/lost thought, introduce a thought while
+	# a live box is waiting. The box deadline keeps running underneath it.
 	if premises_saved > 0 and boxes_routed >= SECOND_THOUGHT_AT_BOX and not second_thought_shown:
 		second_thought_shown = true
-		work_pressure_active = true
 		_show_pressure_thought()
+
+
+func _start_auto_route_countdown(cycle_id: int) -> void:
+	await get_tree().create_timer(AUTO_ROUTE_DELAY).timeout
+
+	# If the player already handled this box, its cycle id will no longer match.
+	if cycle_id != box_cycle_id or not box_waiting_for_route:
+		return
+
+	missed_boxes += 1
+	print("Missed boxes: ", missed_boxes)
+
+	# Doing nothing still sends the box somewhere. It deliberately travels the
+	# wrong direction so a missed box has the same consequence as a bad route.
+	var wrong_direction := "right" if current_destination == "left" else "left"
+	_route_box(wrong_direction, true)
 
 
 func _on_left_down() -> void:
@@ -140,11 +169,14 @@ func _on_right_up() -> void:
 	_route_box("right")
 
 
-func _route_box(direction: String) -> void:
-	if notebook_open:
+func _route_box(direction: String, forced := false) -> void:
+	if notebook_open and not forced:
+		return
+	if not box_waiting_for_route:
 		return
 
 	box_waiting_for_route = false
+	box_cycle_id += 1 # invalidate the countdown for the box that just routed
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
 	notebook_hitbox.disabled = true
@@ -195,23 +227,13 @@ func _show_route_feedback(is_correct: bool) -> void:
 	tween.finished.connect(route_feedback.hide)
 
 
-func _show_distraction_feedback() -> void:
-	route_feedback.modulate.a = 1.0
-	route_feedback.text = "FALLING BEHIND"
-	route_feedback.add_theme_color_override("font_color", Color(0.88, 0.66, 0.34, 1.0))
-	route_feedback.show()
-
-	var tween = create_tween()
-	tween.tween_interval(0.8)
-	tween.tween_property(route_feedback, "modulate:a", 0.0, 0.25)
-	tween.finished.connect(route_feedback.hide)
-
-
 func _reset_box() -> void:
 	box_routed.hide()
 	box_routed.position = box_ready_position
 	belt.position = belt_start_position
 
+	# Keep the first three boxes completely safe. The conveyor pauses here for
+	# Darren's first thought so the player learns the notebook before pressure.
 	if boxes_routed >= PRACTICE_BOXES_BEFORE_THOUGHT and not first_thought_shown:
 		first_thought_shown = true
 		_show_first_thought()
@@ -254,8 +276,8 @@ func _show_pressure_thought() -> void:
 	thought_bubble.modulate.a = 0.0
 	thought_bubble.show()
 
-	# Unlike the first tutorial thought, the work controls stay live here.
-	# The player can route the waiting box first, or stop to use the notebook.
+	# Unlike the first tutorial thought, the work controls stay live and the
+	# current box countdown does not stop.
 	var tween = create_tween()
 	tween.tween_property(thought_bubble, "modulate:a", 1.0, 0.2)
 
@@ -275,13 +297,6 @@ func _on_thought_bubble_input(event: InputEvent) -> void:
 func _open_notebook() -> void:
 	if notebook_open:
 		return
-
-	# After the safe tutorial, stopping work while a box is waiting adds to
-	# Darren's behind count. Later Troy can react to this same state.
-	if work_pressure_active and box_waiting_for_route:
-		behind_count += 1
-		print("Behind count: ", behind_count)
-		_show_distraction_feedback()
 
 	notebook_open = true
 	left_hitbox.disabled = true
@@ -331,26 +346,12 @@ func _close_notebook() -> void:
 	notebook_open = false
 	notebook_overlay.hide()
 
-	# An unwritten idea is temporary. Closing the notebook loses it.
+	# Closing without writing loses the temporary idea.
 	if not active_thought.is_empty():
 		active_thought = ""
 		thought_bubble.hide()
 
-		# During the first safe thought there is no box waiting, so resume by
-		# feeding a new one. During pressure, return to the box already waiting.
-		if box_waiting_for_route:
-			left_hitbox.disabled = false
-			right_hitbox.disabled = false
-			notebook_hitbox.disabled = false
-		else:
-			notebook_hitbox.disabled = true
-			_start_next_box()
-		return
-
-	if box_waiting_for_route:
-		left_hitbox.disabled = false
-		right_hitbox.disabled = false
-		notebook_hitbox.disabled = false
+	_resume_work_after_notebook()
 
 
 func _write_active_thought() -> void:
@@ -361,7 +362,7 @@ func _write_active_thought() -> void:
 	write_idea_button.disabled = true
 
 	# The idea visibly crosses the spiral from the right IDEAS page into the
-	# left PREMISES page. Once the movement finishes, it becomes persistent material.
+	# left PREMISES page. The live conveyor keeps running underneath this overlay.
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD)
@@ -390,16 +391,25 @@ func _finish_notebook_save_and_resume() -> void:
 	notebook_open = false
 	notebook_overlay.hide()
 	thought_bubble.hide()
+	_resume_work_after_notebook()
 
-	# If this idea happened while a box was already waiting, return to that
-	# same box instead of silently skipping it. Otherwise feed the next box.
+
+func _resume_work_after_notebook() -> void:
+	# Resolving the first safe thought starts the real moving shift. From this
+	# point on, boxes will route themselves if the player does nothing.
+	if not auto_route_enabled:
+		auto_route_enabled = true
+		notebook_hitbox.disabled = true
+		_start_next_box()
+		return
+
+	# During live work, never manufacture a replacement box here. The conveyor
+	# is already progressing behind the notebook. Just restore controls if the
+	# current box is still waiting for the player.
 	if box_waiting_for_route:
 		left_hitbox.disabled = false
 		right_hitbox.disabled = false
 		notebook_hitbox.disabled = false
-	else:
-		notebook_hitbox.disabled = true
-		_start_next_box()
 
 
 # Future home/later notebook behavior: a tested premise can graduate into a
