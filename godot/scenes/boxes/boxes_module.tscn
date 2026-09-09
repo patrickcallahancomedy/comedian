@@ -212,6 +212,54 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="QuotaHUD" type="Label" parent="HUDLayer"]
+visible = false
+layout_mode = 0
+offset_left = 135.0
+offset_top = 196.0
+offset_right = 295.0
+offset_bottom = 220.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.94, 0.88, 0.72, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.07, 0.06, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "QUOTA  0 / 8"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ShiftCountHUD" type="Label" parent="HUDLayer"]
+visible = false
+layout_mode = 0
+offset_left = 150.0
+offset_top = 220.0
+offset_right = 280.0
+offset_bottom = 239.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.86, 0.82, 0.72, 0.9)
+theme_override_colors/font_outline_color = Color(0.08, 0.07, 0.06, 0.9)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 10
+text = "BOXES  0 / 10"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ShiftResultLabel" type="Label" parent="HUDLayer"]
+visible = false
+layout_mode = 0
+offset_left = 65.0
+offset_top = 260.0
+offset_right = 365.0
+offset_bottom = 395.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.96, 0.91, 0.79, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.07, 0.06, 0.95)
+theme_override_constants/outline_size = 7
+theme_override_font_sizes/font_size = 23
+text = "SHIFT COMPLETE\nQUOTA MET\n8 / 8"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="ThoughtBubble" type="TextureRect" parent="HUDLayer" unique_id=258363018]
 visible = false
 layout_mode = 0
