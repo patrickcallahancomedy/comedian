@@ -271,28 +271,88 @@ texture = ExtResource("12_notebook_open")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="NotebookThought" type="Label" parent="HUDLayer/NotebookOverlay"]
+[node name="TestedTitle" type="Label" parent="HUDLayer/NotebookOverlay"]
 layout_mode = 0
-offset_left = 72.0
-offset_top = 245.0
-offset_right = 358.0
-offset_bottom = 455.0
+offset_left = 48.0
+offset_top = 236.0
+offset_right = 195.0
+offset_bottom = 260.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.18, 0.14, 0.1, 0.9)
+theme_override_font_sizes/font_size = 12
+text = "TESTED IDEAS"
+horizontal_alignment = 1
+
+[node name="TestedIdeas" type="Label" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 52.0
+offset_top = 268.0
+offset_right = 197.0
+offset_bottom = 462.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.19, 0.15, 0.11, 1)
+theme_override_font_sizes/font_size = 11
+text = "Nothing tested yet."
+autowrap_mode = 2
+
+[node name="PremisesTitle" type="Label" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 235.0
+offset_top = 236.0
+offset_right = 382.0
+offset_bottom = 260.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.18, 0.14, 0.1, 0.9)
+theme_override_font_sizes/font_size = 12
+text = "PREMISES"
+horizontal_alignment = 1
+
+[node name="PremisesList" type="Label" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 238.0
+offset_top = 268.0
+offset_right = 382.0
+offset_bottom = 357.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.19, 0.15, 0.11, 1)
+theme_override_font_sizes/font_size = 11
+text = "No premises saved yet."
+autowrap_mode = 2
+
+[node name="NewThoughtTitle" type="Label" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 238.0
+offset_top = 365.0
+offset_right = 382.0
+offset_bottom = 386.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.36, 0.24, 0.12, 0.9)
+theme_override_font_sizes/font_size = 10
+text = "NEW THOUGHT"
+horizontal_alignment = 1
+
+[node name="ActiveThought" type="Label" parent="HUDLayer/NotebookOverlay"]
+layout_mode = 0
+offset_left = 238.0
+offset_top = 390.0
+offset_right = 382.0
+offset_bottom = 474.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.16, 0.13, 0.1, 1)
-theme_override_font_sizes/font_size = 18
-text = "No ideas to write down yet."
+theme_override_font_sizes/font_size = 11
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
 [node name="WriteIdeaButton" type="Button" parent="HUDLayer/NotebookOverlay"]
 layout_mode = 0
-offset_left = 122.0
-offset_top = 535.0
-offset_right = 308.0
-offset_bottom = 584.0
+offset_left = 247.0
+offset_top = 485.0
+offset_right = 372.0
+offset_bottom = 520.0
 mouse_default_cursor_shape = 2
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 11
 text = "WRITE IT DOWN"
 
 [node name="CloseNotebookButton" type="Button" parent="HUDLayer/NotebookOverlay"]
