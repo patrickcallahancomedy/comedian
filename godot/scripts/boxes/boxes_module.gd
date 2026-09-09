@@ -11,6 +11,7 @@ extends Control
 @onready var box_routed: TextureRect = $GameplayLayer/BoxRouted
 @onready var destination_label: Label = $GameplayLayer/BoxCurrent/DestinationTag/DestinationLabel
 @onready var route_feedback: Label = $GameplayLayer/RouteFeedback
+@onready var thought_bubble: PanelContainer = $HUDLayer/ThoughtBubble
 
 var belt_start_position: Vector2
 var box_spawn_position: Vector2
@@ -19,9 +20,11 @@ var current_destination := "left"
 var correct_routes := 0
 var wrong_routes := 0
 var boxes_routed := 0
+var first_thought_shown := false
 
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
+const PRACTICE_BOXES_BEFORE_THOUGHT := 3
 
 var left_normal = preload("res://assets/boxes/left_button.png")
 var left_pressed = preload("res://assets/boxes/left_button_pressed.png")
@@ -36,6 +39,7 @@ func _ready() -> void:
 	box_ready_position = box_routed.position
 	_assign_destination()
 	route_feedback.hide()
+	thought_bubble.hide()
 	
 	left_hitbox.button_down.connect(_on_left_down)
 	left_hitbox.button_up.connect(_on_left_up)
@@ -86,6 +90,7 @@ func _route_box(direction: String) -> void:
 	right_hitbox.disabled = true
 	boxes_routed += 1
 	print("Boxes routed: ", boxes_routed)
+
 	var is_correct := direction == current_destination
 	if is_correct:
 		correct_routes += 1
@@ -137,6 +142,13 @@ func _reset_box() -> void:
 	box_routed.position = box_ready_position
 	belt.position = belt_start_position
 
+	# The opening is intentionally quiet: after a few practice boxes, stop
+	# the conveyor and let Darren's first thought become the player's focus.
+	if boxes_routed >= PRACTICE_BOXES_BEFORE_THOUGHT and not first_thought_shown:
+		first_thought_shown = true
+		_show_first_thought()
+		return
+
 	box_current.show()
 	box_current.position = box_spawn_position
 	_assign_destination()
@@ -147,3 +159,9 @@ func _reset_box() -> void:
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
 	tween.finished.connect(_on_box_ready)
+
+
+func _show_first_thought() -> void:
+	left_hitbox.disabled = true
+	right_hitbox.disabled = true
+	thought_bubble.show()
