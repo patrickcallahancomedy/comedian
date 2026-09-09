@@ -19,13 +19,17 @@ const FIRST_THOUGHT := "I wonder why they call it a lunch break when I never sto
 @onready var thought_bubble: TextureRect = $HUDLayer/ThoughtBubble
 @onready var thought_text: Label = $HUDLayer/ThoughtBubble/ThoughtText
 @onready var notebook_overlay: Control = $HUDLayer/NotebookOverlay
-@onready var notebook_thought: Label = $HUDLayer/NotebookOverlay/NotebookThought
+@onready var tested_ideas_label: Label = $HUDLayer/NotebookOverlay/TestedIdeas
+@onready var premises_list_label: Label = $HUDLayer/NotebookOverlay/PremisesList
+@onready var new_thought_title: Label = $HUDLayer/NotebookOverlay/NewThoughtTitle
+@onready var active_thought_label: Label = $HUDLayer/NotebookOverlay/ActiveThought
 @onready var write_idea_button: Button = $HUDLayer/NotebookOverlay/WriteIdeaButton
 @onready var close_notebook_button: Button = $HUDLayer/NotebookOverlay/CloseNotebookButton
 
 var belt_start_position: Vector2
 var box_spawn_position: Vector2
 var box_ready_position: Vector2
+var active_thought_start_position: Vector2
 var current_destination := "left"
 var correct_routes := 0
 var wrong_routes := 0
@@ -33,8 +37,14 @@ var boxes_routed := 0
 var ideas_saved := 0
 var first_thought_shown := false
 var active_thought := ""
+var pending_save_text := ""
 var notebook_open := false
 var box_waiting_for_route := false
+
+# Right page = saved premises. Left page = ideas that have been tested later.
+# The thought itself is temporary and only enters premises if WRITE IT DOWN is pressed.
+var premises: Array[String] = []
+var tested_ideas: Array[String] = []
 
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
@@ -51,6 +61,7 @@ func _ready() -> void:
 	belt_start_position = belt.position
 	box_spawn_position = box_current.position
 	box_ready_position = box_routed.position
+	active_thought_start_position = active_thought_label.position
 	thought_bubble.texture = THOUGHT_BUBBLE_TEXTURE
 	thought_text.text = FIRST_THOUGHT
 	_assign_destination()
@@ -230,19 +241,42 @@ func _open_notebook() -> void:
 	right_hitbox.disabled = true
 	notebook_hitbox.disabled = true
 	thought_bubble.hide()
-
-	if active_thought.is_empty():
-		notebook_thought.text = "No ideas to write down yet."
-		write_idea_button.hide()
-	else:
-		notebook_thought.text = active_thought
-		write_idea_button.show()
+	_refresh_notebook_pages()
 
 	notebook_overlay.modulate.a = 0.0
 	notebook_overlay.show()
 
 	var tween = create_tween()
 	tween.tween_property(notebook_overlay, "modulate:a", 1.0, 0.15)
+
+
+func _refresh_notebook_pages() -> void:
+	tested_ideas_label.text = _format_idea_list(tested_ideas, "Nothing tested yet.")
+	premises_list_label.text = _format_idea_list(premises, "No premises saved yet.")
+
+	active_thought_label.position = active_thought_start_position
+	active_thought_label.modulate.a = 1.0
+	write_idea_button.disabled = false
+
+	if active_thought.is_empty():
+		new_thought_title.hide()
+		active_thought_label.hide()
+		write_idea_button.hide()
+	else:
+		new_thought_title.show()
+		active_thought_label.text = active_thought
+		active_thought_label.show()
+		write_idea_button.show()
+
+
+func _format_idea_list(items: Array[String], empty_text: String) -> String:
+	if items.is_empty():
+		return empty_text
+
+	var lines := PackedStringArray()
+	for item in items:
+		lines.append("• " + item)
+	return "\n\n".join(lines)
 
 
 func _close_notebook() -> void:
@@ -252,11 +286,13 @@ func _close_notebook() -> void:
 	notebook_open = false
 	notebook_overlay.hide()
 
-	# During the first thought tutorial, closing without saving returns the
-	# player to the thought instead of silently throwing the idea away.
+	# Thoughts are temporary. If the player closes the notebook without
+	# writing one down, that thought is gone and never becomes a premise.
 	if not active_thought.is_empty():
-		thought_bubble.show()
-		notebook_hitbox.disabled = false
+		active_thought = ""
+		thought_bubble.hide()
+		notebook_hitbox.disabled = true
+		_start_next_box()
 		return
 
 	if box_waiting_for_route:
@@ -266,15 +302,50 @@ func _close_notebook() -> void:
 
 
 func _write_active_thought() -> void:
-	if active_thought.is_empty():
+	if active_thought.is_empty() or not pending_save_text.is_empty():
 		return
 
+	pending_save_text = active_thought
+	write_idea_button.disabled = true
+
+	# Simple first-pass save animation: the temporary thought slides upward
+	# toward the premises list and fades, so it feels like it is entering the notebook.
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_IN)
+	tween.tween_property(active_thought_label, "position:y", premises_list_label.position.y, 0.35)
+	tween.tween_property(active_thought_label, "modulate:a", 0.0, 0.35)
+	tween.finished.connect(_finish_write_active_thought)
+
+
+func _finish_write_active_thought() -> void:
+	premises.append(pending_save_text)
 	ideas_saved += 1
 	print("Ideas saved: ", ideas_saved)
+
+	pending_save_text = ""
 	active_thought = ""
+	_refresh_notebook_pages()
+
+	# Leave the newly saved premise visible for a beat before returning to work.
+	var tween = create_tween()
+	tween.tween_interval(0.35)
+	tween.finished.connect(_finish_notebook_save_and_resume)
+
+
+func _finish_notebook_save_and_resume() -> void:
 	notebook_open = false
 	notebook_overlay.hide()
 	thought_bubble.hide()
 	notebook_hitbox.disabled = true
-
 	_start_next_box()
+
+
+# Later modules can call this after a premise has been tried on someone or onstage.
+func mark_premise_tested(premise_index: int) -> void:
+	if premise_index < 0 or premise_index >= premises.size():
+		return
+
+	var tested_idea := premises.pop_at(premise_index)
+	tested_ideas.append(tested_idea)
