@@ -1,6 +1,7 @@
 extends Control
 
 const ThoughtBubbleAsset = preload("res://scripts/boxes/thought_bubble_asset.gd")
+const THOUGHT_BUBBLE_PATH := "res://assets/boxes/thought_bubble.png"
 
 @onready var left_button_art: TextureRect = $GameplayLayer/LeftButton
 @onready var right_button_art: TextureRect = $GameplayLayer/RightButton
@@ -62,6 +63,14 @@ func _ready() -> void:
 
 
 func _load_thought_bubble_texture() -> void:
+	# Web builds materialize the real PNG before Godot exports the project.
+	# Local/editor builds can still fall back to the embedded PNG data.
+	if ResourceLoader.exists(THOUGHT_BUBBLE_PATH):
+		var texture := load(THOUGHT_BUBBLE_PATH) as Texture2D
+		if texture != null:
+			thought_bubble.texture = texture
+			return
+
 	var png_bytes := Marshalls.base64_to_raw(ThoughtBubbleAsset.PNG_BASE64)
 	var image := Image.new()
 	var error := image.load_png_from_buffer(png_bytes)
