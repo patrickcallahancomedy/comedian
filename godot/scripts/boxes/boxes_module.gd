@@ -1,19 +1,27 @@
 extends Control
 
 const THOUGHT_BUBBLE_TEXTURE = preload("res://assets/boxes/E45CC4E6-9696-43E3-8029-2CAAF946E8B9.png")
+const FIRST_THOUGHT := "I wonder why they call it a lunch break when I never stop being tired."
 
 @onready var left_button_art: TextureRect = $GameplayLayer/LeftButton
 @onready var right_button_art: TextureRect = $GameplayLayer/RightButton
 
 @onready var left_hitbox: Button = $GameplayLayer/LeftHitbox
 @onready var right_hitbox: Button = $GameplayLayer/RightHitbox
+@onready var notebook_hitbox: Button = $GameplayLayer/NotebookHitbox
 
 @onready var belt: TextureRect = $GameplayLayer/Belt
 @onready var box_current: TextureRect = $GameplayLayer/BoxCurrent
 @onready var box_routed: TextureRect = $GameplayLayer/BoxRouted
 @onready var destination_label: Label = $GameplayLayer/BoxCurrent/DestinationTag/DestinationLabel
 @onready var route_feedback: Label = $GameplayLayer/RouteFeedback
+
 @onready var thought_bubble: TextureRect = $HUDLayer/ThoughtBubble
+@onready var thought_text: Label = $HUDLayer/ThoughtBubble/ThoughtText
+@onready var notebook_overlay: Control = $HUDLayer/NotebookOverlay
+@onready var notebook_thought: Label = $HUDLayer/NotebookOverlay/NotebookThought
+@onready var write_idea_button: Button = $HUDLayer/NotebookOverlay/WriteIdeaButton
+@onready var close_notebook_button: Button = $HUDLayer/NotebookOverlay/CloseNotebookButton
 
 var belt_start_position: Vector2
 var box_spawn_position: Vector2
@@ -22,7 +30,11 @@ var current_destination := "left"
 var correct_routes := 0
 var wrong_routes := 0
 var boxes_routed := 0
+var ideas_saved := 0
 var first_thought_shown := false
+var active_thought := ""
+var notebook_open := false
+var box_waiting_for_route := false
 
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
@@ -40,21 +52,28 @@ func _ready() -> void:
 	box_spawn_position = box_current.position
 	box_ready_position = box_routed.position
 	thought_bubble.texture = THOUGHT_BUBBLE_TEXTURE
+	thought_text.text = FIRST_THOUGHT
 	_assign_destination()
+
 	route_feedback.hide()
 	thought_bubble.hide()
+	notebook_overlay.hide()
+	write_idea_button.hide()
 
 	left_hitbox.button_down.connect(_on_left_down)
 	left_hitbox.button_up.connect(_on_left_up)
-
 	right_hitbox.button_down.connect(_on_right_down)
 	right_hitbox.button_up.connect(_on_right_up)
+
+	notebook_hitbox.pressed.connect(_open_notebook)
 	thought_bubble.gui_input.connect(_on_thought_bubble_input)
+	write_idea_button.pressed.connect(_write_active_thought)
+	close_notebook_button.pressed.connect(_close_notebook)
 
 	box_routed.hide()
-
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
+	notebook_hitbox.disabled = true
 
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
@@ -67,8 +86,10 @@ func _assign_destination() -> void:
 
 
 func _on_box_ready() -> void:
+	box_waiting_for_route = true
 	left_hitbox.disabled = false
 	right_hitbox.disabled = false
+	notebook_hitbox.disabled = false
 
 
 func _on_left_down() -> void:
@@ -90,8 +111,13 @@ func _on_right_up() -> void:
 
 
 func _route_box(direction: String) -> void:
+	if notebook_open:
+		return
+
+	box_waiting_for_route = false
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
+	notebook_hitbox.disabled = true
 	boxes_routed += 1
 	print("Boxes routed: ", boxes_routed)
 
@@ -157,12 +183,14 @@ func _reset_box() -> void:
 
 
 func _start_next_box() -> void:
+	box_waiting_for_route = false
 	box_current.show()
 	box_current.position = box_spawn_position
 	_assign_destination()
 
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
+	notebook_hitbox.disabled = true
 
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
@@ -170,8 +198,10 @@ func _start_next_box() -> void:
 
 
 func _show_first_thought() -> void:
+	active_thought = FIRST_THOUGHT
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
+	notebook_hitbox.disabled = false
 	thought_bubble.modulate.a = 0.0
 	thought_bubble.show()
 
@@ -180,17 +210,71 @@ func _show_first_thought() -> void:
 
 
 func _on_thought_bubble_input(event: InputEvent) -> void:
-	if not thought_bubble.visible:
+	if not thought_bubble.visible or notebook_open:
 		return
 
 	if event is InputEventMouseButton:
 		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			_dismiss_first_thought()
+			_open_notebook()
 	elif event is InputEventScreenTouch:
 		if event.pressed:
-			_dismiss_first_thought()
+			_open_notebook()
 
 
-func _dismiss_first_thought() -> void:
+func _open_notebook() -> void:
+	if notebook_open:
+		return
+
+	notebook_open = true
+	left_hitbox.disabled = true
+	right_hitbox.disabled = true
+	notebook_hitbox.disabled = true
 	thought_bubble.hide()
+
+	if active_thought.is_empty():
+		notebook_thought.text = "No ideas to write down yet."
+		write_idea_button.hide()
+	else:
+		notebook_thought.text = active_thought
+		write_idea_button.show()
+
+	notebook_overlay.modulate.a = 0.0
+	notebook_overlay.show()
+
+	var tween = create_tween()
+	tween.tween_property(notebook_overlay, "modulate:a", 1.0, 0.15)
+
+
+func _close_notebook() -> void:
+	if not notebook_open:
+		return
+
+	notebook_open = false
+	notebook_overlay.hide()
+
+	# During the first thought tutorial, closing without saving returns the
+	# player to the thought instead of silently throwing the idea away.
+	if not active_thought.is_empty():
+		thought_bubble.show()
+		notebook_hitbox.disabled = false
+		return
+
+	if box_waiting_for_route:
+		left_hitbox.disabled = false
+		right_hitbox.disabled = false
+		notebook_hitbox.disabled = false
+
+
+func _write_active_thought() -> void:
+	if active_thought.is_empty():
+		return
+
+	ideas_saved += 1
+	print("Ideas saved: ", ideas_saved)
+	active_thought = ""
+	notebook_open = false
+	notebook_overlay.hide()
+	thought_bubble.hide()
+	notebook_hitbox.disabled = true
+
 	_start_next_box()
