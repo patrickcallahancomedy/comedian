@@ -25,14 +25,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Materialize embedded thought bubble asset
-        shell: bash
-        run: |
-          encoded="$(sed -n 's/^const PNG_BASE64 := "\(.*\)"$/\1/p' godot/scripts/boxes/thought_bubble_asset.gd)"
-          test -n "$encoded"
-          printf '%s' "$encoded" | base64 --decode > godot/assets/boxes/thought_bubble.png
-          ls -lh godot/assets/boxes/thought_bubble.png
-
       - name: Prepare Godot export templates
         shell: bash
         run: |
