@@ -1,7 +1,6 @@
 extends Control
 
-const ThoughtBubbleAsset = preload("res://scripts/boxes/thought_bubble_asset.gd")
-const THOUGHT_BUBBLE_PATH := "res://assets/boxes/thought_bubble.png"
+const THOUGHT_BUBBLE_TEXTURE = preload("res://assets/boxes/E45CC4E6-9696-43E3-8029-2CAAF946E8B9.png")
 
 @onready var left_button_art: TextureRect = $GameplayLayer/LeftButton
 @onready var right_button_art: TextureRect = $GameplayLayer/RightButton
@@ -40,7 +39,7 @@ func _ready() -> void:
 	belt_start_position = belt.position
 	box_spawn_position = box_current.position
 	box_ready_position = box_routed.position
-	_load_thought_bubble_texture()
+	thought_bubble.texture = THOUGHT_BUBBLE_TEXTURE
 	_assign_destination()
 	route_feedback.hide()
 	thought_bubble.hide()
@@ -60,26 +59,6 @@ func _ready() -> void:
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
 	tween.finished.connect(_on_box_ready)
-
-
-func _load_thought_bubble_texture() -> void:
-	# Web builds materialize the real PNG before Godot exports the project.
-	# Local/editor builds can still fall back to the embedded PNG data.
-	if ResourceLoader.exists(THOUGHT_BUBBLE_PATH):
-		var texture := load(THOUGHT_BUBBLE_PATH) as Texture2D
-		if texture != null:
-			thought_bubble.texture = texture
-			return
-
-	var png_bytes := Marshalls.base64_to_raw(ThoughtBubbleAsset.PNG_BASE64)
-	var image := Image.new()
-	var error := image.load_png_from_buffer(png_bytes)
-
-	if error != OK:
-		push_error("Could not load thought bubble art.")
-		return
-
-	thought_bubble.texture = ImageTexture.create_from_image(image)
 
 
 func _assign_destination() -> void:
