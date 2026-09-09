@@ -18,6 +18,9 @@ const SECOND_THOUGHT := "Every box has somewhere to be before I do."
 @onready var destination_label: Label = $GameplayLayer/BoxCurrent/DestinationTag/DestinationLabel
 @onready var route_feedback: Label = $GameplayLayer/RouteFeedback
 
+@onready var quota_hud: Label = $HUDLayer/QuotaHUD
+@onready var shift_count_hud: Label = $HUDLayer/ShiftCountHUD
+@onready var shift_result_label: Label = $HUDLayer/ShiftResultLabel
 @onready var thought_bubble: TextureRect = $HUDLayer/ThoughtBubble
 @onready var thought_text: Label = $HUDLayer/ThoughtBubble/ThoughtText
 @onready var notebook_overlay: Control = $HUDLayer/NotebookOverlay
@@ -45,6 +48,13 @@ var box_waiting_for_route := false
 var auto_route_enabled := false
 var box_cycle_id := 0
 
+# The tutorial boxes teach the controls without pressure. After the first
+# notebook interaction, a separate live shift begins with a visible goal.
+var shift_active := false
+var shift_finished := false
+var shift_boxes_processed := 0
+var shift_correct_routes := 0
+
 # Work notebook:
 #   left page  = PREMISES already written down
 #   right page = IDEAS currently in Darren's head
@@ -61,8 +71,10 @@ var tested_jokes: Array[String] = []
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
 const PRACTICE_BOXES_BEFORE_THOUGHT := 3
-const SECOND_THOUGHT_AT_BOX := 5
+const SECOND_THOUGHT_AFTER_SHIFT_BOXES := 2
 const AUTO_ROUTE_DELAY := 2.0
+const SHIFT_QUOTA := 8
+const SHIFT_BOX_LIMIT := 10
 
 var left_normal = preload("res://assets/boxes/left_button.png")
 var left_pressed = preload("res://assets/boxes/left_button_pressed.png")
@@ -81,6 +93,9 @@ func _ready() -> void:
 	_assign_destination()
 
 	route_feedback.hide()
+	quota_hud.hide()
+	shift_count_hud.hide()
+	shift_result_label.hide()
 	thought_bubble.hide()
 	notebook_overlay.hide()
 	write_idea_button.hide()
@@ -111,6 +126,9 @@ func _assign_destination() -> void:
 
 
 func _on_box_ready() -> void:
+	if shift_finished:
+		return
+
 	box_waiting_for_route = true
 
 	# Once the safe tutorial is over, work keeps moving whether Darren pays
@@ -128,9 +146,9 @@ func _on_box_ready() -> void:
 		right_hitbox.disabled = false
 		notebook_hitbox.disabled = false
 
-	# Two boxes after the first saved/lost thought, introduce a thought while
-	# a live box is waiting. The box deadline keeps running underneath it.
-	if premises_saved > 0 and boxes_routed >= SECOND_THOUGHT_AT_BOX and not second_thought_shown:
+	# After a couple live-shift boxes, introduce a thought while a real box is
+	# waiting. The quota and deadline continue underneath the distraction.
+	if shift_active and shift_boxes_processed >= SECOND_THOUGHT_AFTER_SHIFT_BOXES and not second_thought_shown:
 		second_thought_shown = true
 		_show_pressure_thought()
 
@@ -139,7 +157,7 @@ func _start_auto_route_countdown(cycle_id: int) -> void:
 	await get_tree().create_timer(AUTO_ROUTE_DELAY).timeout
 
 	# If the player already handled this box, its cycle id will no longer match.
-	if cycle_id != box_cycle_id or not box_waiting_for_route:
+	if cycle_id != box_cycle_id or not box_waiting_for_route or shift_finished:
 		return
 
 	missed_boxes += 1
@@ -170,6 +188,8 @@ func _on_right_up() -> void:
 
 
 func _route_box(direction: String, forced := false) -> void:
+	if shift_finished:
+		return
 	if notebook_open and not forced:
 		return
 	if not box_waiting_for_route:
@@ -188,6 +208,13 @@ func _route_box(direction: String, forced := false) -> void:
 		correct_routes += 1
 	else:
 		wrong_routes += 1
+
+	if shift_active:
+		shift_boxes_processed += 1
+		if is_correct:
+			shift_correct_routes += 1
+		_update_shift_hud()
+
 	_show_route_feedback(is_correct)
 
 	box_current.hide()
@@ -232,6 +259,10 @@ func _reset_box() -> void:
 	box_routed.position = box_ready_position
 	belt.position = belt_start_position
 
+	if shift_active and shift_boxes_processed >= SHIFT_BOX_LIMIT:
+		_end_live_shift()
+		return
+
 	# Keep the first three boxes completely safe. The conveyor pauses here for
 	# Darren's first thought so the player learns the notebook before pressure.
 	if boxes_routed >= PRACTICE_BOXES_BEFORE_THOUGHT and not first_thought_shown:
@@ -243,6 +274,9 @@ func _reset_box() -> void:
 
 
 func _start_next_box() -> void:
+	if shift_finished:
+		return
+
 	box_waiting_for_route = false
 	box_current.show()
 	box_current.position = box_spawn_position
@@ -255,6 +289,46 @@ func _start_next_box() -> void:
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
 	tween.finished.connect(_on_box_ready)
+
+
+func _start_live_shift() -> void:
+	shift_active = true
+	shift_finished = false
+	shift_boxes_processed = 0
+	shift_correct_routes = 0
+	auto_route_enabled = true
+	_update_shift_hud()
+	quota_hud.show()
+	shift_count_hud.show()
+	_start_next_box()
+
+
+func _update_shift_hud() -> void:
+	quota_hud.text = "QUOTA  %d / %d" % [shift_correct_routes, SHIFT_QUOTA]
+	shift_count_hud.text = "BOXES  %d / %d" % [shift_boxes_processed, SHIFT_BOX_LIMIT]
+
+
+func _end_live_shift() -> void:
+	shift_active = false
+	shift_finished = true
+	auto_route_enabled = false
+	box_waiting_for_route = false
+	box_cycle_id += 1
+
+	left_hitbox.disabled = true
+	right_hitbox.disabled = true
+	notebook_hitbox.disabled = true
+	thought_bubble.hide()
+	notebook_overlay.hide()
+	notebook_open = false
+
+	var quota_met := shift_correct_routes >= SHIFT_QUOTA
+	shift_result_label.text = (
+		"SHIFT COMPLETE\nQUOTA MET\n%d / %d" % [shift_correct_routes, SHIFT_QUOTA]
+		if quota_met
+		else "SHIFT COMPLETE\nMISSED QUOTA\n%d / %d" % [shift_correct_routes, SHIFT_QUOTA]
+	)
+	shift_result_label.show()
 
 
 func _show_first_thought() -> void:
@@ -283,7 +357,7 @@ func _show_pressure_thought() -> void:
 
 
 func _on_thought_bubble_input(event: InputEvent) -> void:
-	if not thought_bubble.visible or notebook_open:
+	if not thought_bubble.visible or notebook_open or shift_finished:
 		return
 
 	if event is InputEventMouseButton:
@@ -295,7 +369,7 @@ func _on_thought_bubble_input(event: InputEvent) -> void:
 
 
 func _open_notebook() -> void:
-	if notebook_open:
+	if notebook_open or shift_finished:
 		return
 
 	notebook_open = true
@@ -388,6 +462,9 @@ func _finish_write_active_thought() -> void:
 
 
 func _finish_notebook_save_and_resume() -> void:
+	if shift_finished:
+		return
+
 	notebook_open = false
 	notebook_overlay.hide()
 	thought_bubble.hide()
@@ -395,12 +472,13 @@ func _finish_notebook_save_and_resume() -> void:
 
 
 func _resume_work_after_notebook() -> void:
-	# Resolving the first safe thought starts the real moving shift. From this
-	# point on, boxes will route themselves if the player does nothing.
+	if shift_finished:
+		return
+
+	# Resolving the first safe thought starts the actual scored shift. The quota
+	# appears now so the opening tutorial still stays clean and low-pressure.
 	if not auto_route_enabled:
-		auto_route_enabled = true
-		notebook_hitbox.disabled = true
-		_start_next_box()
+		_start_live_shift()
 		return
 
 	# During live work, never manufacture a replacement box here. The conveyor
