@@ -13,24 +13,6 @@
 [ext_resource type="Texture2D" uid="uid://drns6e2oo3vos" path="res://assets/boxes/label.png" id="11_adcug"]
 [ext_resource type="Texture2D" uid="uid://c28ygf02e6p5d" path="res://assets/boxes/box_side_view.png" id="11_rea3k"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_thought"]
-content_margin_left = 18.0
-content_margin_top = 14.0
-content_margin_right = 18.0
-content_margin_bottom = 12.0
-bg_color = Color(0.96, 0.955, 0.93, 0.97)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.16, 0.14, 0.12, 0.9)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
-shadow_color = Color(0, 0, 0, 0.26)
-shadow_size = 6
-
 [node name="BoxesModule" type="Control" unique_id=10154382]
 layout_mode = 3
 anchors_preset = 15
@@ -220,33 +202,39 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="ThoughtBubble" type="PanelContainer" parent="HUDLayer" unique_id=258363018]
+[node name="ThoughtBubble" type="TextureRect" parent="HUDLayer" unique_id=258363018]
 visible = false
 layout_mode = 0
-offset_left = 34.0
-offset_top = 220.0
-offset_right = 396.0
-offset_bottom = 332.0
+offset_left = 15.0
+offset_top = 145.0
+offset_right = 415.0
+offset_bottom = 513.0
 mouse_filter = 0
 mouse_default_cursor_shape = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_thought")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="ThoughtContent" type="VBoxContainer" parent="HUDLayer/ThoughtBubble"]
-layout_mode = 2
-theme_override_constants/separation = 7
-
-[node name="ThoughtText" type="Label" parent="HUDLayer/ThoughtBubble/ThoughtContent" unique_id=933374797]
-custom_minimum_size = Vector2(0, 58)
-layout_mode = 2
+[node name="ThoughtText" type="Label" parent="HUDLayer/ThoughtBubble" unique_id=933374797]
+layout_mode = 0
+offset_left = 62.0
+offset_top = 78.0
+offset_right = 350.0
+offset_bottom = 246.0
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.12, 0.11, 0.1, 1)
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 text = "I wonder why they call it a lunch break when I never stop being tired."
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="ThoughtHint" type="Label" parent="HUDLayer/ThoughtBubble/ThoughtContent"]
-layout_mode = 2
+[node name="ThoughtHint" type="Label" parent="HUDLayer/ThoughtBubble"]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 252.0
+offset_right = 300.0
+offset_bottom = 274.0
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.35, 0.32, 0.28, 0.8)
 theme_override_font_sizes/font_size = 9
 text = "TAP TO CONTINUE"
