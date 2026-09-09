@@ -1,5 +1,7 @@
 extends Control
 
+const ThoughtBubbleAsset = preload("res://scripts/boxes/thought_bubble_asset.gd")
+
 @onready var left_button_art: TextureRect = $GameplayLayer/LeftButton
 @onready var right_button_art: TextureRect = $GameplayLayer/RightButton
 
@@ -11,7 +13,7 @@ extends Control
 @onready var box_routed: TextureRect = $GameplayLayer/BoxRouted
 @onready var destination_label: Label = $GameplayLayer/BoxCurrent/DestinationTag/DestinationLabel
 @onready var route_feedback: Label = $GameplayLayer/RouteFeedback
-@onready var thought_bubble: PanelContainer = $HUDLayer/ThoughtBubble
+@onready var thought_bubble: TextureRect = $HUDLayer/ThoughtBubble
 
 var belt_start_position: Vector2
 var box_spawn_position: Vector2
@@ -37,6 +39,7 @@ func _ready() -> void:
 	belt_start_position = belt.position
 	box_spawn_position = box_current.position
 	box_ready_position = box_routed.position
+	_load_thought_bubble_texture()
 	_assign_destination()
 	route_feedback.hide()
 	thought_bubble.hide()
@@ -56,6 +59,18 @@ func _ready() -> void:
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
 	tween.finished.connect(_on_box_ready)
+
+
+func _load_thought_bubble_texture() -> void:
+	var png_bytes := Marshalls.base64_to_raw(ThoughtBubbleAsset.PNG_BASE64)
+	var image := Image.new()
+	var error := image.load_png_from_buffer(png_bytes)
+
+	if error != OK:
+		push_error("Could not load thought bubble art.")
+		return
+
+	thought_bubble.texture = ImageTexture.create_from_image(image)
 
 
 func _assign_destination() -> void:
