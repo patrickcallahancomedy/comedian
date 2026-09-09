@@ -25,6 +25,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Materialize embedded thought bubble asset
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64
+          import pathlib
+          import re
+
+          source = pathlib.Path("godot/scripts/boxes/thought_bubble_asset.gd").read_text()
+          match = re.search(r'PNG_BASE64 := "([^"]+)"', source)
+          if not match:
+              raise SystemExit("Thought bubble PNG data not found")
+
+          output = pathlib.Path("godot/assets/boxes/thought_bubble.png")
+          output.write_bytes(base64.b64decode(match.group(1)))
+          print(f"Wrote {output} ({output.stat().st_size} bytes)")
+          PY
+
       - name: Prepare Godot export templates
         shell: bash
         run: |
