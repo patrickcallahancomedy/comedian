@@ -48,8 +48,8 @@ var box_waiting_for_route := false
 var auto_route_enabled := false
 var box_cycle_id := 0
 
-# The tutorial boxes teach the controls without pressure. After the first
-# notebook interaction, a separate live shift begins with a visible goal.
+# The quota exists from the first box. The opening boxes still teach the
+# controls safely, but they count toward the same 10-box shift the player sees.
 var shift_active := false
 var shift_finished := false
 var shift_boxes_processed := 0
@@ -71,7 +71,7 @@ var tested_jokes: Array[String] = []
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
 const PRACTICE_BOXES_BEFORE_THOUGHT := 3
-const SECOND_THOUGHT_AFTER_SHIFT_BOXES := 2
+const SECOND_THOUGHT_AT_SHIFT_BOX := 5
 const AUTO_ROUTE_DELAY := 2.0
 const SHIFT_QUOTA := 8
 const SHIFT_BOX_LIMIT := 10
@@ -93,8 +93,6 @@ func _ready() -> void:
 	_assign_destination()
 
 	route_feedback.hide()
-	quota_hud.hide()
-	shift_count_hud.hide()
 	shift_result_label.hide()
 	thought_bubble.hide()
 	notebook_overlay.hide()
@@ -114,6 +112,11 @@ func _ready() -> void:
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
 	notebook_hitbox.disabled = true
+
+	# The player sees the goal immediately, and the first three tutorial boxes
+	# already count toward it. Only the automatic routing pressure waits until
+	# after the notebook tutorial.
+	_start_scored_shift()
 
 	var tween = create_tween()
 	tween.tween_property(box_current, "position", box_ready_position, 0.5)
@@ -146,9 +149,9 @@ func _on_box_ready() -> void:
 		right_hitbox.disabled = false
 		notebook_hitbox.disabled = false
 
-	# After a couple live-shift boxes, introduce a thought while a real box is
-	# waiting. The quota and deadline continue underneath the distraction.
-	if shift_active and shift_boxes_processed >= SECOND_THOUGHT_AFTER_SHIFT_BOXES and not second_thought_shown:
+	# The second thought arrives after two pressured boxes have followed the
+	# three safe opening boxes. It cannot appear during the tutorial anymore.
+	if auto_route_enabled and shift_boxes_processed >= SECOND_THOUGHT_AT_SHIFT_BOX and not second_thought_shown:
 		second_thought_shown = true
 		_show_pressure_thought()
 
@@ -291,16 +294,15 @@ func _start_next_box() -> void:
 	tween.finished.connect(_on_box_ready)
 
 
-func _start_live_shift() -> void:
+func _start_scored_shift() -> void:
 	shift_active = true
 	shift_finished = false
 	shift_boxes_processed = 0
 	shift_correct_routes = 0
-	auto_route_enabled = true
+	auto_route_enabled = false
 	_update_shift_hud()
 	quota_hud.show()
 	shift_count_hud.show()
-	_start_next_box()
 
 
 func _update_shift_hud() -> void:
@@ -475,10 +477,12 @@ func _resume_work_after_notebook() -> void:
 	if shift_finished:
 		return
 
-	# Resolving the first safe thought starts the actual scored shift. The quota
-	# appears now so the opening tutorial still stays clean and low-pressure.
+	# The quota has already been running since box one. Resolving the first safe
+	# thought only turns on the automatic conveyor pressure; it does not reset score.
 	if not auto_route_enabled:
-		_start_live_shift()
+		auto_route_enabled = true
+		notebook_hitbox.disabled = true
+		_start_next_box()
 		return
 
 	# During live work, never manufacture a replacement box here. The conveyor
