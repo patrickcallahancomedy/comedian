@@ -18,6 +18,7 @@ var box_ready_position: Vector2
 var current_destination := "left"
 var correct_routes := 0
 var wrong_routes := 0
+var boxes_routed := 0
 
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
@@ -83,7 +84,8 @@ func _on_right_up() -> void:
 func _route_box(direction: String) -> void:
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
-
+	boxes_routed += 1
+	print("Boxes routed: ", boxes_routed)
 	var is_correct := direction == current_destination
 	if is_correct:
 		correct_routes += 1
