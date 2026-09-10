@@ -1,6 +1,5 @@
 extends Control
 
-const THOUGHT_BUBBLE_TEXTURE = preload("res://assets/boxes/E45CC4E6-9696-43E3-8029-2CAAF946E8B9.png")
 const FIRST_THOUGHT := "I wonder why they call it a lunch break when I never stop being tired."
 # Placeholder copy for the second tutorial thought. Easy to swap later.
 const SECOND_THOUGHT := "Every box has somewhere to be before I do."
@@ -88,7 +87,7 @@ func _ready() -> void:
 	box_spawn_position = box_current.position
 	box_ready_position = box_routed.position
 	active_thought_start_position = active_thought_label.position
-	thought_bubble.texture = THOUGHT_BUBBLE_TEXTURE
+
 	thought_text.text = FIRST_THOUGHT
 	_assign_destination()
 
@@ -501,5 +500,6 @@ func mark_premise_tested(premise_index: int) -> void:
 	if premise_index < 0 or premise_index >= premises.size():
 		return
 
-	var tested_joke := premises.pop_at(premise_index)
+	var tested_joke: String = premises[premise_index]
+	premises.remove_at(premise_index)
 	tested_jokes.append(tested_joke)

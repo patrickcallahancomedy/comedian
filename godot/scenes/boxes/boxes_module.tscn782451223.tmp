@@ -299,6 +299,7 @@ text = "TAP TO WRITE IT DOWN"
 horizontal_alignment = 1
 
 [node name="NotebookOverlay" type="Control" parent="HUDLayer" unique_id=177295156]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -319,12 +320,10 @@ stretch_mode = 5
 
 [node name="PremisesTitle" type="Label" parent="HUDLayer/NotebookOverlay" unique_id=1476475115]
 layout_mode = 0
-offset_left = 58.999996
-offset_top = 293.0
-offset_right = 206.0
-offset_bottom = 315.0
-rotation = -0.008726646
-pivot_offset_ratio = Vector2(0.5, 0.5)
+offset_left = 48.0
+offset_top = 338.0
+offset_right = 195.0
+offset_bottom = 360.0
 theme_override_colors/font_color = Color(0.18, 0.14, 0.1, 0.9)
 theme_override_font_sizes/font_size = 12
 text = "PREMISES"
@@ -333,13 +332,10 @@ horizontal_alignment = 1
 [node name="PremisesList" type="Label" parent="HUDLayer/NotebookOverlay" unique_id=116543777]
 custom_maximum_size = Vector2(145, -1)
 layout_mode = 0
-offset_left = 61.15442
-offset_top = 317.42722
-offset_right = 189.45099
-offset_bottom = 458.00058
-rotation = -0.008726646
-pivot_offset_ratio = Vector2(0.5, 0.5)
-offset_transform_enabled = true
+offset_left = 52.0
+offset_top = 370.0
+offset_right = 197.0
+offset_bottom = 474.0
 theme_override_colors/font_color = Color(0.19, 0.15, 0.11, 1)
 theme_override_font_sizes/font_size = 11
 text = "No premises saved yet."
@@ -347,12 +343,10 @@ autowrap_mode = 2
 
 [node name="IdeasTitle" type="Label" parent="HUDLayer/NotebookOverlay" unique_id=1521184544]
 layout_mode = 0
-offset_left = 231.99998
-offset_top = 292.99997
-offset_right = 371.16022
-offset_bottom = 314.99997
-rotation = 0.0052359877
-pivot_offset_ratio = Vector2(0.5, 0.5)
+offset_left = 238.0
+offset_top = 338.0
+offset_right = 382.0
+offset_bottom = 360.0
 theme_override_colors/font_color = Color(0.18, 0.14, 0.1, 0.9)
 theme_override_font_sizes/font_size = 12
 text = "IDEAS"
@@ -361,11 +355,10 @@ horizontal_alignment = 1
 [node name="ActiveThought" type="Label" parent="HUDLayer/NotebookOverlay" unique_id=1581459082]
 custom_maximum_size = Vector2(144, -1)
 layout_mode = 0
-offset_left = 232.0
-offset_top = 313.0
-offset_right = 372.0
-offset_bottom = 454.0
-rotation = 0.008726646
+offset_left = 238.0
+offset_top = 370.0
+offset_right = 382.0
+offset_bottom = 457.0
 theme_override_colors/font_color = Color(0.16, 0.13, 0.1, 1)
 theme_override_font_sizes/font_size = 11
 horizontal_alignment = 1
@@ -374,12 +367,10 @@ autowrap_mode = 2
 
 [node name="WriteIdeaButton" type="Button" parent="HUDLayer/NotebookOverlay" unique_id=351190741]
 layout_mode = 0
-offset_left = 243.0
-offset_top = 432.0
-offset_right = 368.0
-offset_bottom = 467.0
-rotation = 0.0052359877
-pivot_offset_ratio = Vector2(0.5, 0.5)
+offset_left = 247.0
+offset_top = 465.0
+offset_right = 372.0
+offset_bottom = 500.0
 mouse_default_cursor_shape = 2
 theme_override_font_sizes/font_size = 11
 text = "WRITE IT DOWN"
