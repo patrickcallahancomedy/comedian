@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://ecdj0i132kxk"]
+[gd_scene load_steps=15 format=3 uid="uid://ecdj0i132kxk"]
 
 [ext_resource type="Texture2D" uid="uid://bn7s7vd6jvn40" path="res://assets/boxes/warehouse_background.png" id="1_1t28k"]
 [ext_resource type="Script" uid="uid://dfe37nobml5a7" path="res://scripts/boxes/boxes_module.gd" id="1_jnf7g"]
@@ -14,6 +14,7 @@
 [ext_resource type="Texture2D" uid="uid://c28ygf02e6p5d" path="res://assets/boxes/box_side_view.png" id="11_rea3k"]
 [ext_resource type="Texture2D" uid="uid://dt7egv4p23m5x" path="res://assets/boxes/notebook_open.png" id="12_notebook_open"]
 [ext_resource type="Texture2D" uid="uid://d222rftnjbdbp" path="res://assets/boxes/thought_bubble.png" id="13_5rlsm"]
+[ext_resource type="PackedScene" path="res://scenes/boxes/boss_window.tscn" id="14_boss_window"]
 
 [node name="BoxesModule" type="Control" unique_id=10154382]
 layout_mode = 3
@@ -34,6 +35,24 @@ grow_vertical = 2
 texture = ExtResource("1_1t28k")
 expand_mode = 1
 stretch_mode = 6
+
+[node name="BossLayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BossWindow" parent="BossLayer" instance=ExtResource("14_boss_window")]
+layout_mode = 1
+anchor_left = 0.19
+anchor_top = 0.04
+anchor_right = 0.81
+anchor_bottom = 0.19
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="GameplayLayer" type="Control" parent="." unique_id=1644484715]
 layout_mode = 1
@@ -254,9 +273,7 @@ theme_override_colors/font_color = Color(0.96, 0.91, 0.79, 1)
 theme_override_colors/font_outline_color = Color(0.08, 0.07, 0.06, 0.95)
 theme_override_constants/outline_size = 7
 theme_override_font_sizes/font_size = 23
-text = "SHIFT COMPLETE
-QUOTA MET
-8 / 8"
+text = "SHIFT COMPLETE\nQUOTA MET\n8 / 8"
 horizontal_alignment = 1
 vertical_alignment = 1
 

@@ -1,0 +1,41 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/boxes/boss_window.gd" id="1_boss"]
+[ext_resource type="Texture2D" path="res://assets/character/troy.png" id="2_troy"]
+
+[sub_resource type="Shader" id="Shader_troy_silhouette"]
+code = "shader_type canvas_item;\n\nuniform vec4 tint : source_color = vec4(0.10, 0.09, 0.08, 0.95);\nuniform float white_cutoff : hint_range(0.75, 1.0) = 0.94;\n\nvoid fragment() {\n\tvec4 sample_color = texture(TEXTURE, UV);\n\tfloat white_value = min(sample_color.r, min(sample_color.g, sample_color.b));\n\tfloat keep_pixel = 1.0 - step(white_cutoff, white_value);\n\tfloat alpha = sample_color.a * keep_pixel * tint.a;\n\tCOLOR = vec4(tint.rgb, alpha);\n}\n"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_troy"]
+shader = SubResource("Shader_troy_silhouette")
+shader_parameter/tint = Color(0.1, 0.09, 0.08, 0.95)
+shader_parameter/white_cutoff = 0.94
+
+[node name="BossWindow" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+clip_contents = true
+script = ExtResource("1_boss")
+
+[node name="StateTint" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="Troy" type="TextureRect" parent="."]
+layout_mode = 0
+mouse_filter = 2
+material = SubResource("ShaderMaterial_troy")
+texture = ExtResource("2_troy")
+expand_mode = 1
+stretch_mode = 5

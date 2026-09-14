@@ -4,6 +4,8 @@ const FIRST_THOUGHT := "I wonder why they call it a lunch break when I never sto
 # Placeholder copy for the second tutorial thought. Easy to swap later.
 const SECOND_THOUGHT := "Every box has somewhere to be before I do."
 
+@onready var boss_window: BossWindow = $BossLayer/BossWindow
+
 @onready var left_button_art: TextureRect = $GameplayLayer/LeftButton
 @onready var right_button_art: TextureRect = $GameplayLayer/RightButton
 
@@ -38,6 +40,7 @@ var wrong_routes := 0
 var missed_boxes := 0
 var boxes_routed := 0
 var premises_saved := 0
+var boss_catches := 0
 var first_thought_shown := false
 var second_thought_shown := false
 var active_thought := ""
@@ -70,7 +73,6 @@ var tested_jokes: Array[String] = []
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
 const PRACTICE_BOXES_BEFORE_THOUGHT := 3
-const SECOND_THOUGHT_AT_SHIFT_BOX := 5
 const AUTO_ROUTE_DELAY := 2.0
 const SHIFT_QUOTA := 8
 const SHIFT_BOX_LIMIT := 10
@@ -106,6 +108,7 @@ func _ready() -> void:
 	thought_bubble.gui_input.connect(_on_thought_bubble_input)
 	write_idea_button.pressed.connect(_write_active_thought)
 	close_notebook_button.pressed.connect(_close_notebook)
+	boss_window.state_changed.connect(_on_boss_state_changed)
 
 	box_routed.hide()
 	left_hitbox.disabled = true
@@ -147,12 +150,6 @@ func _on_box_ready() -> void:
 		left_hitbox.disabled = false
 		right_hitbox.disabled = false
 		notebook_hitbox.disabled = false
-
-	# The second thought arrives after two pressured boxes have followed the
-	# three safe opening boxes. It cannot appear during the tutorial anymore.
-	if auto_route_enabled and shift_boxes_processed >= SECOND_THOUGHT_AT_SHIFT_BOX and not second_thought_shown:
-		second_thought_shown = true
-		_show_pressure_thought()
 
 
 func _start_auto_route_countdown(cycle_id: int) -> void:
@@ -299,6 +296,7 @@ func _start_scored_shift() -> void:
 	shift_boxes_processed = 0
 	shift_correct_routes = 0
 	auto_route_enabled = false
+	boss_window.cancel_cycle()
 	_update_shift_hud()
 	quota_hud.show()
 	shift_count_hud.show()
@@ -315,6 +313,7 @@ func _end_live_shift() -> void:
 	auto_route_enabled = false
 	box_waiting_for_route = false
 	box_cycle_id += 1
+	boss_window.cancel_cycle()
 
 	left_hitbox.disabled = true
 	right_hitbox.disabled = true
@@ -352,9 +351,20 @@ func _show_pressure_thought() -> void:
 	thought_bubble.show()
 
 	# Unlike the first tutorial thought, the work controls stay live and the
-	# current box countdown does not stop.
+	# current box countdown does not stop. The boss is actively watching now,
+	# so opening/saving the notebook becomes a real choice instead of decoration.
 	var tween = create_tween()
 	tween.tween_property(thought_bubble, "modulate:a", 1.0, 0.2)
+
+
+func _on_boss_state_changed(new_state: int) -> void:
+	if new_state != BossWindow.State.WATCHING:
+		return
+	if shift_finished or not auto_route_enabled or second_thought_shown:
+		return
+
+	second_thought_shown = true
+	_show_pressure_thought()
 
 
 func _on_thought_bubble_input(event: InputEvent) -> void:
@@ -433,6 +443,12 @@ func _write_active_thought() -> void:
 	if active_thought.is_empty() or not pending_save_text.is_empty():
 		return
 
+	# Sorting boxes is safe while Troy watches. Stopping to actually write is not.
+	# The thought stays available if the player simply waits for him to leave.
+	if boss_window.is_watching():
+		_get_caught_writing()
+		return
+
 	pending_save_text = active_thought
 	write_idea_button.disabled = true
 
@@ -446,6 +462,21 @@ func _write_active_thought() -> void:
 	tween.tween_property(active_thought_label, "position:y", premises_list_label.position.y, 0.4)
 	tween.tween_property(active_thought_label, "modulate:a", 0.15, 0.4)
 	tween.finished.connect(_finish_write_active_thought)
+
+
+func _get_caught_writing() -> void:
+	boss_catches += 1
+	print("Caught writing by Troy: ", boss_catches)
+
+	# For the vertical slice, getting caught costs the idea instead of inventing
+	# a full firing/job-security system before the rest of the game can support it.
+	pending_save_text = ""
+	active_thought = ""
+	notebook_open = false
+	notebook_overlay.hide()
+	thought_bubble.hide()
+	boss_window.flash_caught()
+	_resume_work_after_notebook()
 
 
 func _finish_write_active_thought() -> void:
@@ -477,10 +508,11 @@ func _resume_work_after_notebook() -> void:
 		return
 
 	# The quota has already been running since box one. Resolving the first safe
-	# thought only turns on the automatic conveyor pressure; it does not reset score.
+	# thought turns on conveyor pressure and starts Troy's telegraphed watch pass.
 	if not auto_route_enabled:
 		auto_route_enabled = true
 		notebook_hitbox.disabled = true
+		boss_window.begin_cycle()
 		_start_next_box()
 		return
 
