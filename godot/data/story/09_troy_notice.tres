@@ -6,7 +6,7 @@
 script = ExtResource("1_slide")
 headline = "His boss, Troy, has started noticing."
 background_color = Color(0.588235, 0.513726, 0.486275, 1)
-foreground_path = "res://assets/character/troy.png"
+foreground_path = "res://assets/character/396B432C-04E9-4B3A-A593-E4DAE1FA06B6.png"
 foreground_height_ratio = 0.62
 headline_scale = 0.72
 show_continue_hint = true
