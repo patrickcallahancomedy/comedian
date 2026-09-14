@@ -6,7 +6,9 @@ const NOTEBOOK_TEXTURE = preload("res://assets/boxes/notebook_open.png")
 
 @onready var content: Control = $Content
 @onready var chapter_label: Label = $Content/ChapterLabel
+@onready var hero_backdrop: Panel = $Content/HeroBackdrop
 @onready var hero_image: TextureRect = $Content/HeroImage
+@onready var story_card: Panel = $Content/StoryCard
 @onready var title_label: Label = $Content/TitleLabel
 @onready var body_label: Label = $Content/BodyLabel
 @onready var continue_button: Button = $Content/ContinueButton
@@ -30,6 +32,7 @@ var pages := [
 func _ready() -> void:
     continue_button.pressed.connect(_on_continue_pressed)
     _apply_page()
+    _play_opening_reveal()
 
 func _apply_page() -> void:
     var data: Dictionary = pages[page]
@@ -40,6 +43,9 @@ func _apply_page() -> void:
 
     var image_key: String = data["image"]
     hero_image.visible = not image_key.is_empty()
+    hero_backdrop.visible = page == 0
+    story_card.visible = page == 0
+
     if image_key == "darren":
         hero_image.texture = DARREN_TEXTURE
     elif image_key == "boxes":
@@ -47,7 +53,14 @@ func _apply_page() -> void:
     elif image_key == "notebook":
         hero_image.texture = NOTEBOOK_TEXTURE
 
-    if hero_image.visible:
+    if page == 0:
+        hero_image.position = Vector2(70, 96)
+        hero_image.size = Vector2(290, 334)
+        title_label.position = Vector2(46, 480)
+        title_label.size = Vector2(338, 56)
+        body_label.position = Vector2(46, 538)
+        body_label.size = Vector2(338, 62)
+    elif hero_image.visible:
         hero_image.position = Vector2(72, 92)
         hero_image.size = Vector2(286, 330)
         title_label.position = Vector2(34, 454)
@@ -59,6 +72,22 @@ func _apply_page() -> void:
         title_label.size = Vector2(362, 126)
         body_label.position = Vector2(34, 392)
         body_label.size = Vector2(362, 160)
+
+func _play_opening_reveal() -> void:
+    hero_image.modulate.a = 0.0
+    hero_image.scale = Vector2(0.96, 0.96)
+    story_card.modulate.a = 0.0
+    title_label.modulate.a = 0.0
+    continue_button.modulate.a = 0.0
+
+    var tween := create_tween()
+    tween.set_parallel(true)
+    tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+    tween.tween_property(hero_image, "modulate:a", 1.0, 0.34)
+    tween.tween_property(hero_image, "scale", Vector2.ONE, 0.34)
+    tween.tween_property(story_card, "modulate:a", 1.0, 0.28).set_delay(0.12)
+    tween.tween_property(title_label, "modulate:a", 1.0, 0.28).set_delay(0.16)
+    tween.tween_property(continue_button, "modulate:a", 1.0, 0.22).set_delay(0.30)
 
 func _show_next_page() -> void:
     transitioning = true
