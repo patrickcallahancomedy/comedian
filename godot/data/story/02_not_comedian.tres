@@ -6,7 +6,7 @@
 script = ExtResource("1_slide")
 headline = "Darren wasn't a comedian."
 background_color = Color(0.588235, 0.513726, 0.486275, 1)
-foreground_path = "res://assets/character/7E6D29F0-552F-4985-89AF-36FE205272F0.png"
+foreground_path = "res://assets/character/darren_uncertain.png"
 foreground_height_ratio = 0.62
 headline_scale = 0.82
 show_continue_hint = true
