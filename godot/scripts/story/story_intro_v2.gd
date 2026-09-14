@@ -1,123 +1,123 @@
 extends Control
 
-const DARREN_TEXTURE = preload("res://assets/character/darren front.png")
-const BOXES_EXTERIOR_TEXTURE = preload("res://assets/story/boxes_exterior_story.jpg")
-const NOTEBOOK_TEXTURE = preload("res://assets/boxes/notebook_open.png")
+@onready var exterior: TextureRect = $Exterior
+@onready var shade: ColorRect = $Shade
+@onready var darren: TextureRect = $Darren
+@onready var kicker: Label = $Kicker
+@onready var main_text: Label = $MainText
+@onready var sub_text: Label = $SubText
+@onready var skip_hint: Label = $SkipHint
+@onready var fade: ColorRect = $Fade
 
-@onready var content: Control = $Content
-@onready var chapter_label: Label = $Content/ChapterLabel
-@onready var hero_backdrop: Panel = $Content/HeroBackdrop
-@onready var hero_image: TextureRect = $Content/HeroImage
-@onready var story_card: Panel = $Content/StoryCard
-@onready var title_label: Label = $Content/TitleLabel
-@onready var body_label: Label = $Content/BodyLabel
-@onready var continue_button: Button = $Content/ContinueButton
-
-var page := 0
-var transitioning := false
-
-var pages := [
-    {"chapter":"BEFORE ANY OF THIS", "title":"This is Darren.", "body":"", "image":"darren"},
-    {"chapter":"BEFORE ANY OF THIS", "title":"Darren wasn't a comedian.", "body":"He wasn't really trying to become one, either.", "image":""},
-    {"chapter":"BEFORE ANY OF THIS", "title":"His life was mostly routines.", "body":"Obligations. Places he was supposed to be.", "image":""},
-    {"chapter":"BEFORE ANY OF THIS", "title":"But Darren noticed things.", "body":"Dumb things. Weird things. Little things that made him laugh when nobody else was paying attention.", "image":""},
-    {"chapter":"BEFORE ANY OF THIS", "title":"Most of those thoughts disappeared.", "body":"Lately, a few had started sticking around.", "image":""},
-    {"chapter":"MONDAY", "title":"This is BOXES.", "body":"This is where Darren works.", "image":"boxes"},
-    {"chapter":"THE NOTEBOOK", "title":"Ideas have started showing up at work.", "body":"If Darren writes one down before it disappears, it becomes a premise.", "image":"notebook"},
-    {"chapter":"THE BOSS", "title":"His boss, Troy, has started noticing.", "body":"", "image":""},
-    {"chapter":"THE SHIFT", "title":"Keep the line moving.", "body":"Save the funny thoughts if you can.", "image":""},
-    {"chapter":"MONDAY", "title":"Clock in.", "body":"", "image":""}
-]
+var intro_running := true
+var finishing := false
+var can_skip := false
 
 func _ready() -> void:
-    continue_button.pressed.connect(_on_continue_pressed)
-    _apply_page()
-    _play_opening_reveal()
+	_prepare_intro()
+	_run_intro()
 
-func _apply_page() -> void:
-    var data: Dictionary = pages[page]
-    chapter_label.text = data["chapter"]
-    title_label.text = data["title"]
-    body_label.text = data["body"]
-    continue_button.text = "CLOCK IN" if page == pages.size() - 1 else "CONTINUE"
+func _prepare_intro() -> void:
+	fade.modulate.a = 1.0
+	exterior.scale = Vector2(1.06, 1.06)
+	shade.color.a = 0.30
+	darren.visible = false
+	darren.modulate.a = 0.0
+	kicker.modulate.a = 0.0
+	main_text.modulate.a = 0.0
+	sub_text.modulate.a = 0.0
+	skip_hint.modulate.a = 0.0
 
-    var image_key: String = data["image"]
-    hero_image.visible = not image_key.is_empty()
-    hero_backdrop.visible = page == 0
-    story_card.visible = page == 0
+func _run_intro() -> void:
+	var opening := create_tween()
+	opening.set_parallel(true)
+	opening.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	opening.tween_property(fade, "modulate:a", 0.0, 0.75)
+	opening.tween_property(exterior, "scale", Vector2.ONE, 8.0)
 
-    if image_key == "darren":
-        hero_image.texture = DARREN_TEXTURE
-    elif image_key == "boxes":
-        hero_image.texture = BOXES_EXTERIOR_TEXTURE
-    elif image_key == "notebook":
-        hero_image.texture = NOTEBOOK_TEXTURE
+	await get_tree().create_timer(0.55).timeout
+	if finishing:
+		return
+	can_skip = true
+	_fade_in(skip_hint, 0.30)
+	await _show_line("Darren wasn't a comedian.", "")
+	await get_tree().create_timer(1.55).timeout
+	if finishing:
+		return
+	await _hide_line()
 
-    if page == 0:
-        hero_image.position = Vector2(70, 96)
-        hero_image.size = Vector2(290, 334)
-        title_label.position = Vector2(46, 480)
-        title_label.size = Vector2(338, 56)
-        body_label.position = Vector2(46, 538)
-        body_label.size = Vector2(338, 62)
-    elif hero_image.visible:
-        hero_image.position = Vector2(72, 92)
-        hero_image.size = Vector2(286, 330)
-        title_label.position = Vector2(34, 454)
-        title_label.size = Vector2(362, 76)
-        body_label.position = Vector2(34, 536)
-        body_label.size = Vector2(362, 106)
-    else:
-        title_label.position = Vector2(34, 248)
-        title_label.size = Vector2(362, 126)
-        body_label.position = Vector2(34, 392)
-        body_label.size = Vector2(362, 160)
+	darren.visible = true
+	darren.position.y += 12.0
+	var darren_in := create_tween()
+	darren_in.set_parallel(true)
+	darren_in.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	darren_in.tween_property(darren, "modulate:a", 1.0, 0.42)
+	darren_in.tween_property(darren, "position:y", darren.position.y - 12.0, 0.42)
+	await _show_line("He wasn't trying to become one.", "")
+	await get_tree().create_timer(1.55).timeout
+	if finishing:
+		return
+	await _hide_line()
 
-func _play_opening_reveal() -> void:
-    hero_image.modulate.a = 0.0
-    hero_image.scale = Vector2(0.96, 0.96)
-    story_card.modulate.a = 0.0
-    title_label.modulate.a = 0.0
-    continue_button.modulate.a = 0.0
+	var darren_out := create_tween()
+	darren_out.set_parallel(true)
+	darren_out.tween_property(darren, "modulate:a", 0.0, 0.32)
+	darren_out.tween_property(shade, "color:a", 0.18, 0.32)
+	kicker.text = "MONDAY  •  6:47 AM"
+	_fade_in(kicker, 0.28)
+	await _show_line("He worked at BOXES.", "Most days looked about the same.")
+	await get_tree().create_timer(1.55).timeout
+	if finishing:
+		return
+	_finish_intro()
 
-    var tween := create_tween()
-    tween.set_parallel(true)
-    tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-    tween.tween_property(hero_image, "modulate:a", 1.0, 0.34)
-    tween.tween_property(hero_image, "scale", Vector2.ONE, 0.34)
-    tween.tween_property(story_card, "modulate:a", 1.0, 0.28).set_delay(0.12)
-    tween.tween_property(title_label, "modulate:a", 1.0, 0.28).set_delay(0.16)
-    tween.tween_property(continue_button, "modulate:a", 1.0, 0.22).set_delay(0.30)
+func _show_line(title: String, subtitle: String) -> void:
+	main_text.text = title
+	sub_text.text = subtitle
+	main_text.position.y = 562.0
+	sub_text.position.y = 668.0
+	main_text.modulate.a = 0.0
+	sub_text.modulate.a = 0.0
 
-func _show_next_page() -> void:
-    transitioning = true
-    continue_button.disabled = true
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(main_text, "modulate:a", 1.0, 0.30)
+	tween.tween_property(main_text, "position:y", 550.0, 0.30)
+	if not subtitle.is_empty():
+		tween.tween_property(sub_text, "modulate:a", 1.0, 0.30).set_delay(0.08)
+		tween.tween_property(sub_text, "position:y", 656.0, 0.30).set_delay(0.08)
+	await tween.finished
 
-    var out_tween := create_tween()
-    out_tween.set_parallel(true)
-    out_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-    out_tween.tween_property(content, "modulate:a", 0.0, 0.12)
-    out_tween.tween_property(content, "position:x", -12.0, 0.12)
-    await out_tween.finished
+func _hide_line() -> void:
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_property(main_text, "modulate:a", 0.0, 0.22)
+	tween.tween_property(sub_text, "modulate:a", 0.0, 0.22)
+	await tween.finished
 
-    _apply_page()
-    content.position.x = 12.0
+func _fade_in(item: CanvasItem, duration: float) -> void:
+	var tween := create_tween()
+	tween.tween_property(item, "modulate:a", 1.0, duration)
 
-    var in_tween := create_tween()
-    in_tween.set_parallel(true)
-    in_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-    in_tween.tween_property(content, "modulate:a", 1.0, 0.20)
-    in_tween.tween_property(content, "position:x", 0.0, 0.20)
-    await in_tween.finished
+func _finish_intro() -> void:
+	if finishing:
+		return
+	finishing = true
+	intro_running = false
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_property(fade, "modulate:a", 1.0, 0.55)
+	tween.tween_property(skip_hint, "modulate:a", 0.0, 0.20)
+	await tween.finished
+	get_tree().change_scene_to_file("res://scenes/boxes/boxes_module.tscn")
 
-    continue_button.disabled = false
-    transitioning = false
-
-func _on_continue_pressed() -> void:
-    if transitioning:
-        return
-    if page < pages.size() - 1:
-        page += 1
-        await _show_next_page()
-    else:
-        get_tree().change_scene_to_file("res://scenes/boxes/boxes_module.tscn")
+func _unhandled_input(event: InputEvent) -> void:
+	if not intro_running or not can_skip or finishing:
+		return
+	if event is InputEventScreenTouch and event.pressed:
+		_finish_intro()
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_finish_intro()
