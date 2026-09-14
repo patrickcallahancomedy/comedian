@@ -1,21 +1,16 @@
 name: COMEDIAN Visual QA
 
 on:
-  workflow_run:
-    workflows:
-      - COMEDIAN Godot Web Build
-    types:
-      - completed
   push:
     branches:
       - godot-alpha
     paths:
+      - "godot/**"
       - ".github/workflows/godot-visual-qa.yml"
   workflow_dispatch:
 
 jobs:
   capture-opening:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -29,6 +24,9 @@ jobs:
           npm init -y
           npm install playwright@1.55.0
           npx playwright install --with-deps chromium
+
+      - name: Wait for Pages deployment
+        run: sleep 30
 
       - name: Capture mobile opening screen
         shell: bash
