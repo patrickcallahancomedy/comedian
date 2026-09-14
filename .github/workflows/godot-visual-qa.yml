@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  capture-opening:
+  capture-story-flow:
     runs-on: ubuntu-24.04
 
     steps:
@@ -26,14 +26,15 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Wait for Pages deployment
-        run: sleep 30
+        run: sleep 85
 
-      - name: Capture mobile opening screen
+      - name: Capture story flow on mobile
         shell: bash
         run: |
           mkdir -p qa/screenshots
-          cat > qa/capture.js <<'EOF'
+          cat > qa/capture.js <<'NODE'
           const { chromium } = require('playwright');
+          const fs = require('fs');
 
           (async () => {
             const browser = await chromium.launch({ headless: true });
@@ -46,49 +47,56 @@ jobs:
             });
 
             const url = `https://patrickcallahancomedy.github.io/comedian/?qa=${Date.now()}`;
-            let loaded = false;
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await page.waitForTimeout(9000);
 
-            for (let attempt = 1; attempt <= 6; attempt++) {
-              try {
-                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                await page.waitForTimeout(8000);
-                const canvasCount = await page.locator('canvas').count();
-                if (canvasCount > 0) {
-                  loaded = true;
-                  break;
-                }
-              } catch (error) {
-                errors.push(`LOAD ATTEMPT ${attempt}: ${error.message}`);
-              }
-              await page.waitForTimeout(10000);
-            }
+            const canvasCount = await page.locator('canvas').count();
+            if (canvasCount < 1) throw new Error('Godot canvas did not load');
 
-            await page.screenshot({ path: 'qa/screenshots/opening.png', fullPage: true });
-
-            const report = {
-              loaded,
-              url,
-              canvasCount: await page.locator('canvas').count(),
-              title: await page.title(),
-              errors
+            const shot = async (name) => {
+              await page.screenshot({ path: `qa/screenshots/${name}.png`, fullPage: true });
+            };
+            const next = async () => {
+              await page.mouse.click(326, 689);
+              await page.waitForTimeout(1050);
             };
 
-            require('fs').writeFileSync('qa/report.json', JSON.stringify(report, null, 2));
-            console.log(JSON.stringify(report, null, 2));
+            await shot('01-opening-darren');
+            await next();
+            await shot('02-opening-text-right');
+            await next();
+            await shot('03-opening-text-left');
+            await next();
+            await next();
+            await next();
+            await shot('04-boxes-intro');
+            await next();
+            await next();
+            await shot('05-boxes-notebook');
+            await next();
+            await shot('06-boxes-troy-text');
 
+            fs.writeFileSync('qa/report.json', JSON.stringify({
+              url,
+              canvasCount,
+              title: await page.title(),
+              errors
+            }, null, 2));
+
+            console.log(JSON.stringify({ canvasCount, errors }, null, 2));
             await browser.close();
-            if (!loaded) process.exit(1);
+            if (errors.length) process.exit(1);
           })();
-          EOF
+          NODE
           node qa/capture.js
 
-      - name: Upload QA screenshot
+      - name: Upload QA screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: comedian-visual-qa
           path: |
-            qa/screenshots/opening.png
+            qa/screenshots/*.png
             qa/report.json
           if-no-files-found: error
           retention-days: 7
