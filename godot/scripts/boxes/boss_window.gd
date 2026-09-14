@@ -3,7 +3,7 @@ extends Control
 
 ## Reusable supervisor window interaction.
 ## The window stays part of the warehouse background. Troy is a separate layer
-## clipped to the window opening so the art can be repositioned/tuned in Godot.
+## clipped to the lit glass so the art can be repositioned/tuned in Godot.
 
 signal state_changed(state: int)
 
@@ -31,6 +31,17 @@ var _motion_tween: Tween
 
 
 func _ready() -> void:
+	# Match the actual illuminated supervisor window in the 430x764 warehouse
+	# composition. Ratios keep the placement responsive if the viewport scales.
+	anchor_left = 0.25
+	anchor_top = 0.105
+	anchor_right = 0.735
+	anchor_bottom = 0.217
+	offset_left = 0.0
+	offset_top = 0.0
+	offset_right = 0.0
+	offset_bottom = 0.0
+
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(_layout_troy)
@@ -163,14 +174,14 @@ func _layout_troy() -> void:
 		return
 
 	# Troy's full-body character art is deliberately oversized, then clipped by
-	# the window. That lets only his head/upper torso appear without editing art.
-	var visual_height := maxf(size.y * 2.9, 250.0)
+	# the glass. Only his head/upper torso appears; the source asset stays intact.
+	var visual_height := maxf(size.y * 3.35, 250.0)
 	var visual_width := visual_height * 0.585
 	troy.size = Vector2(visual_width, visual_height)
-	troy.position.y = -size.y * 0.08
+	troy.position.y = -size.y * 0.06
 
 	_hidden_x = size.x + visual_width * 0.08
-	_warning_x = size.x - visual_width * 0.42
+	_warning_x = size.x - visual_width * 0.30
 	_watch_x = (size.x - visual_width) * 0.5
 
 	match state:
