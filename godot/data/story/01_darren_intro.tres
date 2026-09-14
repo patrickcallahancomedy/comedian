@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StorySlide" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/story/story_slide.gd" id="1_slide"]
+[ext_resource type="Texture2D" path="res://assets/character/darren front.png" id="2_darren"]
+
+[resource]
+script = ExtResource("1_slide")
+headline = "THIS IS\nDARREN"
+background_color = Color(0.588235, 0.513726, 0.486275, 1)
+character_texture = ExtResource("2_darren")
+show_continue_hint = true
