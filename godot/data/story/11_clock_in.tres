@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="StorySlide" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/story/story_slide.gd" id="1_slide"]
+
+[resource]
+script = ExtResource("1_slide")
+headline = "CLOCK IN."
+background_color = Color(0.588235, 0.513726, 0.486275, 1)
+foreground_path = "res://assets/story/boxes_gameplay_story.png"
+foreground_height_ratio = 0.60
+headline_scale = 1.0
+show_continue_hint = true
