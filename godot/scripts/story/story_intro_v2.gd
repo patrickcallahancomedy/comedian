@@ -1,6 +1,7 @@
 extends Control
 
 const DARREN_TEXTURE = preload("res://assets/character/darren front.png")
+const BOXES_EXTERIOR_TEXTURE = preload("res://assets/story/boxes_exterior_story.jpg")
 const NOTEBOOK_TEXTURE = preload("res://assets/boxes/notebook_open.png")
 
 @onready var content: Control = $Content
@@ -19,7 +20,7 @@ var pages := [
     {"chapter":"BEFORE ANY OF THIS", "title":"His life was mostly routines.", "body":"Obligations. Places he was supposed to be.", "image":""},
     {"chapter":"BEFORE ANY OF THIS", "title":"But Darren noticed things.", "body":"Dumb things. Weird things. Little things that made him laugh when nobody else was paying attention.", "image":""},
     {"chapter":"BEFORE ANY OF THIS", "title":"Most of those thoughts disappeared.", "body":"Lately, a few had started sticking around.", "image":""},
-    {"chapter":"MONDAY", "title":"This is BOXES.", "body":"This is where Darren works.", "image":""},
+    {"chapter":"MONDAY", "title":"This is BOXES.", "body":"This is where Darren works.", "image":"boxes"},
     {"chapter":"THE NOTEBOOK", "title":"Ideas have started showing up at work.", "body":"If Darren writes one down before it disappears, it becomes a premise.", "image":"notebook"},
     {"chapter":"THE BOSS", "title":"His boss, Troy, has started noticing.", "body":"", "image":""},
     {"chapter":"THE SHIFT", "title":"Keep the line moving.", "body":"Save the funny thoughts if you can.", "image":""},
@@ -41,6 +42,8 @@ func _apply_page() -> void:
     hero_image.visible = not image_key.is_empty()
     if image_key == "darren":
         hero_image.texture = DARREN_TEXTURE
+    elif image_key == "boxes":
+        hero_image.texture = BOXES_EXTERIOR_TEXTURE
     elif image_key == "notebook":
         hero_image.texture = NOTEBOOK_TEXTURE
 
