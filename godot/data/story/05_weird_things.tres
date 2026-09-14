@@ -6,7 +6,7 @@
 script = ExtResource("1_slide")
 headline = "Dumb things. Weird things. Little things that made him laugh when nobody else was paying attention."
 background_color = Color(0.588235, 0.513726, 0.486275, 1)
-foreground_path = "res://assets/character/darren_thinking.png"
-foreground_height_ratio = 0.58
-headline_scale = 0.52
+foreground_path = "res://assets/character/CAF5BE9E-AEFD-4376-A335-7D29FE12A7C1.png"
+foreground_height_ratio = 0.60
+headline_scale = 0.56
 show_continue_hint = true
