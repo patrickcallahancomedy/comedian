@@ -28,7 +28,7 @@ jobs:
       - name: Wait for Pages deployment
         run: sleep 85
 
-      - name: Capture story flow on mobile
+      - name: Capture story and boss interaction on mobile
         shell: bash
         run: |
           mkdir -p qa/screenshots
@@ -60,6 +60,10 @@ jobs:
               await page.mouse.click(326, 689);
               await page.waitForTimeout(1050);
             };
+            const routeLeft = async () => {
+              await page.mouse.click(92, 640);
+              await page.waitForTimeout(1750);
+            };
 
             await shot('01-opening-darren');
             await next();
@@ -75,6 +79,41 @@ jobs:
             await shot('05-boxes-notebook');
             await next();
             await shot('06-boxes-troy-text');
+            await next();
+            await shot('07-survive-shift');
+            await next();
+            await shot('08-clock-in');
+            await next();
+            await page.waitForTimeout(1500);
+            await shot('09-boxes-gameplay-start');
+
+            // Complete the three safe tutorial boxes. Correctness does not
+            // matter here; the QA goal is to reach the notebook/boss loop.
+            await routeLeft();
+            await routeLeft();
+            await routeLeft();
+            await shot('10-first-safe-thought');
+
+            // Save the first thought safely. That starts conveyor pressure and
+            // Troy's warning pass.
+            await page.mouse.click(210, 300);
+            await page.waitForTimeout(450);
+            await page.mouse.click(300, 448);
+            await page.waitForTimeout(1400);
+            await shot('11-boss-warning');
+
+            // Troy should now move from the warning peek into WATCHING, and the
+            // second thought is deliberately triggered at that state change.
+            await page.waitForTimeout(3000);
+            await shot('12-boss-watching-second-thought');
+
+            // Open the thought and try to save while Troy is watching. The
+            // notebook should snap closed and the boss window should flash.
+            await page.mouse.click(210, 300);
+            await page.waitForTimeout(350);
+            await page.mouse.click(300, 448);
+            await page.waitForTimeout(100);
+            await shot('13-caught-writing');
 
             fs.writeFileSync('qa/report.json', JSON.stringify({
               url,
