@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: comedian-pages
+  cancel-in-progress: true
+
 env:
   GODOT_VERSION: 4.7.1
 
@@ -41,11 +45,12 @@ jobs:
           godot --headless --path . --export-release "Web" build/web/index.html
           touch build/web/.nojekyll
 
-      - name: Cache-bust Godot runtime files
+      - name: Stamp and cache-bust Godot runtime files
         shell: bash
         working-directory: godot
         run: |
           BUILD_NAME="game-${GITHUB_SHA:0:8}"
+          BUILD_META="<meta name=\"comedian-build\" content=\"${GITHUB_SHA}\">"
 
           mv build/web/index.js "build/web/${BUILD_NAME}.js"
           mv build/web/index.wasm "build/web/${BUILD_NAME}.wasm"
@@ -55,8 +60,11 @@ jobs:
           sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/web/index.html
           sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/web/index.html
           sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/web/index.html
+          sed -i "s#</head>#${BUILD_META}</head>#" build/web/index.html
 
+          echo "COMEDIAN build: ${GITHUB_SHA}"
           grep -o "${BUILD_NAME}[^\" ]*" build/web/index.html | sort -u
+          grep -o 'comedian-build[^>]*' build/web/index.html
 
       - name: Deploy playable build to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4
