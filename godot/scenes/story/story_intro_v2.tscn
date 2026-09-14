@@ -1,0 +1,106 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/story/story_intro_v2.gd" id="1_story"]
+
+[node name="StoryIntroV2" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+clip_contents = true
+script = ExtResource("1_story")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.047, 0.052, 0.057, 1)
+
+[node name="TopRule" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 430.0
+offset_bottom = 3.0
+mouse_filter = 2
+color = Color(0.70, 0.43, 0.22, 1)
+
+[node name="Content" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ChapterLabel" type="Label" parent="Content"]
+layout_mode = 0
+offset_left = 34.0
+offset_top = 44.0
+offset_right = 396.0
+offset_bottom = 68.0
+theme_override_colors/font_color = Color(0.73, 0.56, 0.39, 1)
+theme_override_font_sizes/font_size = 10
+text = "BEFORE ANY OF THIS"
+
+[node name="ChapterRule" type="ColorRect" parent="Content"]
+layout_mode = 0
+offset_left = 34.0
+offset_top = 76.0
+offset_right = 76.0
+offset_bottom = 78.0
+mouse_filter = 2
+color = Color(0.73, 0.56, 0.39, 0.72)
+
+[node name="HeroImage" type="TextureRect" parent="Content"]
+layout_mode = 0
+offset_left = 72.0
+offset_top = 92.0
+offset_right = 358.0
+offset_bottom = 422.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TitleLabel" type="Label" parent="Content"]
+layout_mode = 0
+offset_left = 34.0
+offset_top = 454.0
+offset_right = 396.0
+offset_bottom = 530.0
+theme_override_colors/font_color = Color(0.95, 0.93, 0.89, 1)
+theme_override_font_sizes/font_size = 29
+text = "This is Darren."
+autowrap_mode = 2
+
+[node name="BodyLabel" type="Label" parent="Content"]
+layout_mode = 0
+offset_left = 34.0
+offset_top = 536.0
+offset_right = 396.0
+offset_bottom = 642.0
+theme_override_colors/font_color = Color(0.67, 0.67, 0.65, 1)
+theme_override_font_sizes/font_size = 17
+text = ""
+autowrap_mode = 2
+
+[node name="ContinueButton" type="Button" parent="Content"]
+layout_mode = 0
+offset_left = 270.0
+offset_top = 678.0
+offset_right = 396.0
+offset_bottom = 724.0
+focus_mode = 0
+theme_override_colors/font_color = Color(0.75, 0.57, 0.39, 1)
+theme_override_colors/font_hover_color = Color(0.96, 0.82, 0.62, 1)
+theme_override_colors/font_pressed_color = Color(0.96, 0.82, 0.62, 1)
+theme_override_colors/font_disabled_color = Color(0.40, 0.37, 0.33, 0.5)
+theme_override_font_sizes/font_size = 11
+text = "CONTINUE"
+flat = true
