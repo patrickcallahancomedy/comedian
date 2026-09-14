@@ -4,19 +4,42 @@ extends Control
 signal finished
 signal slide_changed(index: int)
 
-const INTRO_SLIDE: StorySlide = preload("res://data/story/01_darren_intro.tres")
+const STORY_FILES := [
+	"res://data/story/01_darren_intro.tres",
+	"res://data/story/02_not_comedian.tres",
+	"res://data/story/03_not_trying.tres",
+	"res://data/story/04_noticed_things.tres",
+	"res://data/story/05_weird_things.tres",
+	"res://data/story/06_this_is_boxes.tres",
+	"res://data/story/07_where_he_works.tres",
+	"res://data/story/08_notebook.tres",
+	"res://data/story/09_troy_notice.tres",
+	"res://data/story/10_survive_shift.tres",
+	"res://data/story/11_clock_in.tres",
+]
 
 @export_range(0.0, 0.5, 0.01) var fade_seconds: float = 0.16
+@export_file("*.tscn") var next_scene_path: String = "res://scenes/boxes/boxes_module.tscn"
 
 @onready var card: StoryCard = $StoryCard
 
-var slides: Array[StorySlide] = [INTRO_SLIDE]
+var slides: Array[StorySlide] = []
 var _index := -1
 var _transitioning := false
 var _finished := false
 
 func _ready() -> void:
+	_load_story()
 	play()
+
+func _load_story() -> void:
+	slides.clear()
+	for path in STORY_FILES:
+		var resource := load(path)
+		if resource is StorySlide:
+			slides.append(resource)
+		else:
+			push_warning("Could not load story slide: %s" % path)
 
 func play() -> void:
 	if slides.is_empty():
@@ -38,6 +61,7 @@ func advance() -> void:
 	if next_index >= slides.size():
 		_finished = true
 		finished.emit()
+		call_deferred("_enter_gameplay")
 		return
 
 	_transition_to(next_index)
@@ -65,6 +89,10 @@ func _swap_slide(next_index: int) -> void:
 
 func _finish_transition() -> void:
 	_transitioning = false
+
+func _enter_gameplay() -> void:
+	if not next_scene_path.is_empty() and ResourceLoader.exists(next_scene_path):
+		get_tree().change_scene_to_file(next_scene_path)
 
 func _input(event: InputEvent) -> void:
 	var should_advance := false
