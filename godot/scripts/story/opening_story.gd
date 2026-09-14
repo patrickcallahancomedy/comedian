@@ -1,7 +1,9 @@
 extends Control
 
-@onready var story_text: RichTextLabel = $StoryMargin/StoryLayout/StoryText
-@onready var continue_button: Button = $StoryMargin/StoryLayout/ContinueButton
+@onready var left_page: TextureRect = $LeftPage
+@onready var right_page: TextureRect = $RightPage
+@onready var story_text: RichTextLabel = $StoryText
+@onready var continue_button: Button = $ContinueButton
 
 var page := 0
 
@@ -20,6 +22,10 @@ func _ready() -> void:
 
 func show_page() -> void:
 	story_text.text = story_pages[page]
+
+	var show_left_page := page % 2 == 0
+	left_page.visible = show_left_page
+	right_page.visible = not show_left_page
 
 func _on_continue_pressed() -> void:
 	if page < story_pages.size() - 1:
