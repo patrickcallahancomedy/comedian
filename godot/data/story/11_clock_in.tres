@@ -6,7 +6,7 @@
 script = ExtResource("1_slide")
 headline = "CLOCK IN."
 background_color = Color(0.588235, 0.513726, 0.486275, 1)
-foreground_path = "res://assets/story/IMG_2586.jpeg"
+foreground_path = "res://assets/story/boxes_gameplay_story.jpeg"
 foreground_height_ratio = 0.58
 headline_scale = 1.0
 show_continue_hint = true
