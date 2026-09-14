@@ -1,0 +1,96 @@
+name: COMEDIAN Visual QA
+
+on:
+  workflow_run:
+    workflows:
+      - COMEDIAN Godot Web Build
+    types:
+      - completed
+  push:
+    branches:
+      - godot-alpha
+    paths:
+      - ".github/workflows/godot-visual-qa.yml"
+  workflow_dispatch:
+
+jobs:
+  capture-opening:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Capture mobile opening screen
+        shell: bash
+        run: |
+          mkdir -p qa/screenshots
+          cat > qa/capture.js <<'EOF'
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage({ viewport: { width: 430, height: 764 } });
+            const errors = [];
+
+            page.on('pageerror', error => errors.push(`PAGE ERROR: ${error.message}`));
+            page.on('console', msg => {
+              if (msg.type() === 'error') errors.push(`CONSOLE ERROR: ${msg.text()}`);
+            });
+
+            const url = `https://patrickcallahancomedy.github.io/comedian/?qa=${Date.now()}`;
+            let loaded = false;
+
+            for (let attempt = 1; attempt <= 6; attempt++) {
+              try {
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.waitForTimeout(8000);
+                const canvasCount = await page.locator('canvas').count();
+                if (canvasCount > 0) {
+                  loaded = true;
+                  break;
+                }
+              } catch (error) {
+                errors.push(`LOAD ATTEMPT ${attempt}: ${error.message}`);
+              }
+              await page.waitForTimeout(10000);
+            }
+
+            await page.screenshot({ path: 'qa/screenshots/opening.png', fullPage: true });
+
+            const report = {
+              loaded,
+              url,
+              canvasCount: await page.locator('canvas').count(),
+              title: await page.title(),
+              errors
+            };
+
+            require('fs').writeFileSync('qa/report.json', JSON.stringify(report, null, 2));
+            console.log(JSON.stringify(report, null, 2));
+
+            await browser.close();
+            if (!loaded) process.exit(1);
+          })();
+          EOF
+          node qa/capture.js
+
+      - name: Upload QA screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: comedian-visual-qa
+          path: |
+            qa/screenshots/opening.png
+            qa/report.json
+          if-no-files-found: error
+          retention-days: 7
