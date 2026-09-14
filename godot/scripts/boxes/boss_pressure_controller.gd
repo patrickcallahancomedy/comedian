@@ -10,6 +10,7 @@ extends Node
 var _module
 var _thought_cycle_id := 0
 var _caught_this_watch := false
+var _pressure_thought_text := ""
 
 
 func _ready() -> void:
@@ -22,10 +23,15 @@ func _process(_delta: float) -> void:
 	if _module == null or not is_instance_valid(_module):
 		return
 
-	# Merely opening the notebook while Troy is fully watching counts as getting
-	# distracted. If the player started opening it during the approach, Troy can
-	# still catch them the instant he reaches the window.
-	if boss_window.state == BossWindow.State.WATCHING and _module.notebook_open and not _caught_this_watch:
+	# Opening the notebook while Troy is fully watching counts as getting
+	# distracted. If WRITE IT DOWN was already pressed during the approach,
+	# that counts as catching the idea in time and we let that save finish.
+	if (
+		boss_window.state == BossWindow.State.WATCHING
+		and _module.notebook_open
+		and _module.pending_save_text == ""
+		and not _caught_this_watch
+	):
 		_caught_this_watch = true
 		_module._get_caught_writing()
 
@@ -54,6 +60,7 @@ func _try_show_pressure_thought() -> void:
 
 	_module.second_thought_shown = true
 	_module._show_pressure_thought()
+	_pressure_thought_text = _module.active_thought
 	_thought_cycle_id += 1
 	_expire_pressure_thought(_thought_cycle_id)
 
@@ -67,7 +74,7 @@ func _expire_pressure_thought(cycle_id: int) -> void:
 		return
 	if _module.pending_save_text != "":
 		return
-	if _module.active_thought != _module.SECOND_THOUGHT:
+	if _pressure_thought_text == "" or _module.active_thought != _pressure_thought_text:
 		return
 
 	# This is the important pressure: an idea can genuinely get away from Darren.
