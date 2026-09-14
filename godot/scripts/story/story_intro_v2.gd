@@ -1,123 +1,167 @@
 extends Control
 
 @onready var exterior: TextureRect = $Exterior
-@onready var shade: ColorRect = $Shade
+@onready var darren_shadow: TextureRect = $DarrenShadow
 @onready var darren: TextureRect = $Darren
-@onready var kicker: Label = $Kicker
+@onready var time_label: Label = $TimeLabel
 @onready var main_text: Label = $MainText
 @onready var sub_text: Label = $SubText
-@onready var skip_hint: Label = $SkipHint
+@onready var tap_hint: Label = $TapHint
 @onready var fade: ColorRect = $Fade
 
-var intro_running := true
-var finishing := false
-var can_skip := false
+var beat := 0
+var transitioning := false
+var ready_for_input := false
+
+var beats := [
+	{
+		"title": "This is Darren.",
+		"subtitle": "He works here.",
+		"show_darren": true,
+		"camera_scale": 1.025,
+		"camera_y": 0.0
+	},
+	{
+		"title": "He's been coming to BOXES for years.",
+		"subtitle": "Long enough for most mornings to feel exactly the same.",
+		"show_darren": true,
+		"camera_scale": 1.04,
+		"camera_y": -4.0
+	},
+	{
+		"title": "Darren wasn't a comedian.",
+		"subtitle": "He wasn't trying to become one.",
+		"show_darren": true,
+		"camera_scale": 1.055,
+		"camera_y": -8.0
+	},
+	{
+		"title": "He just noticed things.",
+		"subtitle": "Little things. Dumb things. Weird things.",
+		"show_darren": false,
+		"camera_scale": 1.075,
+		"camera_y": -12.0
+	},
+	{
+		"title": "Most of those thoughts disappeared.",
+		"subtitle": "Lately, a few had started sticking around.",
+		"show_darren": false,
+		"camera_scale": 1.09,
+		"camera_y": -18.0
+	}
+]
 
 func _ready() -> void:
-	_prepare_intro()
-	_run_intro()
+	_prepare_scene()
+	_play_establishing_shot()
 
-func _prepare_intro() -> void:
+func _prepare_scene() -> void:
 	fade.modulate.a = 1.0
-	exterior.scale = Vector2(1.06, 1.06)
-	shade.color.a = 0.30
-	darren.visible = false
-	darren.modulate.a = 0.0
-	kicker.modulate.a = 0.0
+	exterior.scale = Vector2(1.01, 1.01)
+	exterior.position = Vector2.ZERO
+	time_label.modulate.a = 0.0
 	main_text.modulate.a = 0.0
 	sub_text.modulate.a = 0.0
-	skip_hint.modulate.a = 0.0
+	tap_hint.modulate.a = 0.0
+	darren.visible = false
+	darren_shadow.visible = false
 
-func _run_intro() -> void:
+func _play_establishing_shot() -> void:
 	var opening := create_tween()
 	opening.set_parallel(true)
 	opening.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	opening.tween_property(fade, "modulate:a", 0.0, 0.75)
-	opening.tween_property(exterior, "scale", Vector2.ONE, 8.0)
-
+	opening.tween_property(fade, "modulate:a", 0.0, 0.85)
+	opening.tween_property(exterior, "scale", Vector2(1.02, 1.02), 2.1)
+	opening.tween_property(time_label, "modulate:a", 1.0, 0.55).set_delay(0.55)
+	await opening.finished
 	await get_tree().create_timer(0.55).timeout
-	if finishing:
-		return
-	can_skip = true
-	_fade_in(skip_hint, 0.30)
-	await _show_line("Darren wasn't a comedian.", "")
-	await get_tree().create_timer(1.55).timeout
-	if finishing:
-		return
-	await _hide_line()
+	await _show_beat(0, true)
 
-	darren.visible = true
-	darren.position.y += 12.0
-	var darren_in := create_tween()
-	darren_in.set_parallel(true)
-	darren_in.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	darren_in.tween_property(darren, "modulate:a", 1.0, 0.42)
-	darren_in.tween_property(darren, "position:y", darren.position.y - 12.0, 0.42)
-	await _show_line("He wasn't trying to become one.", "")
-	await get_tree().create_timer(1.55).timeout
-	if finishing:
-		return
-	await _hide_line()
+func _show_beat(index: int, first_beat: bool = false) -> void:
+	transitioning = true
+	ready_for_input = false
+	beat = index
+	var data: Dictionary = beats[index]
 
-	var darren_out := create_tween()
-	darren_out.set_parallel(true)
-	darren_out.tween_property(darren, "modulate:a", 0.0, 0.32)
-	darren_out.tween_property(shade, "color:a", 0.18, 0.32)
-	kicker.text = "MONDAY  •  6:47 AM"
-	_fade_in(kicker, 0.28)
-	await _show_line("He worked at BOXES.", "Most days looked about the same.")
-	await get_tree().create_timer(1.55).timeout
-	if finishing:
-		return
-	_finish_intro()
+	main_text.text = data["title"]
+	sub_text.text = data["subtitle"]
+	tap_hint.text = "TAP TO CLOCK IN" if index == beats.size() - 1 else "TAP TO CONTINUE"
 
-func _show_line(title: String, subtitle: String) -> void:
-	main_text.text = title
-	sub_text.text = subtitle
-	main_text.position.y = 562.0
-	sub_text.position.y = 668.0
+	var should_show_darren: bool = data["show_darren"]
+	if should_show_darren:
+		darren.visible = true
+		darren_shadow.visible = true
+	else:
+		darren.visible = false
+		darren_shadow.visible = false
+
+	main_text.position.y = 546.0
+	sub_text.position.y = 636.0
 	main_text.modulate.a = 0.0
 	sub_text.modulate.a = 0.0
+	tap_hint.modulate.a = 0.0
+	if should_show_darren and first_beat:
+		darren.modulate.a = 0.0
+		darren_shadow.modulate.a = 0.0
+		darren.position.y = 178.0
+		darren_shadow.position.y = 184.0
 
+	var target_scale: float = data["camera_scale"]
+	var target_y: float = data["camera_y"]
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(main_text, "modulate:a", 1.0, 0.30)
-	tween.tween_property(main_text, "position:y", 550.0, 0.30)
-	if not subtitle.is_empty():
-		tween.tween_property(sub_text, "modulate:a", 1.0, 0.30).set_delay(0.08)
-		tween.tween_property(sub_text, "position:y", 656.0, 0.30).set_delay(0.08)
+	tween.tween_property(exterior, "scale", Vector2(target_scale, target_scale), 0.7)
+	tween.tween_property(exterior, "position:y", target_y, 0.7)
+	tween.tween_property(main_text, "modulate:a", 1.0, 0.36).set_delay(0.08)
+	tween.tween_property(main_text, "position:y", 534.0, 0.36).set_delay(0.08)
+	tween.tween_property(sub_text, "modulate:a", 1.0, 0.34).set_delay(0.18)
+	tween.tween_property(sub_text, "position:y", 626.0, 0.34).set_delay(0.18)
+	tween.tween_property(tap_hint, "modulate:a", 1.0, 0.28).set_delay(0.44)
+	if should_show_darren and first_beat:
+		tween.tween_property(darren, "modulate:a", 1.0, 0.5)
+		tween.tween_property(darren, "position:y", 166.0, 0.5)
+		tween.tween_property(darren_shadow, "modulate:a", 0.28, 0.5)
+		tween.tween_property(darren_shadow, "position:y", 172.0, 0.5)
 	await tween.finished
 
-func _hide_line() -> void:
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.tween_property(main_text, "modulate:a", 0.0, 0.22)
-	tween.tween_property(sub_text, "modulate:a", 0.0, 0.22)
-	await tween.finished
+	transitioning = false
+	ready_for_input = true
 
-func _fade_in(item: CanvasItem, duration: float) -> void:
-	var tween := create_tween()
-	tween.tween_property(item, "modulate:a", 1.0, duration)
-
-func _finish_intro() -> void:
-	if finishing:
+func _advance() -> void:
+	if not ready_for_input or transitioning:
 		return
-	finishing = true
-	intro_running = false
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.tween_property(fade, "modulate:a", 1.0, 0.55)
-	tween.tween_property(skip_hint, "modulate:a", 0.0, 0.20)
-	await tween.finished
+	ready_for_input = false
+	transitioning = true
+
+	var out_tween := create_tween()
+	out_tween.set_parallel(true)
+	out_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	out_tween.tween_property(main_text, "modulate:a", 0.0, 0.22)
+	out_tween.tween_property(sub_text, "modulate:a", 0.0, 0.22)
+	out_tween.tween_property(tap_hint, "modulate:a", 0.0, 0.16)
+	await out_tween.finished
+
+	if beat >= beats.size() - 1:
+		await _enter_boxes()
+		return
+
+	await _show_beat(beat + 1)
+
+func _enter_boxes() -> void:
+	var ending := create_tween()
+	ending.set_parallel(true)
+	ending.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	ending.tween_property(fade, "modulate:a", 1.0, 0.75)
+	ending.tween_property(exterior, "scale", exterior.scale + Vector2(0.025, 0.025), 0.75)
+	ending.tween_property(time_label, "modulate:a", 0.0, 0.35)
+	ending.tween_property(darren, "modulate:a", 0.0, 0.35)
+	ending.tween_property(darren_shadow, "modulate:a", 0.0, 0.35)
+	await ending.finished
 	get_tree().change_scene_to_file("res://scenes/boxes/boxes_module.tscn")
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not intro_running or not can_skip or finishing:
-		return
 	if event is InputEventScreenTouch and event.pressed:
-		_finish_intro()
+		_advance()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_finish_intro()
+		_advance()
