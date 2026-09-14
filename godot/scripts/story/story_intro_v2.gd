@@ -160,7 +160,7 @@ func _enter_boxes() -> void:
 	await ending.finished
 	get_tree().change_scene_to_file("res://scenes/boxes/boxes_module.tscn")
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
 		_advance()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
