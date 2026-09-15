@@ -73,9 +73,9 @@ grow_vertical = 2
 [node name="Foreground" type="TextureRect" parent="ArtLayer" unique_id=2058067170]
 layout_mode = 1
 offset_left = 67.0
-offset_top = 201.0
+offset_top = 141.0
 offset_right = 371.0
-offset_bottom = 699.0
+offset_bottom = 639.0
 texture = ExtResource("2_6i01f")
 expand_mode = 1
 stretch_mode = 5
@@ -102,7 +102,6 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_fonts/font = ExtResource("3_7cs3s")
 theme_override_font_sizes/font_size = 50
-text = "DARREN WASN'T 
-A COMEDIAN"
+text = "DARREN WASN'T \nA COMEDIAN"
 horizontal_alignment = 1
 autowrap_mode = 3
