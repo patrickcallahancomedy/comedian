@@ -1,15 +1,26 @@
 # Boss window interaction
 
-`BossWindow` is a reusable Godot component layered between the warehouse background and gameplay.
+`BossWindow` is the visual layer for Troy's supervisor-window visit.
 
-Flow:
-1. Idle: window is empty.
-2. Warning: Troy begins to creep into the window as a telegraph.
-3. Watching: Troy is centered and actively watching.
-4. Leaving: Troy exits and the window returns to normal.
+## Scene tree
 
-The first notebook thought is safe and teaches the notebook. After that first thought is resolved, conveyor pressure starts and Troy begins his watch cycle. The second thought is intentionally triggered when Troy reaches the WATCHING state.
+- `WarningGlow` — simple amber window glow.
+- `TroySilhouette` — Patrick's real `Troy silhoutte.png` warning asset.
+- `Troy` — the normal Troy character art.
+- `AngryTint` — red reaction overlay.
+- `PressureController` — gameplay glue for quota/thought pressure. This is intentionally separate from the visual sequence for now.
 
-Sorting boxes is still safe while Troy watches. Attempting to actually write/save the idea while he is watching gets Darren caught; in the current vertical slice the idea is lost and a boss-catch counter increments. This leaves room for a later job-security/firing system without hard-coding it into this component.
+The image positions live directly in `boss_window.tscn`, so they can be moved and resized in the Godot editor. `boss_window.gd` no longer generates a silhouette with a shader and no longer calculates Troy's position in code.
 
-Troy remains a normal external image asset. The scene uses a runtime shader to key the white background and render him as a clipped silhouette inside the existing warehouse window. No image data is embedded in code.
+## Visual flow
+
+1. `IDLE` — empty window.
+2. `LIGHT` — the window glows as the first warning.
+3. `APPROACH` — the separate Troy silhouette fades in.
+4. `WATCHING` — the silhouette fades out and Troy fades in.
+5. `ANGRY` — optional reaction when gameplay tells the window Troy is unhappy.
+6. `LEAVING` — Troy and the glow fade away.
+
+`boss_window.gd` only owns that visual sequence. It does not decide whether Darren is behind quota and it does not decide what happens to an idea.
+
+The current `boss_pressure_controller.gd` still owns the BOXES-specific pressure rules: showing the second thought and checking quota pace while Troy watches. That can be folded into `boxes_module.gd` as a separate cleanup step once the new visual scene is positioned the way Patrick wants.
