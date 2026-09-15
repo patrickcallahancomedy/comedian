@@ -73,9 +73,9 @@ grow_vertical = 2
 [node name="Foreground" type="TextureRect" parent="ArtLayer" unique_id=2058067170]
 layout_mode = 1
 offset_left = 67.0
-offset_top = 141.0
+offset_top = 151.0
 offset_right = 371.0
-offset_bottom = 639.0
+offset_bottom = 649.0
 texture = ExtResource("2_6i01f")
 expand_mode = 1
 stretch_mode = 5
