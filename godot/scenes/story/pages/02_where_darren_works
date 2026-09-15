@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://b54rra1jtgsx5"]
 
 [ext_resource type="Script" uid="uid://dhinamoeomgay" path="res://scripts/story/story_page_base.gd" id="1_6i01f"]
-[ext_resource type="Texture2D" uid="uid://blirg53b2t8yn" path="res://assets/character/darren_uncertain.png" id="2_6i01f"]
+[ext_resource type="Texture2D" path="res://assets/story/boxes_exterior.png" id="2_6i01f"]
 [ext_resource type="FontFile" uid="uid://i36iwuoqk6el" path="res://assets/fonts/Barlow-Bold.ttf" id="3_7cs3s"]
 
 [node name="StoryCard" type="Control" unique_id=1830785883]
