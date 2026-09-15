@@ -71,6 +71,7 @@ jobs:
             await next();
             await shot('03-opening-text-left');
             await next();
+            await shot('04-page4-noticed-things');
             await next();
             await next();
             await shot('04-boxes-intro');
