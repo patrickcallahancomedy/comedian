@@ -28,7 +28,7 @@ jobs:
       - name: Wait for Pages deployment
         run: sleep 85
 
-      - name: Capture story and boss interaction on mobile
+      - name: Capture opening and Troy interaction on mobile
         shell: bash
         run: |
           mkdir -p qa/screenshots
@@ -56,7 +56,7 @@ jobs:
             const shot = async (name) => {
               await page.screenshot({ path: `qa/screenshots/${name}.png`, fullPage: true });
             };
-            const next = async () => {
+            const nextStory = async () => {
               await page.mouse.click(326, 689);
               await page.waitForTimeout(1050);
             };
@@ -66,62 +66,47 @@ jobs:
             };
 
             await shot('01-opening-darren');
-            await next();
+            await nextStory();
             await shot('02-darren-works-at-boxes');
-            await next();
+            await nextStory();
             await shot('03-not-comedian');
-            await next();
+            await nextStory();
             await shot('04-not-trying');
-            await next();
+            await nextStory();
             await shot('05-page5-ideas');
-            await next();
+            await nextStory();
             await shot('06-page6-notebook');
-            await next();
+            await nextStory();
             await shot('07-page7-troy');
-            await next();
+            await nextStory();
             await shot('08-page8-shift-rules');
-            await next();
-            await shot('09-boxes-intro');
-            await next();
-            await next();
-            await shot('10-boxes-notebook');
-            await next();
-            await shot('11-boxes-troy-text');
-            await next();
-            await shot('12-survive-shift');
-            await next();
-            await shot('13-clock-in');
-            await next();
-            await page.waitForTimeout(1500);
-            await shot('14-boxes-gameplay-start');
 
-            // Complete the three safe tutorial boxes. Correctness does not
-            // matter here; the QA goal is to reach the notebook/boss loop.
-            await routeLeft();
-            await routeLeft();
-            await routeLeft();
-            await shot('15-first-safe-thought');
+            // Page 8 now goes directly into live BOXES gameplay.
+            await nextStory();
+            await page.waitForTimeout(800);
+            await shot('09-boxes-gameplay-start');
 
-            // Save the first thought safely. That starts conveyor pressure and
-            // Troy's warning pass.
+            // Complete the three safe tutorial boxes. Correctness is not needed
+            // to reach the first thought; this run is checking timing and visuals.
+            await routeLeft();
+            await routeLeft();
+            await routeLeft();
+            await shot('10-first-safe-thought');
+
+            // Open the first thought and save it. Finishing this save starts the
+            // live conveyor and Troy's light -> silhouette -> watch sequence.
             await page.mouse.click(210, 300);
-            await page.waitForTimeout(450);
+            await page.waitForTimeout(300);
             await page.mouse.click(300, 448);
-            await page.waitForTimeout(1400);
-            await shot('16-boss-warning');
 
-            // Troy should now move from the warning peek into WATCHING, and the
-            // second thought is deliberately triggered at that state change.
-            await page.waitForTimeout(3000);
-            await shot('17-boss-watching-second-thought');
-
-            // Open the thought and try to save while Troy is watching. The
-            // notebook should snap closed and the boss window should flash.
-            await page.mouse.click(210, 300);
-            await page.waitForTimeout(350);
-            await page.mouse.click(300, 448);
-            await page.waitForTimeout(100);
-            await shot('18-caught-writing');
+            // Give the save animation time to finish, then capture two points in
+            // the longer silhouette approach before Troy reaches the window.
+            await page.waitForTimeout(2400);
+            await shot('11-troy-approach-early');
+            await page.waitForTimeout(1200);
+            await shot('12-troy-approach-late');
+            await page.waitForTimeout(1200);
+            await shot('13-troy-watching');
 
             fs.writeFileSync('qa/report.json', JSON.stringify({
               url,
