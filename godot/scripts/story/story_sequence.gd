@@ -8,6 +8,7 @@ const PAGES = [
 	preload("res://scenes/story/pages/05_noticed_things.tscn"),
 	preload("res://scenes/story/pages/06_writing_notebook.tscn"),
 	preload("res://scenes/story/pages/07_troy_noticing.tscn"),
+	preload("res://scenes/story/pages/08_shift_rules.tscn"),
 ]
 
 const ADVANCE_DEBOUNCE_MS := 250
