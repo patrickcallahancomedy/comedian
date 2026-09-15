@@ -13,6 +13,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_8eikp")
+metadata/_edit_vertical_guides_ = [215.0]
+metadata/_edit_horizontal_guides_ = [381.0]
 
 [node name="BackgroundColor" type="ColorRect" parent="." unique_id=904533699]
 layout_mode = 1
@@ -72,10 +74,10 @@ grow_vertical = 2
 
 [node name="Foreground" type="TextureRect" parent="ArtLayer" unique_id=2058067170]
 layout_mode = 1
-offset_left = 71.0
-offset_top = 178.0
-offset_right = 391.0
-offset_bottom = 698.0
+offset_left = 57.0
+offset_top = 183.0
+offset_right = 377.0
+offset_bottom = 703.0
 texture = ExtResource("2_b60eo")
 expand_mode = 1
 stretch_mode = 5
@@ -94,14 +96,14 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 22.0
-offset_top = 52.0
-offset_right = -18.0
-offset_bottom = -572.0
+offset_left = 17.0
+offset_top = 36.0
+offset_right = -23.0
+offset_bottom = -557.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_fonts/font = ExtResource("3_b60eo")
-theme_override_font_sizes/font_size = 56
+theme_override_font_sizes/font_size = 67
 text = "THIS IS DARREN"
 horizontal_alignment = 1
 autowrap_mode = 3

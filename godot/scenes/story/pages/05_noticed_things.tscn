@@ -1,10 +1,10 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://hvvoc51u2tl0"]
 
 [ext_resource type="Script" uid="uid://dhinamoeomgay" path="res://scripts/story/story_page_base.gd" id="1_page"]
-[ext_resource type="Texture2D" path="res://assets/boxes/thought_bubble.png" id="2_thought"]
+[ext_resource type="Texture2D" uid="uid://d222rftnjbdbp" path="res://assets/boxes/thought_bubble.png" id="2_thought"]
 [ext_resource type="FontFile" uid="uid://i36iwuoqk6el" path="res://assets/fonts/Barlow-Bold.ttf" id="3_font"]
 
-[node name="StoryCard" type="Control"]
+[node name="StoryCard" type="Control" unique_id=1677111308]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -14,7 +14,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_page")
 
-[node name="BackgroundColor" type="ColorRect" parent="."]
+[node name="BackgroundColor" type="ColorRect" parent="." unique_id=1468923662]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -24,7 +24,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.588235, 0.513726, 0.486275, 1)
 
-[node name="BackgroundImage" type="TextureRect" parent="."]
+[node name="BackgroundImage" type="TextureRect" parent="." unique_id=1533453040]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -36,7 +36,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="BackgroundDim" type="ColorRect" parent="."]
+[node name="BackgroundDim" type="ColorRect" parent="." unique_id=1262672316]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -47,7 +47,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0)
 
-[node name="ContinueHint" type="Label" parent="."]
+[node name="ContinueHint" type="Label" parent="." unique_id=1383147323]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -62,7 +62,7 @@ theme_override_font_sizes/font_size = 13
 text = "TAP TO CONTINUE"
 horizontal_alignment = 1
 
-[node name="ArtLayer" type="Control" parent="."]
+[node name="ArtLayer" type="Control" parent="." unique_id=724792423]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -70,17 +70,17 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Foreground" type="TextureRect" parent="ArtLayer"]
+[node name="Foreground" type="TextureRect" parent="ArtLayer" unique_id=622332488]
 layout_mode = 1
-offset_left = 55.0
-offset_top = 205.0
-offset_right = 375.0
-offset_bottom = 590.0
+offset_left = 56.0
+offset_top = 253.0
+offset_right = 376.0
+offset_bottom = 638.0
 texture = ExtResource("2_thought")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="TextLayer" type="Control" parent="."]
+[node name="TextLayer" type="Control" parent="." unique_id=236511561]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -88,7 +88,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Headline" type="Label" parent="TextLayer"]
+[node name="Headline" type="Label" parent="TextLayer" unique_id=857550547]
 custom_minimum_size = Vector2(390, 0)
 layout_mode = 1
 anchors_preset = 15
@@ -102,6 +102,8 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 42
-text = "BUT LATELY, DARREN'S\nBEEN GETTING\nIDEAS..."
+text = "BUT LATELY, DARREN'S
+BEEN GETTING
+IDEAS..."
 horizontal_alignment = 1
 autowrap_mode = 3

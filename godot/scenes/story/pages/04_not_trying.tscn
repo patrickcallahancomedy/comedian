@@ -1,10 +1,10 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bcjfhxlnyeyqw"]
 
 [ext_resource type="Script" uid="uid://dhinamoeomgay" path="res://scripts/story/story_page_base.gd" id="1_page"]
-[ext_resource type="Texture2D" path="res://assets/character/317A64C7-21D5-4798-B71A-1220EC08FB0C.png" id="2_darren"]
+[ext_resource type="Texture2D" uid="uid://bqcbtxtam0747" path="res://assets/character/317A64C7-21D5-4798-B71A-1220EC08FB0C.png" id="2_darren"]
 [ext_resource type="FontFile" uid="uid://i36iwuoqk6el" path="res://assets/fonts/Barlow-Bold.ttf" id="3_font"]
 
-[node name="StoryCard" type="Control"]
+[node name="StoryCard" type="Control" unique_id=638603005]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -14,7 +14,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_page")
 
-[node name="BackgroundColor" type="ColorRect" parent="."]
+[node name="BackgroundColor" type="ColorRect" parent="." unique_id=1895637843]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -24,7 +24,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.588235, 0.513726, 0.486275, 1)
 
-[node name="BackgroundImage" type="TextureRect" parent="."]
+[node name="BackgroundImage" type="TextureRect" parent="." unique_id=1986449689]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -36,7 +36,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="BackgroundDim" type="ColorRect" parent="."]
+[node name="BackgroundDim" type="ColorRect" parent="." unique_id=355744128]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -47,7 +47,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0)
 
-[node name="ContinueHint" type="Label" parent="."]
+[node name="ContinueHint" type="Label" parent="." unique_id=166881314]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -62,7 +62,7 @@ theme_override_font_sizes/font_size = 13
 text = "TAP TO CONTINUE"
 horizontal_alignment = 1
 
-[node name="ArtLayer" type="Control" parent="."]
+[node name="ArtLayer" type="Control" parent="." unique_id=39096699]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -70,7 +70,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Foreground" type="TextureRect" parent="ArtLayer"]
+[node name="Foreground" type="TextureRect" parent="ArtLayer" unique_id=1447940331]
 layout_mode = 1
 offset_left = 50.0
 offset_top = 174.0
@@ -80,7 +80,7 @@ texture = ExtResource("2_darren")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="TextLayer" type="Control" parent="."]
+[node name="TextLayer" type="Control" parent="." unique_id=1209242217]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -88,7 +88,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Headline" type="Label" parent="TextLayer"]
+[node name="Headline" type="Label" parent="TextLayer" unique_id=602487381]
 custom_minimum_size = Vector2(390, 0)
 layout_mode = 1
 anchors_preset = 15
@@ -102,6 +102,8 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 34
-text = "HE WASN'T REALLY\nTRYING TO BECOME ONE,\nEITHER."
+text = "HE WASN'T REALLY
+TRYING TO BECOME ONE,
+EITHER"
 horizontal_alignment = 1
 autowrap_mode = 3
