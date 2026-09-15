@@ -1,3 +1,4 @@
+# QA-only retrigger after the BossWindow deployment has finished.
 name: COMEDIAN Visual QA
 
 on:
