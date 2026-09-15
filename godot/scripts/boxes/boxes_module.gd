@@ -307,6 +307,19 @@ func _update_shift_hud() -> void:
 	shift_count_hud.text = "BOXES  %d / %d" % [shift_boxes_processed, SHIFT_BOX_LIMIT]
 
 
+func is_behind_quota_pace() -> bool:
+	if not shift_active or shift_boxes_processed <= 0:
+		return false
+
+	# Quota is 8 correct boxes out of 10, so Troy expects Darren to be on the
+	# same pace at each checkpoint. This allows a quick notebook save as long as
+	# Darren gets back to the conveyor before the work actually slips.
+	var required_correct := int(ceil(
+		float(shift_boxes_processed) * float(SHIFT_QUOTA) / float(SHIFT_BOX_LIMIT)
+	))
+	return shift_correct_routes < required_correct
+
+
 func _end_live_shift() -> void:
 	shift_active = false
 	shift_finished = true
@@ -351,8 +364,8 @@ func _show_pressure_thought() -> void:
 	thought_bubble.show()
 
 	# Unlike the first tutorial thought, the work controls stay live and the
-	# current box countdown does not stop. The boss is actively watching now,
-	# so opening/saving the notebook becomes a real choice instead of decoration.
+	# current box countdown does not stop. The risk is taking too long away from
+	# the conveyor, not Troy seeing the notebook itself.
 	var tween = create_tween()
 	tween.tween_property(thought_bubble, "modulate:a", 1.0, 0.2)
 
@@ -443,12 +456,8 @@ func _write_active_thought() -> void:
 	if active_thought.is_empty() or not pending_save_text.is_empty():
 		return
 
-	# Sorting boxes is safe while Troy watches. Stopping to actually write is not.
-	# The thought stays available if the player simply waits for him to leave.
-	if boss_window.is_watching():
-		_get_caught_writing()
-		return
-
+	# Writing is allowed even while Troy is watching. The danger is the time it
+	# takes: if Darren lets the conveyor slip below quota pace, Troy notices that.
 	pending_save_text = active_thought
 	write_idea_button.disabled = true
 
@@ -464,19 +473,10 @@ func _write_active_thought() -> void:
 	tween.finished.connect(_finish_write_active_thought)
 
 
-func _get_caught_writing() -> void:
+func _get_called_out_for_quota() -> void:
 	boss_catches += 1
-	print("Caught writing by Troy: ", boss_catches)
-
-	# For the vertical slice, getting caught costs the idea instead of inventing
-	# a full firing/job-security system before the rest of the game can support it.
-	pending_save_text = ""
-	active_thought = ""
-	notebook_open = false
-	notebook_overlay.hide()
-	thought_bubble.hide()
-	boss_window.flash_caught()
-	_resume_work_after_notebook()
+	print("Troy caught Darren behind quota: ", boss_catches)
+	boss_window.react_angry()
 
 
 func _finish_write_active_thought() -> void:
