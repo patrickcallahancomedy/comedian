@@ -6,6 +6,7 @@ const PAGES = [
 	preload("res://scenes/story/pages/03_not_comedian.tscn"),
 	preload("res://scenes/story/pages/04_not_trying.tscn"),
 	preload("res://scenes/story/pages/05_noticed_things.tscn"),
+	preload("res://scenes/story/pages/06_writing_notebook.tscn"),
 ]
 
 const ADVANCE_DEBOUNCE_MS := 250
