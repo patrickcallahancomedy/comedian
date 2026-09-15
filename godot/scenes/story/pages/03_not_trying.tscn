@@ -72,10 +72,10 @@ grow_vertical = 2
 
 [node name="Foreground" type="TextureRect" parent="ArtLayer"]
 layout_mode = 1
-offset_left = 67.0
-offset_top = 201.0
-offset_right = 371.0
-offset_bottom = 699.0
+offset_left = 20.0
+offset_top = 165.0
+offset_right = 410.0
+offset_bottom = 730.0
 texture = ExtResource("2_darren")
 expand_mode = 1
 stretch_mode = 5
@@ -101,7 +101,7 @@ offset_bottom = -572.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_fonts/font = ExtResource("3_font")
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 34
 text = "HE WASN'T REALLY\nTRYING TO BECOME ONE,\nEITHER."
 horizontal_alignment = 1
 autowrap_mode = 3
