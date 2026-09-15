@@ -1,9 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://dqd3hametyt8c"]
 
-[ext_resource type="Script" path="res://scripts/story/story_sequence.gd" id="1_sequence"]
-[ext_resource type="PackedScene" path="res://scenes/story/story_card.tscn" id="2_card"]
+[ext_resource type="Script" uid="uid://dvri070kn7qoh" path="res://scripts/story/story_sequence.gd" id="1_sequence"]
 
-[node name="StorySequence" type="Control"]
+[node name="StorySequence" type="Control" unique_id=65509213]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,5 +11,10 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_sequence")
 
-[node name="StoryCard" parent="." instance=ExtResource("2_card")]
+[node name="PageHost" type="Control" parent="." unique_id=268727128]
 layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

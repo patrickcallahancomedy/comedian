@@ -1,0 +1,105 @@
+[gd_scene format=3 uid="uid://c7e1r4ap4uyno"]
+
+[ext_resource type="Script" uid="uid://dhinamoeomgay" path="res://scripts/story/story_page_base.gd" id="1_xpya3"]
+[ext_resource type="Texture2D" uid="uid://tn6esxqxptrl" path="res://assets/character/darren front.png" id="2_6pl5a"]
+
+[node name="StoryCard" type="Control" unique_id=1830785883]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_xpya3")
+
+[node name="BackgroundColor" type="ColorRect" parent="." unique_id=904533699]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.588235, 0.513726, 0.486275, 1)
+
+[node name="BackgroundImage" type="TextureRect" parent="." unique_id=131452758]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BackgroundDim" type="ColorRect" parent="." unique_id=1038022517]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="ContinueHint" type="Label" parent="." unique_id=1888726089]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -42.0
+offset_bottom = -18.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.08, 0.08, 0.08, 0.48)
+theme_override_font_sizes/font_size = 13
+text = "TAP TO CONTINUE"
+horizontal_alignment = 1
+
+[node name="ArtLayer" type="Control" parent="." unique_id=2093858752]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Foreground" type="TextureRect" parent="ArtLayer" unique_id=2058067170]
+layout_mode = 1
+offset_left = 55.0
+offset_top = 190.0
+offset_right = 375.0
+offset_bottom = 710.0
+texture = ExtResource("2_6pl5a")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TextLayer" type="Control" parent="." unique_id=125921959]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Headline" type="Label" parent="TextLayer" unique_id=410214935]
+custom_minimum_size = Vector2(390, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 25.0
+offset_right = -20.0
+offset_bottom = -569.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 40
+text = "DARREN WASN'T "
+horizontal_alignment = 1
+autowrap_mode = 3
