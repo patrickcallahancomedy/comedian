@@ -1,0 +1,107 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://dhinamoeomgay" path="res://scripts/story/story_page_base.gd" id="1_6i01f"]
+[ext_resource type="Texture2D" path="res://assets/story/boxes_exterior.png" id="2_6i01f"]
+[ext_resource type="FontFile" uid="uid://i36iwuoqk6el" path="res://assets/fonts/Barlow-Bold.ttf" id="3_7cs3s"]
+
+[node name="StoryCard" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_6i01f")
+
+[node name="BackgroundColor" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.588235, 0.513726, 0.486275, 1)
+
+[node name="BackgroundImage" type="TextureRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BackgroundDim" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="ContinueHint" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -42.0
+offset_bottom = -18.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.08, 0.08, 0.08, 0.48)
+theme_override_font_sizes/font_size = 13
+text = "TAP TO CONTINUE"
+horizontal_alignment = 1
+
+[node name="ArtLayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Foreground" type="TextureRect" parent="ArtLayer"]
+layout_mode = 1
+offset_left = 67.0
+offset_top = 186.0
+offset_right = 371.0
+offset_bottom = 684.0
+texture = ExtResource("2_6i01f")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TextLayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Headline" type="Label" parent="TextLayer"]
+custom_minimum_size = Vector2(390, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 22.0
+offset_top = 52.0
+offset_right = -18.0
+offset_bottom = -572.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("3_7cs3s")
+theme_override_font_sizes/font_size = 50
+text = "DARREN WORKS AT\nBOXES."
+horizontal_alignment = 1
+autowrap_mode = 3
