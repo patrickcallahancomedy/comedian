@@ -3,8 +3,8 @@ extends Control
 
 ## Reusable supervisor-window visual state machine.
 ## Visible player-facing sequence:
-##   light comes on -> silhouette approaches -> Troy is visible -> angry if caught.
-## If Darren stays focused, Troy never enters ANGRY and simply leaves.
+##   light comes on -> silhouette approaches -> Troy is visible -> angry if quota slips.
+## Troy watches Darren's work output, not the notebook itself.
 
 signal state_changed(state: int)
 
@@ -17,11 +17,11 @@ enum State {
 	LEAVING,
 }
 
-@export_range(0.2, 5.0, 0.1) var light_duration: float = 0.9
-@export_range(0.5, 8.0, 0.1) var approach_duration: float = 2.2
+@export_range(0.2, 5.0, 0.1) var light_duration: float = 1.0
+@export_range(0.5, 8.0, 0.1) var approach_duration: float = 3.4
 @export_range(0.5, 15.0, 0.1) var watching_duration: float = 5.5
-@export_range(0.3, 5.0, 0.1) var angry_duration: float = 1.4
-@export_range(0.1, 2.0, 0.05) var enter_duration: float = 0.8
+@export_range(0.3, 5.0, 0.1) var angry_duration: float = 2.2
+@export_range(0.1, 2.0, 0.05) var enter_duration: float = 1.0
 @export_range(0.1, 2.0, 0.05) var leave_duration: float = 0.65
 
 @onready var backlight: ColorRect = $Backlight
@@ -139,13 +139,15 @@ func _start_approach() -> void:
 	troy.position.x = _hidden_x
 	troy.modulate.a = 0.0
 
+	# Let the silhouette travel slowly enough to act as a genuine warning.
+	# The player should have time to notice Troy before he reaches the glass.
 	_kill_motion_tween()
 	_motion_tween = create_tween()
 	_motion_tween.set_parallel(true)
 	_motion_tween.set_trans(Tween.TRANS_QUAD)
 	_motion_tween.set_ease(Tween.EASE_OUT)
-	_motion_tween.tween_property(troy, "position:x", _approach_x, enter_duration)
-	_motion_tween.tween_property(troy, "modulate:a", 0.88, enter_duration)
+	_motion_tween.tween_property(troy, "position:x", _approach_x, approach_duration)
+	_motion_tween.tween_property(troy, "modulate:a", 0.95, enter_duration)
 
 
 func _start_watching() -> void:
@@ -161,9 +163,9 @@ func _start_watching() -> void:
 	_motion_tween.set_parallel(true)
 	_motion_tween.set_trans(Tween.TRANS_QUAD)
 	_motion_tween.set_ease(Tween.EASE_OUT)
-	_motion_tween.tween_property(troy, "position:x", _watch_x, 0.35)
-	_motion_tween.tween_property(troy, "modulate:a", 1.0, 0.25)
-	_motion_tween.tween_method(_set_silhouette_mix, 1.0, 0.0, 0.38)
+	_motion_tween.tween_property(troy, "position:x", _watch_x, 0.45)
+	_motion_tween.tween_property(troy, "modulate:a", 1.0, 0.3)
+	_motion_tween.tween_method(_set_silhouette_mix, 1.0, 0.0, 0.5)
 
 
 func _start_leaving() -> void:
@@ -268,7 +270,7 @@ func _layout_troy() -> void:
 	troy.pivot_offset = troy.size * 0.5
 
 	_hidden_x = size.x + visual_width * 0.08
-	_approach_x = size.x - visual_width * 0.30
+	_approach_x = size.x - visual_width * 0.55
 	_watch_x = (size.x - visual_width) * 0.5
 
 	match state:
@@ -276,7 +278,7 @@ func _layout_troy() -> void:
 			troy.position.x = _hidden_x
 		State.APPROACH:
 			if troy.modulate.a <= 0.01:
-				troy.position.x = _approach_x
+				troy.position.x = _hidden_x
 		State.WATCHING, State.ANGRY:
 			troy.position.x = _watch_x
 
