@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" uid="uid://dhinamoeomgay" path="res://scripts/story/story_page_base.gd" id="1_page"]
-[ext_resource type="Texture2D" path="res://assets/character/darren_thinking.png" id="2_darren"]
+[ext_resource type="Texture2D" path="res://assets/boxes/thought_bubble.png" id="2_thought"]
 [ext_resource type="FontFile" uid="uid://i36iwuoqk6el" path="res://assets/fonts/Barlow-Bold.ttf" id="3_font"]
 
 [node name="StoryCard" type="Control"]
@@ -72,11 +72,11 @@ grow_vertical = 2
 
 [node name="Foreground" type="TextureRect" parent="ArtLayer"]
 layout_mode = 1
-offset_left = 67.0
-offset_top = 186.0
-offset_right = 371.0
-offset_bottom = 684.0
-texture = ExtResource("2_darren")
+offset_left = 55.0
+offset_top = 205.0
+offset_right = 375.0
+offset_bottom = 590.0
+texture = ExtResource("2_thought")
 expand_mode = 1
 stretch_mode = 5
 
@@ -101,7 +101,7 @@ offset_bottom = -572.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_fonts/font = ExtResource("3_font")
-theme_override_font_sizes/font_size = 50
-text = "BUT DARREN\nNOTICED THINGS."
+theme_override_font_sizes/font_size = 42
+text = "BUT LATELY, DARREN'S\nBEEN GETTING\nIDEAS..."
 horizontal_alignment = 1
 autowrap_mode = 3
