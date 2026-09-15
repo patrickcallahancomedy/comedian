@@ -67,36 +67,40 @@ jobs:
 
             await shot('01-opening-darren');
             await next();
-            await shot('02-opening-text-right');
+            await shot('02-darren-works-at-boxes');
             await next();
-            await shot('03-opening-text-left');
+            await shot('03-not-comedian');
             await next();
-            await shot('04-page4-noticed-things');
+            await shot('04-not-trying');
             await next();
             await shot('05-page5-ideas');
             await next();
             await shot('06-page6-notebook');
             await next();
-            await shot('04-boxes-intro');
+            await shot('07-page7-troy');
+            await next();
+            await shot('08-page8-shift-rules');
+            await next();
+            await shot('09-boxes-intro');
             await next();
             await next();
-            await shot('05-boxes-notebook');
+            await shot('10-boxes-notebook');
             await next();
-            await shot('06-boxes-troy-text');
+            await shot('11-boxes-troy-text');
             await next();
-            await shot('07-survive-shift');
+            await shot('12-survive-shift');
             await next();
-            await shot('08-clock-in');
+            await shot('13-clock-in');
             await next();
             await page.waitForTimeout(1500);
-            await shot('09-boxes-gameplay-start');
+            await shot('14-boxes-gameplay-start');
 
             // Complete the three safe tutorial boxes. Correctness does not
             // matter here; the QA goal is to reach the notebook/boss loop.
             await routeLeft();
             await routeLeft();
             await routeLeft();
-            await shot('10-first-safe-thought');
+            await shot('15-first-safe-thought');
 
             // Save the first thought safely. That starts conveyor pressure and
             // Troy's warning pass.
@@ -104,12 +108,12 @@ jobs:
             await page.waitForTimeout(450);
             await page.mouse.click(300, 448);
             await page.waitForTimeout(1400);
-            await shot('11-boss-warning');
+            await shot('16-boss-warning');
 
             // Troy should now move from the warning peek into WATCHING, and the
             // second thought is deliberately triggered at that state change.
             await page.waitForTimeout(3000);
-            await shot('12-boss-watching-second-thought');
+            await shot('17-boss-watching-second-thought');
 
             // Open the thought and try to save while Troy is watching. The
             // notebook should snap closed and the boss window should flash.
@@ -117,7 +121,7 @@ jobs:
             await page.waitForTimeout(350);
             await page.mouse.click(300, 448);
             await page.waitForTimeout(100);
-            await shot('13-caught-writing');
+            await shot('18-caught-writing');
 
             fs.writeFileSync('qa/report.json', JSON.stringify({
               url,
