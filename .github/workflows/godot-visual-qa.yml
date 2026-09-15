@@ -75,6 +75,8 @@ jobs:
             await next();
             await shot('05-page5-ideas');
             await next();
+            await shot('06-page6-notebook');
+            await next();
             await shot('04-boxes-intro');
             await next();
             await next();
