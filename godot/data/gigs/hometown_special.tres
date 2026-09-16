@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GigData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/gig_data.gd" id="1_gig"]
+
+[resource]
+script = ExtResource("1_gig")
+gig_id = "hometown_special"
+gig_title = "HOMETOWN SPECIAL"
+venue_id = "hometown_special_venue"
+venue_name = "HOMETOWN THEATER"
+city = "Dayton, Ohio"
+set_length_minutes = 60
+pay = 0
+travel_cost = 0
+energy_cost = 30
+reputation_required = 60
+completion_milestone = "hometown_special_complete"
+next_route_id = "ending"
