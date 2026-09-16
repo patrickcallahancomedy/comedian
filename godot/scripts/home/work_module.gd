@@ -1,8 +1,8 @@
 extends GameModule
 
 ## Work shell. It loads the existing BOXES scene without rewriting that scene.
-## This keeps Patrick's BOXES art/layout authoritative while giving the larger
-## game a standard module handoff.
+## Patrick's BOXES art/layout remains authoritative while the larger game gets a
+## standard module handoff.
 
 const BOXES_SCENE := preload("res://scenes/boxes/boxes_module.tscn")
 
@@ -16,14 +16,23 @@ const BOXES_SCENE := preload("res://scenes/boxes/boxes_module.tscn")
 var boxes_instance: Control
 var boxes_result: Dictionary = {}
 var result_captured: bool = false
+var opening_shift: bool = false
 
 
 func _ready() -> void:
 	boxes_host.hide()
 	result_overlay.hide()
+	opening_shift = not GameState.has_milestone("opening_boxes_complete")
 	_refresh_job_text()
-	start_shift_button.grab_focus()
 	set_process(true)
+
+	# The locked opening story flows directly into BOXES. Later visits to Work
+	# show the normal menu instead.
+	if opening_shift and GameState.job_status != GameState.JobStatus.LEFT_BOXES:
+		menu_panel.hide()
+		call_deferred("_on_start_shift_button_pressed")
+	else:
+		start_shift_button.grab_focus()
 
 
 func _refresh_job_text() -> void:
@@ -39,6 +48,8 @@ func _refresh_job_text() -> void:
 
 func _on_start_shift_button_pressed() -> void:
 	if boxes_instance != null:
+		return
+	if GameState.job_status == GameState.JobStatus.LEFT_BOXES:
 		return
 
 	menu_panel.hide()
@@ -63,6 +74,9 @@ func _capture_boxes_result() -> void:
 	var missed := int(boxes_instance.get("missed_boxes"))
 	var boss_catches := int(boxes_instance.get("boss_catches"))
 	var premises_saved := int(boxes_instance.get("premises_saved"))
+
+	# Read the existing result label instead of reaching into BOXES constants.
+	# That keeps the wrapper tolerant of future BOXES tuning.
 	var boxes_result_label = boxes_instance.get("shift_result_label")
 	var quota_met := false
 	if boxes_result_label is Label:
@@ -87,10 +101,17 @@ func _capture_boxes_result() -> void:
 
 
 func _on_finish_work_button_pressed() -> void:
+	if opening_shift:
+		GameState.mark_milestone("opening_boxes_complete")
+		next_route_id = "lunch"
+	else:
+		next_route_id = "calendar"
+
 	GameState.advance_day()
 	SaveManager.save_game()
 	finish_module(boxes_result)
 
 
 func _on_back_button_pressed() -> void:
+	next_route_id = "calendar"
 	finish_module({"status": "work_skipped"})
