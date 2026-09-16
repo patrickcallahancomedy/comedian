@@ -1,0 +1,85 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/venues/venue_module.gd" id="1_venue"]
+
+[node name="VenueModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_venue")
+module_id = "venue"
+venue_id = "local_venue"
+venue_name = "LOCAL VENUE"
+set_length_minutes = 5
+expected_pay = 0
+stage_route_id = "placeholder"
+leave_route_id = "calendar"
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.075, 0.09, 1)
+
+[node name="Layout" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 36.0
+offset_top = 70.0
+offset_right = -36.0
+offset_bottom = -70.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="HeaderLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "VENUE"
+horizontal_alignment = 1
+
+[node name="VenueNameLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "LOCAL VENUE"
+horizontal_alignment = 1
+
+[node name="VenueArt" type="TextureRect" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 270)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DetailsLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+text = "SET: 5 MIN    PAY: $0"
+horizontal_alignment = 1
+
+[node name="ArrivalText" type="Label" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+text = "ARRIVAL / SIGN-UP / BACKSTAGE / SOCIAL PLACEHOLDER"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="PerformButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "GO ON STAGE"
+
+[node name="LeaveButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+text = "LEAVE"
+
+[connection signal="pressed" from="Background/Layout/PerformButton" to="." method="_on_perform_button_pressed"]
+[connection signal="pressed" from="Background/Layout/LeaveButton" to="." method="_on_leave_button_pressed"]
