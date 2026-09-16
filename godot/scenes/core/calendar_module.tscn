@@ -1,0 +1,88 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/calendar_module.gd" id="1_calendar"]
+
+[node name="CalendarModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_calendar")
+module_id = "calendar"
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.08, 0.08, 1)
+
+[node name="Layout" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 36.0
+offset_top = 70.0
+offset_right = -36.0
+offset_bottom = -70.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "COMEDIAN — CALENDAR"
+horizontal_alignment = 1
+
+[node name="DayLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "WEEK 1 — MONDAY"
+horizontal_alignment = 1
+
+[node name="StateLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
+text = "MONEY $0    ENERGY 100    REP 0"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+
+[node name="WorkButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "WORK"
+
+[node name="HomeButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "HOME"
+
+[node name="ComedyButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "COMEDY"
+
+[node name="TravelButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "TRAVEL"
+
+[node name="SkipDayButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "SKIP DAY"
+
+[connection signal="pressed" from="Background/Layout/WorkButton" to="." method="_on_work_button_pressed"]
+[connection signal="pressed" from="Background/Layout/HomeButton" to="." method="_on_home_button_pressed"]
+[connection signal="pressed" from="Background/Layout/ComedyButton" to="." method="_on_comedy_button_pressed"]
+[connection signal="pressed" from="Background/Layout/TravelButton" to="." method="_on_travel_button_pressed"]
+[connection signal="pressed" from="Background/Layout/SkipDayButton" to="." method="_on_skip_day_button_pressed"]
