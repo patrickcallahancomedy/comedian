@@ -1,8 +1,7 @@
 extends GameModule
 
 ## Central day-selection screen for the post-prologue game loop.
-## This scene does not own the calendar. GameState owns day/week; this module
-## only lets the player choose what to do next.
+## GameState owns day/week; this module only lets the player choose what to do.
 
 @export_category("Activity Routes")
 @export var work_route_id: String = "work"
@@ -26,14 +25,26 @@ func _ready() -> void:
 
 func _refresh() -> void:
 	day_label.text = "WEEK %d — %s" % [GameState.week, GameState.get_day_name().to_upper()]
-	state_label.text = "MONEY $%d    ENERGY %d    REP %d" % [
+	state_label.text = "MONEY $%d    ENERGY %d    REP %d\nCAREER: %s" % [
 		GameState.money,
 		GameState.energy,
 		GameState.reputation,
+		GameState.get_career_phase_name().to_upper(),
 	]
 
-	# Darren can always inspect the comedy path in Skeleton Alpha. Individual
-	# story gates can disable or relabel this later without changing the router.
+	work_button.disabled = GameState.job_status == GameState.JobStatus.LEFT_BOXES
+	work_button.text = "WORK" if not work_button.disabled else "BOXES — LEFT JOB"
+
+	# The first time the main calendar appears, COMEDY advances the compressed
+	# Open-Micer placeholder. Later this button uses the normal venue route.
+	if (
+		GameState.career_phase == GameState.CareerPhase.OPEN_MICER
+		and GameState.has_milestone("comedian_begun")
+		and not GameState.has_milestone("open_micer_phase_complete")
+	):
+		comedy_button.text = "COMEDY — CONTINUE SKELETON CAREER"
+	else:
+		comedy_button.text = "COMEDY"
 	comedy_button.disabled = false
 
 
@@ -48,6 +59,8 @@ func _go_to_activity(activity_id: String, route_id: String) -> void:
 
 
 func _on_work_button_pressed() -> void:
+	if work_button.disabled:
+		return
 	_go_to_activity("work", work_route_id)
 
 
@@ -56,7 +69,14 @@ func _on_home_button_pressed() -> void:
 
 
 func _on_comedy_button_pressed() -> void:
-	_go_to_activity("comedy", comedy_route_id)
+	if (
+		GameState.career_phase == GameState.CareerPhase.OPEN_MICER
+		and GameState.has_milestone("comedian_begun")
+		and not GameState.has_milestone("open_micer_phase_complete")
+	):
+		_go_to_activity("comedy", "open_micer")
+	else:
+		_go_to_activity("comedy", comedy_route_id)
 
 
 func _on_travel_button_pressed() -> void:
