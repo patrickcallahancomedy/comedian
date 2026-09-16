@@ -1,0 +1,85 @@
+name: COMEDIAN Godot Fuzz
+
+on:
+  push:
+    branches:
+      - godot-alpha
+    paths:
+      - "godot/**"
+      - ".github/workflows/godot-fuzz.yml"
+  pull_request:
+    paths:
+      - "godot/**"
+      - ".github/workflows/godot-fuzz.yml"
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Number of randomized playthroughs
+        required: false
+        default: "1000"
+      seed:
+        description: Optional starting seed; blank derives it from the commit
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: comedian-godot-fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  fuzz-boxes:
+    name: Fuzz BOXES gameplay
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select deterministic seed range
+        id: fuzz-config
+        shell: bash
+        env:
+          REQUESTED_RUNS: ${{ inputs.runs }}
+          REQUESTED_SEED: ${{ inputs.seed }}
+        run: |
+          set -euo pipefail
+
+          runs="${REQUESTED_RUNS:-1000}"
+          if [[ -n "${REQUESTED_SEED:-}" ]]; then
+            base_seed="$REQUESTED_SEED"
+          else
+            base_seed=$((16#${GITHUB_SHA:0:7}))
+          fi
+
+          echo "runs=$runs" >> "$GITHUB_OUTPUT"
+          echo "seed=$base_seed" >> "$GITHUB_OUTPUT"
+          echo "Fuzzing $runs playthroughs beginning with seed $base_seed"
+
+      - name: Run deterministic BOXES fuzz suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --fixed-fps 120 \
+            --script res://tests/boxes_fuzz.gd -- \
+            --runs=${{ steps.fuzz-config.outputs.runs }} \
+            --seed=${{ steps.fuzz-config.outputs.seed }} \
+            2>&1 | tee boxes-fuzz.log
+
+      - name: Upload failure trace
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boxes-fuzz-failure-${{ github.run_id }}
+          path: boxes-fuzz.log
+          if-no-files-found: warn
+          retention-days: 14
+

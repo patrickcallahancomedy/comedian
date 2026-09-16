@@ -416,6 +416,7 @@ func _refresh_notebook_pages() -> void:
 	active_thought_label.position = active_thought_start_position
 	active_thought_label.modulate.a = 1.0
 	write_idea_button.disabled = false
+	close_notebook_button.disabled = false
 
 	if active_thought.is_empty():
 		active_thought_label.text = "No new ideas."
@@ -438,7 +439,7 @@ func _format_idea_list(items: Array[String], empty_text: String) -> String:
 
 
 func _close_notebook() -> void:
-	if not notebook_open:
+	if not notebook_open or not pending_save_text.is_empty():
 		return
 
 	notebook_open = false
@@ -460,6 +461,7 @@ func _write_active_thought() -> void:
 	# takes: if Darren lets the conveyor slip below quota pace, Troy notices that.
 	pending_save_text = active_thought
 	write_idea_button.disabled = true
+	close_notebook_button.disabled = true
 
 	# The idea visibly crosses the spiral from the right IDEAS page into the
 	# left PREMISES page. The live conveyor keeps running underneath this overlay.
@@ -509,11 +511,18 @@ func _resume_work_after_notebook() -> void:
 
 	# The quota has already been running since box one. Resolving the first safe
 	# thought turns on conveyor pressure and starts Troy's telegraphed watch pass.
+	# Opening the notebook manually during one of the first three boxes must not
+	# trigger this transition or manufacture a replacement for the waiting box.
 	if not auto_route_enabled:
-		auto_route_enabled = true
-		notebook_hitbox.disabled = true
-		boss_window.begin_cycle()
-		_start_next_box()
+		if first_thought_shown:
+			auto_route_enabled = true
+			notebook_hitbox.disabled = true
+			boss_window.begin_cycle()
+			_start_next_box()
+		elif box_waiting_for_route:
+			left_hitbox.disabled = false
+			right_hitbox.disabled = false
+			notebook_hitbox.disabled = false
 		return
 
 	# During live work, never manufacture a replacement box here. The conveyor
