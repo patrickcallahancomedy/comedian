@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GigData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/gig_data.gd" id="1_gig"]
+
+[resource]
+script = ExtResource("1_gig")
+gig_id = "first_mic"
+gig_title = "DARREN'S FIRST OPEN MIC"
+venue_id = "tuesday_mic"
+venue_name = "TUESDAY OPEN MIC"
+city = "Dayton, Ohio"
+set_length_minutes = 5
+pay = 0
+travel_cost = 0
+energy_cost = 8
+reputation_required = 0
+completion_milestone = "first_mic_complete"
+next_route_id = "after_first_mic"
