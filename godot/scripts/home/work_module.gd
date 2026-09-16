@@ -63,7 +63,10 @@ func _capture_boxes_result() -> void:
 	var missed := int(boxes_instance.get("missed_boxes"))
 	var boss_catches := int(boxes_instance.get("boss_catches"))
 	var premises_saved := int(boxes_instance.get("premises_saved"))
-	var quota_met := GameState.has_milestone("boxes_quota_met")
+	var boxes_result_label = boxes_instance.get("shift_result_label")
+	var quota_met := false
+	if boxes_result_label is Label:
+		quota_met = boxes_result_label.text.contains("QUOTA MET")
 
 	boxes_result = {
 		"status": "boxes_shift_complete",
