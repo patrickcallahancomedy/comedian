@@ -32,7 +32,7 @@ enum JobStatus {
 	LEFT_BOXES,
 }
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 
 const DAY_NAMES: Array[String] = [
 	"Monday",
@@ -54,7 +54,7 @@ var money: int = 0
 var energy: int = 100
 
 # SceneRouter updates this whenever it successfully changes modules. SaveManager
-# stores it so Continue can eventually return Darren to the correct place.
+# stores it so Continue can return Darren to the correct place.
 var current_route_id: String = "story_intro"
 
 # -----------------------------------------------------------------------------
@@ -65,8 +65,10 @@ var career_phase: int = CareerPhase.BEFORE_COMEDY
 var reputation: int = 0
 var job_status: int = JobStatus.EMPLOYED_AT_BOXES
 
-# Named relationship values stay simple for now. More characters can be added
-# here without changing the rest of the game architecture.
+# The active booking is a stable ID pointing at a normal .tres file in data/gigs.
+# An empty value means Darren is not currently travelling to / inside a gig.
+var current_gig_id: String = ""
+
 var relationships: Dictionary = {
 	"ray": 0,
 	"nate": 0,
@@ -90,9 +92,6 @@ var milestones: Dictionary = {}
 # -----------------------------------------------------------------------------
 # The entire game uses one readable pipeline:
 # Thought -> Premise -> Tested Bit -> Reliable Joke -> Burned Material
-#
-# Modules should move material through these lists instead of inventing their
-# own permanent joke storage.
 
 var thoughts: Array[String] = []
 var premises: Array[String] = []
@@ -101,35 +100,51 @@ var reliable_jokes: Array[String] = []
 var burned_material: Array[String] = []
 
 
-## Return the human-readable current day.
 func get_day_name() -> String:
 	return DAY_NAMES[day_index]
 
 
-## Move the calendar forward by one day. Calendar-specific consequences belong
-## in the Calendar system, not here.
 func advance_day() -> void:
 	day_index += 1
 	if day_index >= DAY_NAMES.size():
 		day_index = 0
 		week += 1
-
 	day_advanced.emit(get_day_name(), week)
 
 
-## Change Darren's broad comedy-career phase.
 func set_career_phase(new_phase: int) -> void:
 	if new_phase == career_phase:
 		return
 	if new_phase < CareerPhase.BEFORE_COMEDY or new_phase > CareerPhase.COMPLETE:
 		push_warning("GameState received an invalid career phase: %s" % new_phase)
 		return
-
 	career_phase = new_phase
 	career_phase_changed.emit(career_phase)
 
 
-## Mark a named story/career milestone as completed.
+func get_career_phase_name() -> String:
+	return CareerPhase.keys()[career_phase].replace("_", " ").capitalize()
+
+
+func set_job_status(new_status: int) -> void:
+	if new_status < JobStatus.EMPLOYED_AT_BOXES or new_status > JobStatus.LEFT_BOXES:
+		push_warning("GameState received an invalid job status: %s" % new_status)
+		return
+	job_status = new_status
+
+
+func add_money(amount: int) -> void:
+	money += amount
+
+
+func change_energy(amount: int) -> void:
+	energy = clampi(energy + amount, 0, 100)
+
+
+func add_reputation(amount: int) -> void:
+	reputation = maxi(0, reputation + amount)
+
+
 func mark_milestone(milestone_id: String) -> void:
 	if milestone_id.is_empty():
 		return
@@ -137,14 +152,21 @@ func mark_milestone(milestone_id: String) -> void:
 
 
 func has_milestone(milestone_id: String) -> bool:
-	return milestones.get(milestone_id, false)
+	return bool(milestones.get(milestone_id, false))
 
 
-## Add a venue once. The string should be a stable ID such as "tuesday_mic".
 func discover_venue(venue_id: String) -> void:
 	if venue_id.is_empty() or discovered_venues.has(venue_id):
 		return
 	discovered_venues.append(venue_id)
+
+
+func start_gig(gig_id: String) -> void:
+	current_gig_id = gig_id
+
+
+func clear_current_gig() -> void:
+	current_gig_id = ""
 
 
 # -----------------------------------------------------------------------------
@@ -155,8 +177,6 @@ func add_thought(text: String) -> bool:
 	return _add_unique_material(thoughts, text)
 
 
-## BOXES and future writing modules can add a premise directly when the thought
-## stage happens inside their own gameplay.
 func add_premise(text: String) -> bool:
 	return _add_unique_material(premises, text)
 
@@ -188,7 +208,6 @@ func _add_unique_material(target: Array[String], text: String) -> bool:
 func _move_material(source: Array[String], destination: Array[String], index: int) -> bool:
 	if index < 0 or index >= source.size():
 		return false
-
 	var material_text := source[index]
 	source.remove_at(index)
 	if not destination.has(material_text):
@@ -199,8 +218,6 @@ func _move_material(source: Array[String], destination: Array[String], index: in
 # -----------------------------------------------------------------------------
 # SAVE DATA
 # -----------------------------------------------------------------------------
-# SaveManager handles files. GameState only translates its readable variables
-# to and from a Dictionary.
 
 func to_save_data() -> Dictionary:
 	return {
@@ -213,6 +230,7 @@ func to_save_data() -> Dictionary:
 		"career_phase": career_phase,
 		"reputation": reputation,
 		"job_status": job_status,
+		"current_gig_id": current_gig_id,
 		"relationships": relationships.duplicate(true),
 		"discovered_venues": discovered_venues.duplicate(),
 		"bookings": bookings.duplicate(true),
@@ -237,12 +255,13 @@ func load_save_data(data: Dictionary) -> void:
 		CareerPhase.BEFORE_COMEDY,
 		CareerPhase.COMPLETE
 	)
-	reputation = int(data.get("reputation", 0))
+	reputation = maxi(0, int(data.get("reputation", 0)))
 	job_status = clampi(
 		int(data.get("job_status", JobStatus.EMPLOYED_AT_BOXES)),
 		JobStatus.EMPLOYED_AT_BOXES,
 		JobStatus.LEFT_BOXES
 	)
+	current_gig_id = str(data.get("current_gig_id", ""))
 
 	var loaded_relationships = data.get("relationships", {})
 	if typeof(loaded_relationships) == TYPE_DICTIONARY:
@@ -259,13 +278,11 @@ func load_save_data(data: Dictionary) -> void:
 
 	discovered_venues = _read_string_array(data.get("discovered_venues", []))
 	bookings = _read_dictionary_array(data.get("bookings", []))
-
 	thoughts = _read_string_array(data.get("thoughts", []))
 	premises = _read_string_array(data.get("premises", []))
 	tested_bits = _read_string_array(data.get("tested_bits", []))
 	reliable_jokes = _read_string_array(data.get("reliable_jokes", []))
 	burned_material = _read_string_array(data.get("burned_material", []))
-
 	state_loaded.emit()
 
 
@@ -273,7 +290,6 @@ func _read_string_array(value: Variant) -> Array[String]:
 	var output: Array[String] = []
 	if typeof(value) != TYPE_ARRAY:
 		return output
-
 	for item in value:
 		if typeof(item) == TYPE_STRING:
 			output.append(item)
@@ -284,7 +300,6 @@ func _read_dictionary_array(value: Variant) -> Array[Dictionary]:
 	var output: Array[Dictionary] = []
 	if typeof(value) != TYPE_ARRAY:
 		return output
-
 	for item in value:
 		if typeof(item) == TYPE_DICTIONARY:
 			output.append(item.duplicate(true))
@@ -300,8 +315,6 @@ func _default_relationships() -> Dictionary:
 	}
 
 
-## Reset only persistent game information. Visual scenes are responsible for
-## resetting their own temporary UI/gameplay state when they load.
 func reset_new_game() -> void:
 	week = 1
 	day_index = 0
@@ -312,12 +325,12 @@ func reset_new_game() -> void:
 	career_phase = CareerPhase.BEFORE_COMEDY
 	reputation = 0
 	job_status = JobStatus.EMPLOYED_AT_BOXES
+	current_gig_id = ""
 	relationships = _default_relationships()
 
 	discovered_venues.clear()
 	bookings.clear()
 	milestones.clear()
-
 	thoughts.clear()
 	premises.clear()
 	tested_bits.clear()
