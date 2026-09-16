@@ -15,6 +15,21 @@ func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
 
 
+## Reset the persistent state and enter the opening route. The title screen can
+## call this directly later without knowing how GameState or routing works.
+func start_new_game() -> bool:
+	GameState.reset_new_game()
+	delete_save()
+	return SceneRouter.go_to("story_intro")
+
+
+## Load the save first, then ask SceneRouter to return to its stored route.
+func continue_game() -> bool:
+	if not load_game():
+		return false
+	return SceneRouter.resume_saved_route()
+
+
 func save_game() -> bool:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
