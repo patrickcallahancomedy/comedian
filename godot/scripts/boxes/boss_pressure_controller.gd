@@ -17,7 +17,7 @@ var _pressure_thought_text := ""
 
 
 func _ready() -> void:
-	_module = boss_window.get_parent().get_parent()
+	_module = boss_window.get_parent()
 	boss_window.state_changed.connect(_on_boss_state_changed)
 	set_process(true)
 

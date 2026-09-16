@@ -28,9 +28,9 @@ enum State {
 @export_range(0.1, 1.5, 0.05) var fade_duration: float = 0.35
 @export_range(0.1, 2.0, 0.05) var leave_duration: float = 0.65
 
-@onready var warning_glow: ColorRect = $WarningGlow
-@onready var troy_silhouette: TextureRect = $TroySilhouette
-@onready var troy: TextureRect = $Troy
+@onready var warning_glow: TextureRect = $WarningGlow
+@onready var troy_silhouette: TextureRect = $WindowClip/TroySilhouette
+@onready var troy: TextureRect = $WindowClip/Troy
 @onready var angry_tint: ColorRect = $AngryTint
 
 var state: int = State.IDLE
@@ -92,20 +92,20 @@ func react_angry() -> void:
 	troy_silhouette.hide()
 	troy.show()
 	troy.modulate.a = 1.0
+	troy.modulate = Color(1.0, 0.8, 0.8, 1.0)
 	warning_glow.show()
 	warning_glow.modulate.a = 1.0
-	angry_tint.show()
-	angry_tint.modulate.a = 0.0
+	
 
 	_sequence = create_tween()
 	_sequence.set_trans(Tween.TRANS_QUAD)
 	_sequence.set_ease(Tween.EASE_IN_OUT)
-	_sequence.tween_property(angry_tint, "modulate:a", 1.0, 0.12)
+	
 	_sequence.tween_interval(maxf(0.0, angry_duration - 0.12))
 	_sequence.tween_callback(_show_leaving)
 	_sequence.tween_property(troy, "modulate:a", 0.0, leave_duration)
 	_sequence.parallel().tween_property(warning_glow, "modulate:a", 0.0, leave_duration)
-	_sequence.parallel().tween_property(angry_tint, "modulate:a", 0.0, leave_duration)
+	_sequence.tween_callback(func(): troy.modulate = Color.WHITE)
 	_sequence.tween_callback(_finish_cycle)
 
 

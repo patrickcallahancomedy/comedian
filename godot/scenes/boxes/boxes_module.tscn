@@ -1,11 +1,15 @@
-[gd_scene load_steps=15 format=3 uid="uid://ecdj0i132kxk"]
+[gd_scene format=3 uid="uid://ecdj0i132kxk"]
 
 [ext_resource type="Texture2D" uid="uid://bn7s7vd6jvn40" path="res://assets/boxes/warehouse_background.png" id="1_1t28k"]
 [ext_resource type="Script" uid="uid://dfe37nobml5a7" path="res://scripts/boxes/boxes_module.gd" id="1_jnf7g"]
 [ext_resource type="Texture2D" uid="uid://5osabgxhdwgh" path="res://assets/boxes/conveyor_frame.png" id="2_1kx3v"]
 [ext_resource type="Texture2D" uid="uid://cwlmpoxkbqqce" path="res://assets/boxes/conveyor_belt.png" id="3_3jlus"]
+[ext_resource type="Script" uid="uid://bcybxwftn6412" path="res://scripts/boxes/boss_window.gd" id="3_4h5da"]
+[ext_resource type="Texture2D" uid="uid://cx4r3myy4ssvl" path="res://assets/character/Troy silhoutte.png" id="4_l4t62"]
 [ext_resource type="Texture2D" uid="uid://khk0wda7txkh" path="res://assets/boxes/tabletop.png" id="4_wvpkp"]
 [ext_resource type="Texture2D" uid="uid://ble6u2fq2f3y1" path="res://assets/boxes/left_button.png" id="5_exbu1"]
+[ext_resource type="Texture2D" uid="uid://dtgnxphkylevn" path="res://assets/character/troy.png" id="5_ocm72"]
+[ext_resource type="Script" uid="uid://146njaro8v6h" path="res://scripts/boxes/boss_pressure_controller.gd" id="6_eoaha"]
 [ext_resource type="Texture2D" uid="uid://c5t3rgsd0a4nt" path="res://assets/boxes/right_button.png" id="6_jnf7g"]
 [ext_resource type="Texture2D" uid="uid://cv0j01s48sab7" path="res://assets/boxes/notebook_closed.png" id="8_jiuj2"]
 [ext_resource type="Texture2D" uid="uid://dotvrchhv0vr6" path="res://assets/boxes/pencil.png" id="9_h56rq"]
@@ -14,7 +18,14 @@
 [ext_resource type="Texture2D" uid="uid://c28ygf02e6p5d" path="res://assets/boxes/box_side_view.png" id="11_rea3k"]
 [ext_resource type="Texture2D" uid="uid://dt7egv4p23m5x" path="res://assets/boxes/notebook_open.png" id="12_notebook_open"]
 [ext_resource type="Texture2D" uid="uid://d222rftnjbdbp" path="res://assets/boxes/thought_bubble.png" id="13_5rlsm"]
-[ext_resource type="PackedScene" path="res://scenes/boxes/boss_window.tscn" id="14_boss_window"]
+
+[sub_resource type="Gradient" id="Gradient_4h5da"]
+colors = PackedColorArray(1.436961, 1.424167, 1.3713679, 1, 0.7982371, 0.7877119, 0.64929795, 0.50600004)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_n2eig"]
+gradient = SubResource("Gradient_4h5da")
+fill = 1
+fill_from = Vector2(0.512, 0.189)
 
 [node name="BoxesModule" type="Control" unique_id=10154382]
 layout_mode = 3
@@ -36,7 +47,7 @@ texture = ExtResource("1_1t28k")
 expand_mode = 1
 stretch_mode = 6
 
-[node name="BossLayer" type="Control" parent="."]
+[node name="BossLayer" type="Control" parent="." unique_id=408613486]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -44,15 +55,82 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+script = ExtResource("3_4h5da")
+light_duration = 1.5
+approach_duration = 4.0
+watching_duration = 5.0
+angry_duration = 2.5
+fade_duration = 0.2
 
-[node name="BossWindow" parent="BossLayer" instance=ExtResource("14_boss_window")]
+[node name="WarningGlow" type="TextureRect" parent="BossLayer" unique_id=155860387]
 layout_mode = 1
-anchor_left = 0.19
-anchor_top = 0.04
-anchor_right = 0.81
-anchor_bottom = 0.19
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 111.0
+offset_top = 85.0
+offset_right = -115.0
+offset_bottom = -605.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_n2eig")
+
+[node name="WindowClip" type="Control" parent="BossLayer" unique_id=1461874482]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 0
+offset_left = 111.0
+offset_top = 85.0
+offset_right = 315.0
+offset_bottom = 159.0
+
+[node name="TroySilhouette" type="TextureRect" parent="BossLayer/WindowClip" unique_id=1319407902]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -53.0
+offset_top = 3.0
+offset_right = 46.0
+offset_bottom = 171.29999
+grow_horizontal = 2
+mouse_filter = 2
+texture = ExtResource("4_l4t62")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Troy" type="TextureRect" parent="BossLayer/WindowClip" unique_id=1927302610]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -53.0
+offset_top = 3.0
+offset_right = 46.0
+offset_bottom = 171.29999
+grow_horizontal = 2
+mouse_filter = 2
+texture = ExtResource("5_ocm72")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="AngryTint" type="ColorRect" parent="BossLayer" unique_id=874006078]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 111.0
+offset_top = 85.0
+offset_right = -115.0
+offset_bottom = -605.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.82, 0.12, 0.08, 0.24)
+
+[node name="PressureController" type="Node" parent="BossLayer" unique_id=94435800]
+script = ExtResource("6_eoaha")
 
 [node name="GameplayLayer" type="Control" parent="." unique_id=1644484715]
 layout_mode = 1
@@ -273,7 +351,9 @@ theme_override_colors/font_color = Color(0.96, 0.91, 0.79, 1)
 theme_override_colors/font_outline_color = Color(0.08, 0.07, 0.06, 0.95)
 theme_override_constants/outline_size = 7
 theme_override_font_sizes/font_size = 23
-text = "SHIFT COMPLETE\nQUOTA MET\n8 / 8"
+text = "SHIFT COMPLETE
+QUOTA MET
+8 / 8"
 horizontal_alignment = 1
 vertical_alignment = 1
 

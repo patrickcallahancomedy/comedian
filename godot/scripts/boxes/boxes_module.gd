@@ -4,7 +4,7 @@ const FIRST_THOUGHT := "I wonder why they call it a lunch break when I never sto
 # Placeholder copy for the second tutorial thought. Easy to swap later.
 const SECOND_THOUGHT := "Every box has somewhere to be before I do."
 
-@onready var boss_window: BossWindow = $BossLayer/BossWindow
+@onready var boss_window: BossWindow = $BossLayer
 
 @onready var left_button_art: TextureRect = $GameplayLayer/LeftButton
 @onready var right_button_art: TextureRect = $GameplayLayer/RightButton
@@ -489,7 +489,7 @@ func _finish_write_active_thought() -> void:
 	_refresh_notebook_pages()
 
 	var tween = create_tween()
-	tween.tween_interval(0.45)
+	tween.tween_interval(0.15)
 	tween.finished.connect(_finish_notebook_save_and_resume)
 
 
