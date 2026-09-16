@@ -18,8 +18,7 @@ var page_index := 0
 var current_page: Control
 var last_advance_ms := -ADVANCE_DEBOUNCE_MS
 
-@export_file("*.tscn")
-var next_scene_path: String = "res://scenes/boxes/boxes_module.tscn"
+@export var next_route_id: String = "work"
 
 
 func _ready() -> void:
@@ -53,10 +52,11 @@ func _input(event: InputEvent) -> void:
 		return
 
 	last_advance_ms = now_ms
-
 	var next_page := page_index + 1
 
 	if next_page < PAGES.size():
 		_show_page(next_page)
 	else:
-		get_tree().change_scene_to_file(next_scene_path)
+		GameState.mark_milestone("opening_story_complete")
+		SaveManager.save_game()
+		SceneRouter.go_to(next_route_id)
