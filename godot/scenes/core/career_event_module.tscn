@@ -1,0 +1,93 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/career_event_module.gd" id="1_event"]
+
+[node name="CareerEventModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_event")
+module_id = "career_event"
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.08, 0.09, 1)
+
+[node name="ArtArea" type="Control" parent="Background"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 30.0
+offset_top = 40.0
+offset_right = -30.0
+offset_bottom = 310.0
+grow_horizontal = 2
+
+[node name="ReplaceMeLabel" type="Label" parent="Background/ArtArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "PLACEHOLDER ART — SAFE TO REPLACE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Layout" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_top = -420.0
+offset_right = -32.0
+offset_bottom = -42.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 15
+
+[node name="PhaseLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "CAREER"
+horizontal_alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "CAREER EVENT"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="DescriptionLabel" type="Label" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "Placeholder career event."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="GateLabel" type="Label" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
+text = "SKELETON ALPHA"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ContinueButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "CONTINUE"
+
+[connection signal="pressed" from="Background/Layout/ContinueButton" to="." method="_on_continue_button_pressed"]
