@@ -57,18 +57,8 @@ var shift_finished := false
 var shift_boxes_processed := 0
 var shift_correct_routes := 0
 
-# Work notebook:
-#   left page  = PREMISES already written down
-#   right page = IDEAS currently in Darren's head
-# Writing an idea down moves it from the right page to the left page.
-#
-# Later/home notebook:
-#   left page  = TESTED JOKES
-#   right page = PREMISES
-# These arrays will eventually move into persistent GameState so every module
-# sees the same material.
-var premises: Array[String] = []
-var tested_jokes: Array[String] = []
+# Persistent comedy material belongs to GameState. BOXES owns only the temporary
+# thought currently on screen and the counters for this one work shift.
 
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
@@ -336,6 +326,10 @@ func _end_live_shift() -> void:
 	notebook_open = false
 
 	var quota_met := shift_correct_routes >= SHIFT_QUOTA
+	GameState.mark_milestone("boxes_shift_complete")
+	if quota_met:
+		GameState.mark_milestone("boxes_quota_met")
+
 	shift_result_label.text = (
 		"SHIFT COMPLETE\nQUOTA MET\n%d / %d" % [shift_correct_routes, SHIFT_QUOTA]
 		if quota_met
@@ -411,7 +405,7 @@ func _open_notebook() -> void:
 
 
 func _refresh_notebook_pages() -> void:
-	premises_list_label.text = _format_idea_list(premises, "No premises yet.")
+	premises_list_label.text = _format_idea_list(GameState.premises, "No premises yet.")
 
 	active_thought_label.position = active_thought_start_position
 	active_thought_label.modulate.a = 1.0
@@ -482,9 +476,11 @@ func _get_called_out_for_quota() -> void:
 
 
 func _finish_write_active_thought() -> void:
-	premises.append(pending_save_text)
-	premises_saved += 1
-	print("Premises saved: ", premises_saved)
+	var premise_count_before := GameState.premises.size()
+	GameState.add_premise(pending_save_text)
+	if GameState.premises.size() > premise_count_before:
+		premises_saved += 1
+	print("Premises saved this shift: ", premises_saved)
 
 	pending_save_text = ""
 	active_thought = ""
@@ -534,13 +530,13 @@ func _resume_work_after_notebook() -> void:
 		notebook_hitbox.disabled = false
 
 
-# Future home/later notebook behavior: a tested premise can graduate into a
-# tested joke. That later notebook view will show tested jokes on the left and
-# remaining premises on the right.
+# Compatibility helper for the future home notebook. Persistent material still
+# lives in GameState; this method can disappear once Home owns joke progression.
 func mark_premise_tested(premise_index: int) -> void:
-	if premise_index < 0 or premise_index >= premises.size():
+	if premise_index < 0 or premise_index >= GameState.premises.size():
 		return
 
-	var tested_joke: String = premises[premise_index]
-	premises.remove_at(premise_index)
-	tested_jokes.append(tested_joke)
+	var tested_bit: String = GameState.premises[premise_index]
+	GameState.premises.remove_at(premise_index)
+	if not GameState.tested_bits.has(tested_bit):
+		GameState.tested_bits.append(tested_bit)
