@@ -5,11 +5,12 @@ extends Node
 ## Put long-term facts here: day, money, career progress, relationships, venues,
 ## bookings, and comedy material.
 ##
-## Do NOT put scene transitions here. SceneRouter will decide where the player
-## goes next. Individual modules should report what happened, then update this
-## state through small, obvious methods.
+## Do NOT put scene transitions here. SceneRouter decides where the player goes
+## next. Individual modules report what happened and update this state through
+## small, obvious methods.
 
 signal state_reset
+signal state_loaded
 signal day_advanced(day_name: String, week: int)
 signal career_phase_changed(new_phase: int)
 
@@ -31,6 +32,8 @@ enum JobStatus {
 	LEFT_BOXES,
 }
 
+const SAVE_VERSION := 1
+
 const DAY_NAMES: Array[String] = [
 	"Monday",
 	"Tuesday",
@@ -49,6 +52,10 @@ var week: int = 1
 var day_index: int = 0
 var money: int = 0
 var energy: int = 100
+
+# SceneRouter updates this whenever it successfully changes modules. SaveManager
+# stores it so Continue can eventually return Darren to the correct place.
+var current_route_id: String = "story_intro"
 
 # -----------------------------------------------------------------------------
 # CAREER / WORK
@@ -81,8 +88,11 @@ var milestones: Dictionary = {}
 # -----------------------------------------------------------------------------
 # COMEDY MATERIAL
 # -----------------------------------------------------------------------------
-# Material moves through these lists over Darren's career:
+# The entire game uses one readable pipeline:
 # Thought -> Premise -> Tested Bit -> Reliable Joke -> Burned Material
+#
+# Modules should move material through these lists instead of inventing their
+# own permanent joke storage.
 
 var thoughts: Array[String] = []
 var premises: Array[String] = []
@@ -137,13 +147,157 @@ func discover_venue(venue_id: String) -> void:
 	discovered_venues.append(venue_id)
 
 
-## Add a premise safely. BOXES and future writing modules can use this instead
-## of owning their own permanent premise lists.
-func add_premise(text: String) -> void:
+# -----------------------------------------------------------------------------
+# MATERIAL PIPELINE HELPERS
+# -----------------------------------------------------------------------------
+
+func add_thought(text: String) -> bool:
+	return _add_unique_material(thoughts, text)
+
+
+## BOXES and future writing modules can add a premise directly when the thought
+## stage happens inside their own gameplay.
+func add_premise(text: String) -> bool:
+	return _add_unique_material(premises, text)
+
+
+func promote_thought_to_premise(index: int) -> bool:
+	return _move_material(thoughts, premises, index)
+
+
+func promote_premise_to_tested_bit(index: int) -> bool:
+	return _move_material(premises, tested_bits, index)
+
+
+func promote_tested_bit_to_reliable_joke(index: int) -> bool:
+	return _move_material(tested_bits, reliable_jokes, index)
+
+
+func burn_reliable_joke(index: int) -> bool:
+	return _move_material(reliable_jokes, burned_material, index)
+
+
+func _add_unique_material(target: Array[String], text: String) -> bool:
 	var clean_text := text.strip_edges()
-	if clean_text.is_empty() or premises.has(clean_text):
-		return
-	premises.append(clean_text)
+	if clean_text.is_empty() or target.has(clean_text):
+		return false
+	target.append(clean_text)
+	return true
+
+
+func _move_material(source: Array[String], destination: Array[String], index: int) -> bool:
+	if index < 0 or index >= source.size():
+		return false
+
+	var material_text := source[index]
+	source.remove_at(index)
+	if not destination.has(material_text):
+		destination.append(material_text)
+	return true
+
+
+# -----------------------------------------------------------------------------
+# SAVE DATA
+# -----------------------------------------------------------------------------
+# SaveManager handles files. GameState only translates its readable variables
+# to and from a Dictionary.
+
+func to_save_data() -> Dictionary:
+	return {
+		"save_version": SAVE_VERSION,
+		"week": week,
+		"day_index": day_index,
+		"money": money,
+		"energy": energy,
+		"current_route_id": current_route_id,
+		"career_phase": career_phase,
+		"reputation": reputation,
+		"job_status": job_status,
+		"relationships": relationships.duplicate(true),
+		"discovered_venues": discovered_venues.duplicate(),
+		"bookings": bookings.duplicate(true),
+		"milestones": milestones.duplicate(true),
+		"thoughts": thoughts.duplicate(),
+		"premises": premises.duplicate(),
+		"tested_bits": tested_bits.duplicate(),
+		"reliable_jokes": reliable_jokes.duplicate(),
+		"burned_material": burned_material.duplicate(),
+	}
+
+
+func load_save_data(data: Dictionary) -> void:
+	week = maxi(1, int(data.get("week", 1)))
+	day_index = clampi(int(data.get("day_index", 0)), 0, DAY_NAMES.size() - 1)
+	money = int(data.get("money", 0))
+	energy = clampi(int(data.get("energy", 100)), 0, 100)
+	current_route_id = str(data.get("current_route_id", "story_intro"))
+
+	career_phase = clampi(
+		int(data.get("career_phase", CareerPhase.BEFORE_COMEDY)),
+		CareerPhase.BEFORE_COMEDY,
+		CareerPhase.COMPLETE
+	)
+	reputation = int(data.get("reputation", 0))
+	job_status = clampi(
+		int(data.get("job_status", JobStatus.EMPLOYED_AT_BOXES)),
+		JobStatus.EMPLOYED_AT_BOXES,
+		JobStatus.LEFT_BOXES
+	)
+
+	var loaded_relationships = data.get("relationships", {})
+	if typeof(loaded_relationships) == TYPE_DICTIONARY:
+		relationships = loaded_relationships.duplicate(true)
+	else:
+		relationships = _default_relationships()
+
+	var loaded_milestones = data.get("milestones", {})
+	milestones = (
+		loaded_milestones.duplicate(true)
+		if typeof(loaded_milestones) == TYPE_DICTIONARY
+		else {}
+	)
+
+	discovered_venues = _read_string_array(data.get("discovered_venues", []))
+	bookings = _read_dictionary_array(data.get("bookings", []))
+
+	thoughts = _read_string_array(data.get("thoughts", []))
+	premises = _read_string_array(data.get("premises", []))
+	tested_bits = _read_string_array(data.get("tested_bits", []))
+	reliable_jokes = _read_string_array(data.get("reliable_jokes", []))
+	burned_material = _read_string_array(data.get("burned_material", []))
+
+	state_loaded.emit()
+
+
+func _read_string_array(value: Variant) -> Array[String]:
+	var output: Array[String] = []
+	if typeof(value) != TYPE_ARRAY:
+		return output
+
+	for item in value:
+		if typeof(item) == TYPE_STRING:
+			output.append(item)
+	return output
+
+
+func _read_dictionary_array(value: Variant) -> Array[Dictionary]:
+	var output: Array[Dictionary] = []
+	if typeof(value) != TYPE_ARRAY:
+		return output
+
+	for item in value:
+		if typeof(item) == TYPE_DICTIONARY:
+			output.append(item.duplicate(true))
+	return output
+
+
+func _default_relationships() -> Dictionary:
+	return {
+		"ray": 0,
+		"nate": 0,
+		"troy": 0,
+		"home": 0,
+	}
 
 
 ## Reset only persistent game information. Visual scenes are responsible for
@@ -153,17 +307,12 @@ func reset_new_game() -> void:
 	day_index = 0
 	money = 0
 	energy = 100
+	current_route_id = "story_intro"
 
 	career_phase = CareerPhase.BEFORE_COMEDY
 	reputation = 0
 	job_status = JobStatus.EMPLOYED_AT_BOXES
-
-	relationships = {
-		"ray": 0,
-		"nate": 0,
-		"troy": 0,
-		"home": 0,
-	}
+	relationships = _default_relationships()
 
 	discovered_venues.clear()
 	bookings.clear()
