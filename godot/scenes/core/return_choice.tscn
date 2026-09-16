@@ -1,0 +1,81 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/choice_module.gd" id="1_choice"]
+
+[node name="ReturnToComedyChoice" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_choice")
+module_id = "return_choice"
+speaker_name = "DARREN"
+prompt_text = "Tuesday is here again. Go back to the open mic?"
+option_a_text = "GO BACK"
+option_a_milestone = "chose_to_return"
+option_a_next_route = "title_reveal"
+option_b_text = "NOT YET"
+option_b_milestone = "delayed_return_once"
+option_b_next_route = "wait_week"
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.09, 0.09, 0.1, 1)
+
+[node name="Portrait" type="TextureRect" parent="Background"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 55.0
+offset_top = 50.0
+offset_right = -55.0
+offset_bottom = 300.0
+grow_horizontal = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Layout" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_top = -410.0
+offset_right = -32.0
+offset_bottom = -48.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 18
+
+[node name="SpeakerLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "DARREN"
+
+[node name="PromptLabel" type="Label" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Tuesday is here again. Go back to the open mic?"
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="OptionAButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "GO BACK"
+
+[node name="OptionBButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "NOT YET"
+
+[connection signal="pressed" from="Background/Layout/OptionAButton" to="." method="_on_option_a_button_pressed"]
+[connection signal="pressed" from="Background/Layout/OptionBButton" to="." method="_on_option_b_button_pressed"]
