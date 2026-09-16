@@ -1,0 +1,93 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/stage/stage_module.gd" id="1_stage"]
+
+[node name="StageModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_stage")
+module_id = "stage"
+next_route_id = "calendar"
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.07, 0.07, 0.08, 1)
+
+[node name="StageArt" type="Control" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 0.55
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ReplaceMeLabel" type="Label" parent="Background/StageArt"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "STAGE ART / CROWD / DARREN GO HERE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Layout" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = -355.0
+offset_right = -28.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 12
+
+[node name="GigLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "COMEDY GIG"
+horizontal_alignment = 1
+
+[node name="DetailsLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+text = "VENUE / SET DETAILS"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="MaterialLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+text = "MATERIAL"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ResultLabel" type="Label" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="PerformButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+text = "PERFORM SET"
+
+[node name="ContinueButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+text = "CONTINUE"
+
+[connection signal="pressed" from="Background/Layout/PerformButton" to="." method="_on_perform_button_pressed"]
+[connection signal="pressed" from="Background/Layout/ContinueButton" to="." method="_on_continue_button_pressed"]
