@@ -79,7 +79,7 @@ func _on_perform_button_pressed() -> void:
 		energy_cost = gig.energy_cost
 		milestone = gig.completion_milestone
 
-	var reputation_gain := maxi(1, score / 20)
+	var reputation_gain := maxi(1, int(score / 20))
 	GameState.add_money(pay)
 	GameState.change_energy(-energy_cost)
 	GameState.add_reputation(reputation_gain)
