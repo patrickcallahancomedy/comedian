@@ -44,6 +44,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Import Godot resources and register script classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path godot --quit
+
       - name: Select deterministic seed range
         id: fuzz-config
         shell: bash
@@ -82,4 +88,3 @@ jobs:
           path: boxes-fuzz.log
           if-no-files-found: warn
           retention-days: 14
-
