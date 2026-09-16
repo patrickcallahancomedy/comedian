@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GigData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/gig_data.gd" id="1_gig"]
+
+[resource]
+script = ExtResource("1_gig")
+gig_id = "feature_gig"
+gig_title = "FIRST FEATURE WEEKEND"
+venue_id = "feature_club"
+venue_name = "COMEDY CLUB"
+city = "Columbus, Ohio"
+set_length_minutes = 30
+pay = 250
+travel_cost = 30
+energy_cost = 20
+reputation_required = 25
+completion_milestone = "feature_gig_complete"
+next_route_id = "first_headline_setup"
