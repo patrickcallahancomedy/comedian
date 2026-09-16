@@ -4,6 +4,10 @@ const FIRST_THOUGHT := "I wonder why they call it a lunch break when I never sto
 # Placeholder copy for the second tutorial thought. Easy to swap later.
 const SECOND_THOUGHT := "Every box has somewhere to be before I do."
 
+# Resolve persistent state through the scene tree instead of a compile-time
+# autoload identifier. This keeps BOXES compatible with both normal play and
+# the direct command-line fuzz harness.
+@onready var game_state: Node = get_node("/root/GameState")
 @onready var boss_window: BossWindow = $BossLayer
 
 @onready var left_button_art: TextureRect = $GameplayLayer/LeftButton
@@ -328,9 +332,9 @@ func _end_live_shift() -> void:
 	notebook_open = false
 
 	var quota_met := shift_correct_routes >= SHIFT_QUOTA
-	GameState.mark_milestone("boxes_shift_complete")
+	game_state.mark_milestone("boxes_shift_complete")
 	if quota_met:
-		GameState.mark_milestone("boxes_quota_met")
+		game_state.mark_milestone("boxes_quota_met")
 
 	shift_result_label.text = (
 		"SHIFT COMPLETE\nQUOTA MET\n%d / %d" % [shift_correct_routes, SHIFT_QUOTA]
@@ -407,7 +411,7 @@ func _open_notebook() -> void:
 
 
 func _refresh_notebook_pages() -> void:
-	premises_list_label.text = _format_idea_list(GameState.premises, "No premises yet.")
+	premises_list_label.text = _format_idea_list(game_state.premises, "No premises yet.")
 
 	active_thought_label.position = active_thought_start_position
 	active_thought_label.modulate.a = 1.0
@@ -478,7 +482,7 @@ func _get_called_out_for_quota() -> void:
 
 
 func _finish_write_active_thought() -> void:
-	GameState.add_premise(pending_save_text)
+	game_state.add_premise(pending_save_text)
 	premises.append(pending_save_text)
 	premises_saved += 1
 	print("Premises saved this shift: ", premises_saved)
@@ -534,10 +538,10 @@ func _resume_work_after_notebook() -> void:
 # Compatibility helper for the future home notebook. Persistent material still
 # lives in GameState; this method can disappear once Home owns joke progression.
 func mark_premise_tested(premise_index: int) -> void:
-	if premise_index < 0 or premise_index >= GameState.premises.size():
+	if premise_index < 0 or premise_index >= game_state.premises.size():
 		return
 
-	var tested_bit: String = GameState.premises[premise_index]
-	GameState.premises.remove_at(premise_index)
-	if not GameState.tested_bits.has(tested_bit):
-		GameState.tested_bits.append(tested_bit)
+	var tested_bit: String = game_state.premises[premise_index]
+	game_state.premises.remove_at(premise_index)
+	if not game_state.tested_bits.has(tested_bit):
+		game_state.tested_bits.append(tested_bit)
