@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - godot-alpha
+      - skeleton-alpha
     paths:
       - "godot/**"
       - ".github/workflows/godot-fuzz.yml"
@@ -34,7 +35,7 @@ env:
 
 jobs:
   fuzz-boxes:
-    name: Fuzz BOXES gameplay
+    name: Fuzz BOXES + Skeleton state
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container:
@@ -49,6 +50,14 @@ jobs:
         run: |
           set -euo pipefail
           godot --headless --editor --path godot --quit
+
+      - name: Run Skeleton Alpha structural and state suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot \
+            --script res://tests/skeleton_state_test.gd \
+            2>&1 | tee skeleton-state-test.log
 
       - name: Select deterministic seed range
         id: fuzz-config
@@ -101,11 +110,13 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Upload failure trace
+      - name: Upload test logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: boxes-fuzz-failure-${{ github.run_id }}
-          path: boxes-fuzz.log
+          name: godot-test-failure-${{ github.run_id }}
+          path: |
+            skeleton-state-test.log
+            boxes-fuzz.log
           if-no-files-found: warn
           retention-days: 14
