@@ -59,12 +59,11 @@ func _process(_delta: float) -> void:
 func _capture_boxes_result() -> void:
 	result_captured = true
 	var correct := int(boxes_instance.get("shift_correct_routes"))
-	var quota := int(boxes_instance.get("SHIFT_QUOTA"))
 	var processed := int(boxes_instance.get("shift_boxes_processed"))
 	var missed := int(boxes_instance.get("missed_boxes"))
 	var boss_catches := int(boxes_instance.get("boss_catches"))
 	var premises_saved := int(boxes_instance.get("premises_saved"))
-	var quota_met := correct >= quota
+	var quota_met := GameState.has_milestone("boxes_quota_met")
 
 	boxes_result = {
 		"status": "boxes_shift_complete",
