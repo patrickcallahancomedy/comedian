@@ -9,6 +9,13 @@ signal module_completed(module_id: String, result: Dictionary)
 
 const ROUTES: Dictionary = {
 	"story_intro": "res://scenes/story/story_sequence.tscn",
+	"story_generic": "res://scenes/story/story_module.tscn",
+	"choice": "res://scenes/core/choice_module.tscn",
+	"calendar": "res://scenes/core/calendar_module.tscn",
+	"home": "res://scenes/home/home_module.tscn",
+	"work": "res://scenes/home/work_module.tscn",
+	"travel": "res://scenes/core/travel_module.tscn",
+	"venue": "res://scenes/venues/venue_module.tscn",
 	"boxes": "res://scenes/boxes/boxes_module.tscn",
 	"placeholder": "res://scenes/placeholders/placeholder_module.tscn",
 }
