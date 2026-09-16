@@ -1,0 +1,80 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/placeholder_module.gd" id="1_placeholder"]
+
+[node name="PlaceholderModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_placeholder")
+module_id = "placeholder"
+placeholder_title = "PLACEHOLDER MODULE"
+placeholder_description = "This screen is intentionally plain. The module is connected to the game architecture and can be replaced with real art and gameplay later."
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.12, 0.12, 1)
+
+[node name="Content" type="MarginContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 90
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 90
+
+[node name="Panel" type="PanelContainer" parent="Background/Content"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Background/Content/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="SkeletonLabel" type="Label" parent="Background/Content/Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
+theme_override_font_sizes/font_size = 12
+text = "COMEDIAN — SKELETON ALPHA"
+horizontal_alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Background/Content/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "PLACEHOLDER MODULE"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="DescriptionLabel" type="Label" parent="Background/Content/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "This module has architecture but no finished gameplay yet."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="EditHintLabel" type="Label" parent="Background/Content/Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "SAFE TO REPLACE: everything visual under this root.\nKEEP: root script, Module ID, and Next Route ID."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ContinueButton" type="Button" parent="Background/Content/Panel/VBox"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+text = "CONTINUE"
+
+[connection signal="pressed" from="Background/Content/Panel/VBox/ContinueButton" to="." method="_on_continue_button_pressed"]
