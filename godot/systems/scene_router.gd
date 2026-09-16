@@ -25,8 +25,8 @@ const ROUTES: Dictionary = {
 	"placeholder": "res://scenes/placeholders/placeholder_module.tscn",
 	"ending": "res://scenes/core/ending_module.tscn",
 
-	# The following route IDs intentionally share one ugly placeholder scene.
-	# data/skeleton_flow.gd supplies the text, milestones, gates, and next route.
+	# These route IDs intentionally share one ugly placeholder scene.
+	# data/skeleton_flow.gd supplies text, milestones, gates, and next routes.
 	"lunch": CAREER_EVENT_SCENE,
 	"home_intro": CAREER_EVENT_SCENE,
 	"first_mic_setup": CAREER_EVENT_SCENE,
@@ -76,9 +76,8 @@ func go_to(route_id: String) -> bool:
 		push_error("SceneRouter route points to a missing scene: %s" % scene_path)
 		return false
 
-	# Set the route before the queued scene change so shared scenes (especially
-	# CareerEventModule) know which route data to read in _ready(). Roll back if
-	# Godot rejects the change.
+	# Set the route before the queued scene change so shared scenes know which
+	# route data to read in _ready(). Roll back if Godot rejects the change.
 	var previous_router_route := current_route_id
 	var previous_game_route := GameState.current_route_id
 	current_route_id = route_id
@@ -91,6 +90,9 @@ func go_to(route_id: String) -> bool:
 		push_error("SceneRouter could not open route %s" % route_id)
 		return false
 
+	# Saving here makes Continue point at the destination that actually loaded,
+	# rather than the module the player just finished.
+	SaveManager.save_game()
 	route_changed.emit(route_id)
 	return true
 
