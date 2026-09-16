@@ -90,9 +90,10 @@ func go_to(route_id: String) -> bool:
 		push_error("SceneRouter could not open route %s" % route_id)
 		return false
 
-	# Saving here makes Continue point at the destination that actually loaded,
-	# rather than the module the player just finished.
-	SaveManager.save_game()
+	# Gameplay routes are checkpoints. Menu/dev routes deliberately do not
+	# overwrite the last playable checkpoint, so Continue returns to the game.
+	if route_id != "main_menu" and route_id != "dev_menu":
+		SaveManager.save_game()
 	route_changed.emit(route_id)
 	return true
 
