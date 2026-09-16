@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GigData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/gig_data.gd" id="1_gig"]
+
+[resource]
+script = ExtResource("1_gig")
+gig_id = "first_headline"
+gig_title = "FIRST HEADLINE SET"
+venue_id = "headline_room"
+venue_name = "HEADLINE COMEDY ROOM"
+city = "Dayton, Ohio"
+set_length_minutes = 45
+pay = 500
+travel_cost = 0
+energy_cost = 25
+reputation_required = 40
+completion_milestone = "first_headline_complete"
+next_route_id = "build_45"
