@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GigData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/gig_data.gd" id="1_gig"]
+
+[resource]
+script = ExtResource("1_gig")
+gig_id = "regional_gig"
+gig_title = "FIRST REGIONAL ROAD GIG"
+venue_id = "regional_room"
+venue_name = "REGIONAL COMEDY ROOM"
+city = "Indianapolis, Indiana"
+set_length_minutes = 15
+pay = 75
+travel_cost = 20
+energy_cost = 15
+reputation_required = 12
+completion_milestone = "regional_gig_complete"
+next_route_id = "work_pressure"
