@@ -22,3 +22,15 @@ godot --headless --path godot --fixed-fps 120 \
 The GitHub Actions workflow derives its starting seed from the commit SHA. A
 rerun of the same commit therefore exercises the same 1,000 playthroughs.
 
+## Virtual first-time player
+
+The virtual player is a separate, model-based playtest. It waits at human-like
+intervals, occasionally hesitates or chooses incorrectly, prioritizes saving
+thoughts, and prints a first-person report about clarity, pressure, repetition,
+and the notebook tradeoff. It predicts likely player friction; it does not claim
+to replace an actual human opinion.
+
+```bash
+godot --headless --path godot --fixed-fps 120 \
+  --script res://tests/boxes_virtual_player.gd -- --seed=20260916
+```

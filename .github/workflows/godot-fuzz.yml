@@ -80,6 +80,27 @@ jobs:
             --seed=${{ steps.fuzz-config.outputs.seed }} \
             2>&1 | tee boxes-fuzz.log
 
+      - name: Run virtual first-time player
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --fixed-fps 120 \
+            --script res://tests/boxes_virtual_player.gd -- \
+            --seed=${{ steps.fuzz-config.outputs.seed }} \
+            2>&1 | tee virtual-player-report.txt
+
+          sed -n '/VIRTUAL PLAYER REPORT BEGIN/,/VIRTUAL PLAYER REPORT END/p' \
+            virtual-player-report.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload virtual player report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boxes-virtual-player-${{ github.run_id }}
+          path: virtual-player-report.txt
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Upload failure trace
         if: failure()
         uses: actions/upload-artifact@v4
