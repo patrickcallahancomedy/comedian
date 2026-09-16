@@ -1,321 +1,193 @@
 # COMEDIAN — Skeleton Alpha Architecture Map
 
-This document explains the project structure in plain language so Patrick can open the project in Godot and know where to work.
-
-The architecture goal is simple:
-
-> A complete game from New Game to Ending, built from readable Godot scenes and scripts that Patrick can replace and extend by hand.
+The project is intentionally split into boring, obvious pieces so Patrick can open it in Godot, understand where something lives, and replace placeholder work without rebuilding the whole game.
 
 ## Core flow
 
 ```text
-Player starts game
-    ↓
-GameState stores persistent information
-    ↓
-SceneRouter chooses the next module
-    ↓
-A module runs
-    ↓
-Module returns a small result
-    ↓
-GameState applies the result
-    ↓
-SceneRouter moves to the next module
+GameState
+   ↓
+SceneRouter
+   ↓
+Module Scene
+   ↓
+module result + permanent GameState changes
+   ↓
+SceneRouter
+   ↓
+next module
 ```
 
-Modules should not permanently own career data. They report what happened, then the central state keeps it.
+`SaveManager` serializes GameState as readable JSON. It does not own gameplay state.
 
 ## Main systems
 
-### GameState
-Planned location:
-
-```text
-scripts/core/game_state.gd
-```
-
-Purpose:
-- current day/week
-- money
-- energy
+### `systems/game_state.gd`
+Persistent truth:
+- day/week
+- money/energy
 - job status
-- comedy career level
+- career phase
 - reputation
 - relationships
+- current booking
 - discovered venues
-- bookings
-- premises and jokes
-- milestone progress
+- milestones
+- comedy material
 
-This is the main source of truth for the player's career.
+### `systems/scene_router.gd`
+One route table for the game. If a placeholder is replaced with a finished scene, usually only its route path needs to change here.
 
-### SceneRouter
-Planned location:
+### `systems/save_manager.gd`
+New Game / Continue persistence. Saves to readable JSON in Godot's user data folder.
 
-```text
-scripts/core/scene_router.gd
-```
+## Module contract
 
-Purpose:
-- load the next scene/module
-- keep transitions understandable
-- prevent scene-change logic from being scattered across the project
+Base script:
 
-If you want to understand where the game goes next, this should be the first place to look.
+` scripts/core/game_module.gd `
 
-### SaveManager
-Planned location:
+A major module has:
+- `module_id`
+- `next_route_id`
+- `finish_module(result)`
 
-```text
-scripts/core/save_manager.gd
-```
+Patrick can replace the visual children while keeping the root handoff intact.
 
-Purpose:
-- save GameState
-- load GameState
-- start a new game
-- support Continue
+## Data
 
-### Module contract
+### `data/skeleton_flow.gd`
+Temporary career-spine cards. This is scaffolding, not final narrative content.
 
-Every major gameplay module should follow the same basic pattern:
+### `data/gig_data.gd`
+Human-editable booking Resource definition.
 
-```text
-GameState → Module → Result → GameState → SceneRouter
-```
+### `data/gigs/*.tres`
+Individual gigs editable in the Godot Inspector: venue, city, set length, pay, travel cost, energy, reputation requirement, milestone, and destination route.
 
-Example BOXES result:
+### `data/gig_database.gd`
+Small lookup table from a stable gig ID to its `.tres` file.
+
+## Major scenes
 
 ```text
-quota_met = true
-premises_saved = 1
-troy_catches = 0
-energy_change = -5
+scenes/core/main_menu.tscn
+scenes/story/story_sequence.tscn
+scenes/home/work_module.tscn
+scenes/boxes/boxes_module.tscn
+scenes/core/career_event_module.tscn
+scenes/core/return_choice.tscn
+scenes/core/calendar_module.tscn
+scenes/home/home_module.tscn
+scenes/core/travel_module.tscn
+scenes/venues/venue_module.tscn
+scenes/stage/stage_module.tscn
+scenes/core/ending_module.tscn
+scenes/core/developer_jump_menu.tscn
 ```
 
-Example gig result:
+## Full route
 
 ```text
-money_change = 50
-reputation_change = 3
-material_tested = ["premise_001"]
+MAIN MENU
+  ↓
+OPENING STORY
+  ↓
+WORK wrapper → real BOXES
+  ↓
+LUNCH / MIC DISCOVERY
+  ↓
+HOME STORY BEAT
+  ↓
+FIRST MIC SETUP
+  ↓
+VENUE → STAGE
+  ↓
+AFTER FIRST MIC
+  ↓
+RETURN CHOICE
+  ├─ NOT YET → one week later → RETURN CHOICE
+  └─ GO BACK
+       ↓
+COMEDIAN TITLE REVEAL
+       ↓
+CALENDAR
+       ↓ choose COMEDY
+OPEN-MICER PLACEHOLDER
+  ↓
+LOCAL REGULAR
+  ↓
+FIRST PAID GIG → VENUE → STAGE
+  ↓
+REGIONAL COMIC
+  ↓
+ROAD GIG → TRAVEL → VENUE → STAGE
+  ↓
+WORK VS COMEDY PRESSURE
+  ↓
+LEAVE BOXES
+  ↓
+WORKING COMIC
+  ↓
+FEATURE → TRAVEL → VENUE → STAGE
+  ↓
+FIRST HEADLINE → VENUE → STAGE
+  ↓
+BUILD THE 45 / HOUR
+  ↓
+HOMETOWN SPECIAL → VENUE → STAGE
+  ↓
+ENDING / EPILOGUE
 ```
 
-The exact data format will stay small and readable.
-
-## Folder map
+## The material pipeline
 
 ```text
-godot/
-├── assets/          Art, images, audio and other normal external assets
-├── data/            Human-readable game data and milestone definitions
-├── scenes/          Godot scenes Patrick can open and edit visually
-│   ├── boxes/       Existing BOXES gameplay
-│   ├── story/       Existing storybook intro and story scenes
-│   ├── core/        Main menu, game shell, loading/root scenes
-│   ├── placeholders/Temporary Skeleton Alpha modules
-│   ├── home/        Home/notebook/rest modules
-│   ├── stage/       Stand-up performance systems
-│   └── venues/      Venue and gig scenes
-├── scripts/         Scripts attached to scenes
-│   ├── boxes/
-│   ├── story/
-│   ├── core/
-│   ├── home/
-│   ├── stage/
-│   └── venues/
-├── systems/         Small shared systems that are not visual scenes
-└── tests/           Fuzz tests, virtual players and architecture tests
+Thought → Premise → Tested Bit → Reliable Joke → Burned Material
 ```
 
-## What Patrick should edit visually
+Every notebook/writing/stage system should use the GameState pipeline rather than keeping its own permanent material database.
 
-If something is visual, prefer editing the `.tscn` scene in Godot.
+## What is safe to edit visually
 
-Examples:
-- move a character
-- resize a button
-- replace a background
-- change a venue layout
-- place a crowd
-- adjust a stage
-- style a placeholder screen
+If it is art/layout, prefer the `.tscn` scene. Backgrounds, portraits, stage art, crowd art, buttons, panels, and placeholder labels should remain real Scene-tree nodes whenever practical.
 
-Those should normally be visible nodes in the Scene tree.
+The existing BOXES scene remains authoritative. The Work module loads it; it does not recreate it.
 
-Do not rebuild visual scenes in code unless there is a strong reason.
+## What to keep when replacing a placeholder
 
-## Planned reusable module types
+Keep:
+- the root module node/script
+- its `module_id`
+- its required handoff nodes or update the script paths if you rename them
+- its route in/out behavior
 
-We do not want a separate architecture for every single day of Darren's life.
+Replace freely:
+- placeholder artwork
+- layout
+- copy
+- internal gameplay
+- animations
+- sound
 
-Instead, Skeleton Alpha will build reusable shells:
+## Debugging
 
-```text
-StoryModule
-ChoiceModule
-PlaceholderModule
-CalendarModule
-HomeModule
-WorkModule
-TravelModule
-VenueModule
-StageModule
-ResultsModule
-EndingModule
-```
+Persistent value wrong → `GameState`
 
-A specific event can use one of these shells with different data.
+Wrong destination → `SceneRouter`
 
-For example:
+Save/Continue wrong → `SaveManager`
 
-```text
-FIRST PAID GIG
-    ↓
-TravelModule
-    ↓
-VenueModule
-    ↓
-StageModule
-    ↓
-ResultsModule
-```
+One activity wrong → that module's scene + script
 
-## Full Skeleton Alpha route
+Visual placement wrong → open the `.tscn` and edit it in Godot
 
-The first complete architecture pass should support this path:
+Need to reach a late-game scene quickly → Developer Jump Menu
 
-```text
-NEW GAME
-↓
-Opening Story
-↓
-BOXES
-↓
-Lunch / Mic Discovery
-↓
-Home
-↓
-First Mic
-↓
-Return To Mic
-↓
-COMEDIAN title / main loop begins
-↓
-Open-Micer
-↓
-Local Regular
-↓
-First Paid Gig
-↓
-Regional Comic
-↓
-Work vs Comedy Pressure
-↓
-Leave BOXES
-↓
-Working Comic / Feature
-↓
-First Headline
-↓
-Build 45
-↓
-Hometown Special
-↓
-Ending / Epilogue / Credits
-```
+## Automated architecture checks
 
-During Skeleton Alpha, many of these can be simple placeholder screens with a Continue button.
+`tests/skeleton_state_test.gd` checks route files, full career-flow links, gig resources, return-choice routing, material progression, multiple save/load checkpoints, and randomized GameState mutations.
 
-The important part is that the real state and routing work underneath them.
+The BOXES deterministic fuzz test and virtual first-time player continue to test the real warehouse module.
 
-## Placeholder rule
-
-A placeholder is not a dead-end mockup.
-
-It must:
-- load correctly
-- receive the expected game state
-- clearly say what future module it represents
-- have a visible Continue button or choice
-- return a real result to the game
-- route to the next module
-- be easy for Patrick to replace later
-
-## Safe replacement rule
-
-When Patrick replaces a placeholder with real art/gameplay, the surrounding architecture should not need to change.
-
-For example, if this exists:
-
-```text
-RegionalGig
-├── Background
-├── PlaceholderLabel
-└── ContinueButton
-```
-
-Patrick should be able to replace the visual children with a real venue while keeping the root/module handoff intact.
-
-## Current real modules
-
-Already playable:
-- Opening story system
-- BOXES gameplay
-- Troy pressure sequence
-- Notebook premise-saving interaction
-
-These should be plugged into the larger architecture rather than rewritten during the skeleton sprint.
-
-## Skeleton Alpha priority
-
-Do not polish before the complete route works.
-
-Priority order:
-
-```text
-1. State
-2. Routing
-3. Save/load
-4. Full route from beginning to ending
-5. Module interfaces
-6. Developer jump tools
-7. Tests
-8. Art and polish later
-```
-
-If a gray screen successfully moves the game forward and stores the right result, it is doing its job for Skeleton Alpha.
-
-## Where to look when something breaks
-
-If persistent information is wrong:
-```text
-GameState
-```
-
-If the game goes to the wrong scene:
-```text
-SceneRouter
-```
-
-If saving/loading is wrong:
-```text
-SaveManager
-```
-
-If one activity behaves incorrectly:
-```text
-that module's scene + script
-```
-
-If art is misplaced:
-```text
-open that scene in Godot and edit the nodes visually
-```
-
-## Human-editable requirement
-
-This architecture must follow `HUMAN_EDITABLE_RULES.md`.
-
-If a system works but Patrick cannot reasonably inspect or extend it in Godot, simplify it before building more on top of it.
+See `HUMAN_EDITABLE_RULES.md`, `HOW_TO_EDIT.md`, and `SKELETON_ALPHA.md` before large architecture changes.
