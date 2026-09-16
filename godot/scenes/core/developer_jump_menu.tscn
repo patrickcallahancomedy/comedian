@@ -1,0 +1,109 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/developer_jump_menu.gd" id="1_dev"]
+
+[node name="DeveloperJumpMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_dev")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.075, 0.075, 0.085, 1)
+
+[node name="Layout" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 34.0
+offset_top = 28.0
+offset_right = -34.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "DEVELOPER JUMP MENU"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
+text = "SKELETON ALPHA"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="OpeningButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "OPENING STORY"
+
+[node name="BoxesButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "BOXES"
+
+[node name="FirstMicButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "FIRST MIC"
+
+[node name="CalendarButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "CALENDAR LOOP"
+
+[node name="RegionalButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "REGIONAL GIG"
+
+[node name="FeatureButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "FEATURE GIG"
+
+[node name="HeadlineButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "FIRST HEADLINE"
+
+[node name="SpecialButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "HOMETOWN SPECIAL"
+
+[node name="EndingButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "ENDING"
+
+[node name="MainMenuButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "BACK TO TITLE"
+
+[connection signal="pressed" from="Background/Layout/OpeningButton" to="." method="_on_opening_button_pressed"]
+[connection signal="pressed" from="Background/Layout/BoxesButton" to="." method="_on_boxes_button_pressed"]
+[connection signal="pressed" from="Background/Layout/FirstMicButton" to="." method="_on_first_mic_button_pressed"]
+[connection signal="pressed" from="Background/Layout/CalendarButton" to="." method="_on_calendar_button_pressed"]
+[connection signal="pressed" from="Background/Layout/RegionalButton" to="." method="_on_regional_button_pressed"]
+[connection signal="pressed" from="Background/Layout/FeatureButton" to="." method="_on_feature_button_pressed"]
+[connection signal="pressed" from="Background/Layout/HeadlineButton" to="." method="_on_headline_button_pressed"]
+[connection signal="pressed" from="Background/Layout/SpecialButton" to="." method="_on_special_button_pressed"]
+[connection signal="pressed" from="Background/Layout/EndingButton" to="." method="_on_ending_button_pressed"]
+[connection signal="pressed" from="Background/Layout/MainMenuButton" to="." method="_on_main_menu_button_pressed"]
