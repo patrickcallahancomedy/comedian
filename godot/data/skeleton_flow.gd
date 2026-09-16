@@ -41,7 +41,7 @@ const EVENTS: Dictionary = {
 		"description": "WRITE. GRIND. REPEAT. Darren chooses to go back. From here, the calendar becomes the main loop.",
 		"career_phase": "OPEN_MICER",
 		"milestone": "comedian_begun",
-		"next_route": "open_micer",
+		"next_route": "calendar",
 	},
 	"open_micer": {
 		"title": "THE OPEN-MIC YEARS",
