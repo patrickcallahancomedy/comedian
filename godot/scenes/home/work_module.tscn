@@ -1,0 +1,123 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/home/work_module.gd" id="1_work"]
+
+[node name="WorkModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_work")
+module_id = "work"
+next_route_id = "calendar"
+
+[node name="BoxesHost" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MenuPanel" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.09, 0.09, 0.08, 1)
+
+[node name="Layout" type="VBoxContainer" parent="MenuPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 38.0
+offset_top = 120.0
+offset_right = -38.0
+offset_bottom = -120.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 22
+
+[node name="TitleLabel" type="Label" parent="MenuPanel/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "WORK"
+horizontal_alignment = 1
+
+[node name="JobLabel" type="Label" parent="MenuPanel/Layout"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "BOXES — DAY SHIFT"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="StartShiftButton" type="Button" parent="MenuPanel/Layout"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+text = "START SHIFT"
+
+[node name="BackButton" type="Button" parent="MenuPanel/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "BACK TO CALENDAR"
+
+[node name="ResultOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Shade" type="ColorRect" parent="ResultOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="Panel" type="PanelContainer" parent="ResultOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -165.0
+offset_top = -150.0
+offset_right = 165.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Layout" type="VBoxContainer" parent="ResultOverlay/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="ResultLabel" type="Label" parent="ResultOverlay/Panel/Layout"]
+custom_minimum_size = Vector2(280, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "SHIFT COMPLETE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="FinishWorkButton" type="Button" parent="ResultOverlay/Panel/Layout"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+text = "CLOCK OUT"
+
+[connection signal="pressed" from="MenuPanel/Layout/StartShiftButton" to="." method="_on_start_shift_button_pressed"]
+[connection signal="pressed" from="MenuPanel/Layout/BackButton" to="." method="_on_back_button_pressed"]
+[connection signal="pressed" from="ResultOverlay/Panel/Layout/FinishWorkButton" to="." method="_on_finish_work_button_pressed"]
