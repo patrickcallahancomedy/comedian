@@ -15,7 +15,7 @@ venue_id = "local_venue"
 venue_name = "LOCAL VENUE"
 set_length_minutes = 5
 expected_pay = 0
-stage_route_id = "placeholder"
+stage_route_id = "stage"
 leave_route_id = "calendar"
 
 [node name="Background" type="ColorRect" parent="."]
