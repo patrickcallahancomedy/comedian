@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GigData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/gig_data.gd" id="1_gig"]
+
+[resource]
+script = ExtResource("1_gig")
+gig_id = "first_paid_gig"
+gig_title = "FIRST PAID SPOT"
+venue_id = "local_showcase"
+venue_name = "LOCAL SHOWCASE"
+city = "Dayton, Ohio"
+set_length_minutes = 10
+pay = 25
+travel_cost = 0
+energy_cost = 10
+reputation_required = 5
+completion_milestone = "first_paid_gig_complete"
+next_route_id = "regional_comic"
