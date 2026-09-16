@@ -1,0 +1,72 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/home/home_module.gd" id="1_home"]
+
+[node name="HomeModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_home")
+module_id = "home"
+next_route_id = "calendar"
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.105, 0.09, 1)
+
+[node name="Layout" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 34.0
+offset_top = 70.0
+offset_right = -34.0
+offset_bottom = -70.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 22
+
+[node name="TitleLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "HOME"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+text = "WEEK 1 — MONDAY\nENERGY 100    MONEY $0"
+horizontal_alignment = 1
+
+[node name="RoomArt" type="TextureRect" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NotebookLabel" type="Label" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+text = "NOTEBOOK\nPremises: 0\nTested bits: 0\nReliable jokes: 0\nBurned: 0"
+vertical_alignment = 1
+
+[node name="RestButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "REST (+20 ENERGY)"
+
+[node name="BackButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "BACK TO CALENDAR"
+
+[connection signal="pressed" from="Background/Layout/RestButton" to="." method="_on_rest_button_pressed"]
+[connection signal="pressed" from="Background/Layout/BackButton" to="." method="_on_back_button_pressed"]
