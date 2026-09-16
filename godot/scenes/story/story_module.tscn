@@ -1,0 +1,78 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/story/story_module.gd" id="1_story"]
+
+[node name="StoryModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_story")
+module_id = "story_module"
+next_route_id = "placeholder"
+story_title = "STORY PLACEHOLDER"
+pages = Array[String](["Replace this text in the Inspector.", "Replace the visual children with real storybook art when ready."])
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.11, 0.1, 0.09, 1)
+
+[node name="Artwork" type="TextureRect" parent="Background"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 32.0
+offset_top = 40.0
+offset_right = -32.0
+offset_bottom = 330.0
+grow_horizontal = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Layout" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_top = -390.0
+offset_right = -32.0
+offset_bottom = -48.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 20
+
+[node name="TitleLabel" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "STORY"
+horizontal_alignment = 1
+
+[node name="StoryText" type="Label" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Story text"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="PageCounter" type="Label" parent="Background/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "1 / 2"
+horizontal_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+text = "CONTINUE"
+
+[connection signal="pressed" from="Background/Layout/ContinueButton" to="." method="_on_continue_button_pressed"]
