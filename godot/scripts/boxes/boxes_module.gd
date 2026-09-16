@@ -57,8 +57,10 @@ var shift_finished := false
 var shift_boxes_processed := 0
 var shift_correct_routes := 0
 
-# Persistent comedy material belongs to GameState. BOXES owns only the temporary
-# thought currently on screen and the counters for this one work shift.
+# Persistent comedy material belongs to GameState. This small session list only
+# records what the player saved during this BOXES run so existing gameplay tests
+# and per-shift counters stay readable. It is not used as persistent storage.
+var premises: Array[String] = []
 
 const ROUTE_DURATION := 1.0
 const BELT_SHIFT_RATIO := 0.06
@@ -476,10 +478,9 @@ func _get_called_out_for_quota() -> void:
 
 
 func _finish_write_active_thought() -> void:
-	var premise_count_before := GameState.premises.size()
 	GameState.add_premise(pending_save_text)
-	if GameState.premises.size() > premise_count_before:
-		premises_saved += 1
+	premises.append(pending_save_text)
+	premises_saved += 1
 	print("Premises saved this shift: ", premises_saved)
 
 	pending_save_text = ""
