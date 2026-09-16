@@ -46,19 +46,20 @@ TITLE
        -> NOT YET -> ONE WEEK LATER -> choice again
        -> GO BACK
   -> COMEDIAN TITLE REVEAL
+  -> CALENDAR
+       -> COMEDY
   -> OPEN-MICER PHASE
   -> LOCAL REGULAR
-  -> FIRST PAID GIG
+  -> FIRST PAID GIG -> VENUE -> STAGE
   -> REGIONAL COMIC
-  -> TRAVEL
-  -> REGIONAL GIG
+  -> ROAD GIG -> TRAVEL -> VENUE -> STAGE
   -> WORK VS COMEDY PRESSURE
   -> LEAVE BOXES
   -> WORKING COMIC
-  -> FEATURE WEEKEND
-  -> FIRST HEADLINE
+  -> FEATURE WEEKEND -> TRAVEL -> VENUE -> STAGE
+  -> FIRST HEADLINE -> VENUE -> STAGE
   -> BUILD THE 45 / HOUR
-  -> HOMETOWN SPECIAL
+  -> HOMETOWN SPECIAL -> VENUE -> STAGE
   -> ENDING / EPILOGUE
 ```
 
@@ -66,7 +67,7 @@ The career event cards above are deliberately compressed. As real modules are bu
 
 ## Persistent systems
 
-`GameState` owns persistent player data. `SaveManager` writes/loads it as readable JSON. `SceneRouter` owns route IDs. `GigData` `.tres` resources describe bookings. `SkeletonFlow` describes temporary career milestone cards.
+`GameState` owns persistent player data. `SaveManager` writes/loads it as readable JSON. `SceneRouter` owns route IDs and saves playable route checkpoints. `GigData` `.tres` resources describe bookings. `SkeletonFlow` describes temporary career milestone cards.
 
 ## Material pipeline
 
@@ -102,10 +103,12 @@ Complete
 
 ## Automated checks
 
-`tests/skeleton_state_test.gd` verifies route files, career-flow links, gig resources, material progression, save/load, and randomized GameState mutations.
+`tests/skeleton_state_test.gd` verifies the main scene, route files, career-flow links, return-choice routing, gig resources, material progression, multiple career save/load checkpoints, and randomized GameState mutations.
 
 The existing BOXES fuzz test and virtual first-time player remain active. GitHub Actions runs the structural/state test plus BOXES tests on `skeleton-alpha`.
 
 ## Definition of Skeleton Alpha complete
 
 Skeleton Alpha is structurally complete when New Game can reach the ending, Continue can restore persistent career state, every major future module has a stable handoff, and Patrick can replace placeholder visuals/gameplay without needing to rebuild the game's plumbing.
+
+After that point, the job changes from **building the game skeleton** to **replacing placeholders one module at a time**.
