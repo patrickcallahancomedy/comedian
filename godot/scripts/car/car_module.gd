@@ -1,32 +1,34 @@
 extends GameModule
 
-## CAR v0.3 — tiny navigation maze.
+## DRIVE v0.4 — one verb: drive.
 ##
 ## STATE READS:
 ## energy, car_condition
 ##
 ## STATE WRITES:
-## energy, gas, stress, relationships.nate, night_context
+## energy, gas, stress, night_context
 ##
 ## HISTORY:
-## drives_completed, missed_turns, nate_pickups
+## drives_completed, missed_turns
 ##
 ## RESULT:
 ## arrival_minutes_before_signup, arrival_clock_minutes, missed_turns,
-## picked_up_nate, real_drive_seconds
+## real_drive_seconds
 ##
 ## PLAYER EXPERIENCE:
-## The car moves forward automatically. The player only chooses LEFT or RIGHT at
-## intersections while glancing at the tiny whole-town map. Wrong turns create
-## real extra driving. Phone popups and tiredness steal attention. The game does
-## not explain the time consequence; the comedy night reveals it later.
+## A tiny route through a little maze-town. The car moves forward automatically.
+## The player only presses LEFT or RIGHT at intersections while glancing between
+## the close road view and the whole-route minimap.
+##
+## No phone game. No relationship game. No visible stat math.
+## Tiredness and car condition only change how DRIVE itself feels.
 
 @export_category("Drive Tuning")
-@export_range(0.8, 3.0, 0.05) var seconds_per_block: float = 1.55
-@export_range(0.6, 2.5, 0.05) var final_block_seconds: float = 1.05
-@export_range(0.6, 4.0, 0.05) var wrong_turn_detour_seconds: float = 1.65
-@export_range(0.5, 5.0, 0.1) var nate_pickup_extra_seconds: float = 2.2
-@export_range(80.0, 400.0, 5.0) var road_scroll_speed: float = 215.0
+@export_range(0.8, 3.0, 0.05) var seconds_per_block: float = 1.50
+@export_range(0.6, 2.5, 0.05) var final_block_seconds: float = 1.00
+@export_range(0.6, 4.0, 0.05) var wrong_turn_detour_seconds: float = 1.55
+@export_range(80.0, 400.0, 5.0) var road_scroll_speed: float = 210.0
+@export_range(0.3, 1.5, 0.05) var title_seconds: float = 0.75
 
 @export_category("Comedy Night Clock")
 @export var departure_clock_minutes: int = 19 * 60 + 16
@@ -38,28 +40,22 @@ extends GameModule
 @onready var left_button: Button = $Controls/LeftButton
 @onready var right_button: Button = $Controls/RightButton
 
-@onready var phone_overlay: Control = $PhoneOverlay
-@onready var phone_sender_label: Label = $PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout/SenderLabel
-@onready var phone_message_label: Label = $PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout/MessageLabel
-@onready var phone_positive_button: Button = $PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout/ChoiceRow/PositiveButton
-@onready var phone_negative_button: Button = $PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout/ChoiceRow/NegativeButton
-
 @onready var fatigue_overlay: Control = $FatigueOverlay
 @onready var top_lid: ColorRect = $FatigueOverlay/TopLid
 @onready var bottom_lid: ColorRect = $FatigueOverlay/BottomLid
 
+@onready var title_card: Control = $TitleCard
 @onready var result_panel: PanelContainer = $ResultPanel
 @onready var result_time_label: Label = $ResultPanel/ResultMargin/ResultLayout/TimeLabel
 @onready var result_label: Label = $ResultPanel/ResultMargin/ResultLayout/ResultLabel
 @onready var continue_button: Button = $ResultPanel/ResultMargin/ResultLayout/ContinueButton
 
-# 1 = right, -1 = left. The minimap is the only thing that tells the player.
+# 1 = right, -1 = left. The minimap is the only navigation aid.
 const TURN_PATTERN := [1, -1, 1, -1, -1, 1, 1, -1]
 
 var route_segment: int = 0
 var segment_progress: float = 0.0
 var player_choice: int = 0
-var current_extra_seconds: float = 0.0
 
 var detour_active: bool = false
 var detour_progress: float = 0.0
@@ -68,18 +64,17 @@ var detour_direction: int = 1
 var drive_elapsed: float = 0.0
 var road_scroll: float = 0.0
 var missed_turns: int = 0
-var picked_up_nate: bool = false
 var finished: bool = false
-
-var phone_event_id: int = 0
-var first_phone_shown: bool = false
-var second_phone_shown: bool = false
+var game_started: bool = false
 
 var fatigue_strength: float = 0.0
 var fatigue_wait_timer: float = 99.0
 var fatigue_blink_elapsed: float = 0.0
 var fatigue_blink_duration: float = 0.0
 var fatigue_blinking: bool = false
+var fatigue_drift: float = 0.0
+var fatigue_drift_target: float = 0.0
+var fatigue_drift_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -91,8 +86,8 @@ func _ready() -> void:
 	if fatigue_strength > 0.0:
 		fatigue_wait_timer = lerpf(4.8, 2.2, fatigue_strength)
 
-	phone_overlay.hide()
 	result_panel.hide()
+	title_card.show()
 	_set_eye_closure(0.0)
 
 	road.set_selected_turn(0)
@@ -102,15 +97,23 @@ func _ready() -> void:
 
 	left_button.pressed.connect(_choose_left)
 	right_button.pressed.connect(_choose_right)
-	phone_positive_button.pressed.connect(_on_phone_positive)
-	phone_negative_button.pressed.connect(_on_phone_negative)
 	continue_button.pressed.connect(_finish_and_continue)
 
+	left_button.disabled = true
+	right_button.disabled = true
+
+	await get_tree().create_timer(title_seconds).timeout
+	if not is_inside_tree():
+		return
+	title_card.hide()
+	game_started = true
+	left_button.disabled = false
+	right_button.disabled = false
 	left_button.grab_focus()
 
 
 func _process(delta: float) -> void:
-	if finished:
+	if finished or not game_started:
 		return
 
 	drive_elapsed += delta
@@ -118,26 +121,31 @@ func _process(delta: float) -> void:
 	road.set_travel_scroll(road_scroll)
 
 	_update_fatigue(delta)
+	_update_car_visual(delta)
 
 	if detour_active:
 		_update_detour(delta)
 	else:
 		_update_route(delta)
 
-	_update_phone_events()
-
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if finished or phone_overlay.visible or not event is InputEventKey:
+	if finished or not game_started or not event is InputEventKey:
 		return
+
 	var key_event := event as InputEventKey
 	if not key_event.pressed:
 		return
+
 	if key_event.keycode == KEY_LEFT or key_event.keycode == KEY_A:
 		_choose_left()
 	elif key_event.keycode == KEY_RIGHT or key_event.keycode == KEY_D:
 		_choose_right()
 
+
+# -----------------------------------------------------------------------------
+# DRIVE
+# -----------------------------------------------------------------------------
 
 func _choose_left() -> void:
 	_choose_turn(-1)
@@ -148,7 +156,7 @@ func _choose_right() -> void:
 
 
 func _choose_turn(direction: int) -> void:
-	if finished or phone_overlay.visible or detour_active:
+	if finished or not game_started or detour_active:
 		return
 	if route_segment >= TURN_PATTERN.size():
 		return
@@ -156,17 +164,11 @@ func _choose_turn(direction: int) -> void:
 	player_choice = direction
 	road.set_selected_turn(player_choice)
 
-	# Small visual lean only. Navigation is the mechanic, not steering physics.
-	var tween := create_tween()
-	tween.set_trans(Tween.TRANS_QUAD)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_property(player_car, "rotation", float(direction) * 0.10, 0.08)
-
 
 func _effective_block_seconds() -> float:
 	var base := final_block_seconds if route_segment >= TURN_PATTERN.size() else seconds_per_block
-	var condition_factor := lerpf(1.22, 1.0, float(GameState.car_condition) / 100.0)
-	return maxf(0.45, (base + current_extra_seconds) * condition_factor)
+	var condition_factor := lerpf(1.20, 1.0, float(GameState.car_condition) / 100.0)
+	return maxf(0.45, base * condition_factor)
 
 
 func _update_route(delta: float) -> void:
@@ -225,70 +227,27 @@ func _advance_to_next_block() -> void:
 	route_segment += 1
 	segment_progress = 0.0
 	player_choice = 0
-	current_extra_seconds = 0.0
 
 	road.set_selected_turn(0)
 	road.set_approach_progress(0.0)
-	player_car.rotation = 0.0
 	minimap.set_route_progress(route_segment, 0.0)
 
 
-# -----------------------------------------------------------------------------
-# PHONE DISTRACTIONS
-# -----------------------------------------------------------------------------
+func _update_car_visual(delta: float) -> void:
+	var center_x := road.size.x * 0.5 - player_car.size.x * 0.5
+	var turn_shift := 0.0
 
-func _update_phone_events() -> void:
-	if phone_overlay.visible:
-		return
+	# As the intersection reaches Darren, the car visibly commits toward the
+	# selected branch. It recenters after the new block loads.
+	if not detour_active and player_choice != 0:
+		var commit := clampf((segment_progress - 0.50) / 0.50, 0.0, 1.0)
+		turn_shift = float(player_choice) * 34.0 * commit
 
-	if not first_phone_shown and route_segment >= 2 and segment_progress >= 0.28:
-		first_phone_shown = true
-		_show_phone_event(1, "NATE", "u going up tonight?", "YEAH", "PROBABLY")
-		return
+	var target_x := center_x + turn_shift + fatigue_drift
+	player_car.position.x = move_toward(player_car.position.x, target_x, 180.0 * delta)
 
-	if not second_phone_shown and route_segment >= 5 and segment_progress >= 0.30:
-		second_phone_shown = true
-		_show_phone_event(2, "NATE", "can you pick me up?", "FINE", "NO")
-
-
-func _show_phone_event(
-	event_id: int,
-	sender: String,
-	message: String,
-	positive_text: String,
-	negative_text: String
-) -> void:
-	phone_event_id = event_id
-	phone_sender_label.text = sender
-	phone_message_label.text = message
-	phone_positive_button.text = positive_text
-	phone_negative_button.text = negative_text
-	phone_overlay.show()
-	phone_positive_button.grab_focus()
-
-
-func _hide_phone() -> void:
-	phone_event_id = 0
-	phone_overlay.hide()
-	left_button.grab_focus()
-
-
-func _on_phone_positive() -> void:
-	match phone_event_id:
-		1:
-			GameState.change_relationship("nate", 1)
-		2:
-			picked_up_nate = true
-			current_extra_seconds += nate_pickup_extra_seconds
-			GameState.change_relationship("nate", 2)
-			GameState.increment_history("nate_pickups")
-	_hide_phone()
-
-
-func _on_phone_negative() -> void:
-	if phone_event_id == 2:
-		GameState.change_relationship("nate", -1)
-	_hide_phone()
+	var target_rotation := float(player_choice) * 0.18 if player_choice != 0 else 0.0
+	player_car.rotation = move_toward(player_car.rotation, target_rotation, 0.9 * delta)
 
 
 # -----------------------------------------------------------------------------
@@ -297,7 +256,22 @@ func _on_phone_negative() -> void:
 
 func _update_fatigue(delta: float) -> void:
 	if fatigue_strength <= 0.0:
+		fatigue_drift = move_toward(fatigue_drift, 0.0, 15.0 * delta)
 		return
+
+	fatigue_drift_timer -= delta
+	if fatigue_drift_timer <= 0.0:
+		fatigue_drift_target = randf_range(
+			-lerpf(3.0, 18.0, fatigue_strength),
+			lerpf(3.0, 18.0, fatigue_strength)
+		)
+		fatigue_drift_timer = randf_range(0.8, 1.5)
+
+	fatigue_drift = move_toward(
+		fatigue_drift,
+		fatigue_drift_target,
+		lerpf(5.0, 18.0, fatigue_strength) * delta
+	)
 
 	if fatigue_blinking:
 		fatigue_blink_elapsed += delta
@@ -346,7 +320,6 @@ func _end_drive() -> void:
 	finished = true
 	left_button.disabled = true
 	right_button.disabled = true
-	phone_overlay.hide()
 	_set_eye_closure(0.0)
 
 	var elapsed_game_minutes := maxi(1, ceili(drive_elapsed))
@@ -362,7 +335,6 @@ func _end_drive() -> void:
 	GameState.night_context["arrival_clock_minutes"] = arrival_clock_minutes
 	GameState.night_context["drive_real_seconds"] = drive_elapsed
 	GameState.night_context["drive_missed_turns"] = missed_turns
-	GameState.night_context["picked_up_nate"] = picked_up_nate
 	GameState.increment_history("drives_completed")
 
 	result_time_label.text = _format_clock(arrival_clock_minutes)
@@ -388,6 +360,5 @@ func _finish_and_continue() -> void:
 		"arrival_minutes_before_signup": int(GameState.night_context.get("arrival_minutes_before_signup", 0)),
 		"arrival_clock_minutes": int(GameState.night_context.get("arrival_clock_minutes", 0)),
 		"missed_turns": missed_turns,
-		"picked_up_nate": picked_up_nate,
 		"real_drive_seconds": snappedf(drive_elapsed, 0.1),
 	})
