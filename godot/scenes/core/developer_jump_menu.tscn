@@ -26,12 +26,12 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 34.0
-offset_top = 28.0
+offset_top = 20.0
 offset_right = -34.0
-offset_bottom = -28.0
+offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="TitleLabel" type="Label" parent="Background/Layout"]
 layout_mode = 2
@@ -40,63 +40,69 @@ text = "DEVELOPER JUMP MENU"
 horizontal_alignment = 1
 
 [node name="StatusLabel" type="Label" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
 text = "SKELETON ALPHA"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="OpeningButton" type="Button" parent="Background/Layout"]
+[node name="MinigameLabButton" type="Button" parent="Background/Layout"]
 custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "MINIGAME LAB"
+
+[node name="OpeningButton" type="Button" parent="Background/Layout"]
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "OPENING STORY"
 
 [node name="BoxesButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "BOXES"
 
 [node name="FirstMicButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "FIRST MIC"
 
 [node name="CalendarButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "CALENDAR LOOP"
 
 [node name="RegionalButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "REGIONAL GIG"
 
 [node name="FeatureButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "FEATURE GIG"
 
 [node name="HeadlineButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "FIRST HEADLINE"
 
 [node name="SpecialButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "HOMETOWN SPECIAL"
 
 [node name="EndingButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "ENDING"
 
 [node name="MainMenuButton" type="Button" parent="Background/Layout"]
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 text = "BACK TO TITLE"
 
+[connection signal="pressed" from="Background/Layout/MinigameLabButton" to="." method="_on_minigame_lab_button_pressed"]
 [connection signal="pressed" from="Background/Layout/OpeningButton" to="." method="_on_opening_button_pressed"]
 [connection signal="pressed" from="Background/Layout/BoxesButton" to="." method="_on_boxes_button_pressed"]
 [connection signal="pressed" from="Background/Layout/FirstMicButton" to="." method="_on_first_mic_button_pressed"]
