@@ -31,6 +31,10 @@ const DEFAULTS := {
 	"drinking_habit": 10,         # How embedded drinking is in Darren's routine.
 	"alcohol_tolerance": 20,      # Higher = takes more alcohol to feel impaired.
 
+	# CAR / TRAVEL
+	"car_condition": 75,          # 0 = barely running, 100 = excellent condition.
+	"gas": 60,                    # Current fuel level.
+	
 	# PERSONAL / LIFE SKILLS
 	"work_ethic": 55,             # Willingness to show up and do the work.
 	"reliability": 60,            # How consistently Darren follows through.
@@ -95,4 +99,14 @@ const VENUE_DEFAULTS := {
 	"familiarity": 0,
 	"reputation": 0,
 	"times_performed": 0,
+}
+
+# One-night context is not a permanent skill. Modules write/read this record
+# during a comedy night, then the next day can clear it.
+const NIGHT_CONTEXT_DEFAULTS := {
+	"arrival_minutes_before_signup": 0,
+	"drive_delay_minutes": 0,
+	"drive_collisions": 0,
+	"drive_missed_turns": 0,
+	"picked_up_nate": false,
 }
