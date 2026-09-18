@@ -113,11 +113,14 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if finished or not event.pressed:
+	if finished or not event is InputEventKey:
 		return
-	if event.keycode == KEY_LEFT or event.keycode == KEY_A:
+	var key_event := event as InputEventKey
+	if not key_event.pressed:
+		return
+	if key_event.keycode == KEY_LEFT or key_event.keycode == KEY_A:
 		_move_left()
-	elif event.keycode == KEY_RIGHT or event.keycode == KEY_D:
+	elif key_event.keycode == KEY_RIGHT or key_event.keycode == KEY_D:
 		_move_right()
 
 
