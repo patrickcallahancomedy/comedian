@@ -19,6 +19,7 @@ const ROUTES: Dictionary = {
 	"calendar": "res://scenes/core/calendar_module.tscn",
 	"home": "res://scenes/home/home_module.tscn",
 	"work": "res://scenes/home/work_module.tscn",
+	"car": "res://scenes/car/car_module.tscn",
 	"travel": "res://scenes/core/travel_module.tscn",
 	"venue": "res://scenes/venues/venue_module.tscn",
 	"stage": "res://scenes/stage/stage_module.tscn",
