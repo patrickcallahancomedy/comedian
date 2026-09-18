@@ -35,7 +35,7 @@ extends GameModule
 @export var signup_close_clock_minutes: int = 19 * 60 + 45
 
 @onready var road: CarRoad = $Road
-@onready var player_car: ColorRect = $Road/PlayerCar
+@onready var player_car: TextureRect = $Road/PlayerCar
 @onready var minimap: CarMinimap = $HUD/GPSPanel/GPSMargin/MiniMap
 @onready var left_button: Button = $Controls/LeftButton
 @onready var right_button: Button = $Controls/RightButton
