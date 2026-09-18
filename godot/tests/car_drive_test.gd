@@ -27,6 +27,19 @@ func _run() -> void:
 		_finish()
 		return
 
+	# First verify the real startup path. add_child() calls _ready() immediately,
+	# so this catches the exact class of bug where the web build sits on a
+	# blocking screen instead of becoming playable.
+	var startup_drive = packed.instantiate()
+	get_root().add_child(startup_drive)
+	_check(bool(startup_drive.started), "DRIVE did not start in _ready()")
+	_check(not startup_drive.left_button.disabled, "DRIVE LEFT button starts disabled")
+	_check(not startup_drive.right_button.disabled, "DRIVE RIGHT button starts disabled")
+	_check(not startup_drive.has_node("TitleCard"), "Blocking DRIVE title overlay still exists")
+	_check(startup_drive.player_car.texture != null, "DRIVE startup car texture did not load")
+	startup_drive.free()
+
+	# Then use a separate off-tree instance for deterministic turn logic.
 	var drive = packed.instantiate()
 	_check(drive != null, "DRIVE scene failed to instantiate")
 	if drive == null:
