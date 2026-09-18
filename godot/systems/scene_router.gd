@@ -11,6 +11,7 @@ const CAREER_EVENT_SCENE := "res://scenes/core/career_event_module.tscn"
 const ROUTES: Dictionary = {
 	"main_menu": "res://scenes/core/main_menu.tscn",
 	"dev_menu": "res://scenes/core/developer_jump_menu.tscn",
+	"minigame_lab": "res://scenes/core/minigame_lab_menu.tscn",
 	"story_intro": "res://scenes/story/story_sequence.tscn",
 	"story_generic": "res://scenes/story/story_module.tscn",
 	"choice": "res://scenes/core/choice_module.tscn",
@@ -90,9 +91,9 @@ func go_to(route_id: String) -> bool:
 		push_error("SceneRouter could not open route %s" % route_id)
 		return false
 
-	# Gameplay routes are checkpoints. Menu/dev routes deliberately do not
-	# overwrite the last playable checkpoint, so Continue returns to the game.
-	if route_id != "main_menu" and route_id != "dev_menu":
+	# Menu/dev/lab routes deliberately do not overwrite the last playable
+	# checkpoint, so Continue still returns to the player's real game.
+	if route_id != "main_menu" and route_id != "dev_menu" and route_id != "minigame_lab":
 		SaveManager.save_game()
 	route_changed.emit(route_id)
 	return true
@@ -106,6 +107,14 @@ func finish_module(
 	last_module_id = module_id
 	last_module_result = result.duplicate(true)
 	module_completed.emit(module_id, last_module_result)
+
+	# The same real module can be launched from Minigame Lab. In that case the
+	# lab records the result, restores the pre-test state, and returns to its
+	# results screen instead of following the normal game route.
+	var lab := get_node_or_null("/root/MinigameLab")
+	if lab != null and bool(lab.get("active")):
+		lab.call("complete_test", module_id, last_module_result)
+		return
 
 	if not next_route_id.is_empty():
 		go_to(next_route_id)
