@@ -6,7 +6,7 @@ extends Control
 ## This is intentionally simple and fully visible from the start. The player
 ## glances here to remember the next turn while the local road view stays close.
 
-const ROUTE := PackedVector2Array([
+static var ROUTE: PackedVector2Array = PackedVector2Array([
 	Vector2(18, 132),
 	Vector2(18, 98),
 	Vector2(72, 98),
@@ -15,7 +15,7 @@ const ROUTE := PackedVector2Array([
 	Vector2(124, 18),
 ])
 
-const EXTRA_ROADS := [
+static var EXTRA_ROADS: Array[PackedVector2Array] = [
 	PackedVector2Array([Vector2(18, 116), Vector2(52, 116)]),
 	PackedVector2Array([Vector2(45, 98), Vector2(45, 78)]),
 	PackedVector2Array([Vector2(72, 80), Vector2(108, 80)]),
