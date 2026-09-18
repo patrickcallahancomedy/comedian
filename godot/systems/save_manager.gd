@@ -31,6 +31,13 @@ func continue_game() -> bool:
 
 
 func save_game() -> bool:
+	# Minigame Lab runs the real modules against temporary GameState. Modules are
+	# allowed to call SaveManager normally; lab mode simply absorbs those writes
+	# so development tests can never overwrite the player's actual Continue save.
+	var lab := get_node_or_null("/root/MinigameLab")
+	if lab != null and bool(lab.get("active")):
+		return true
+
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
 		var message := "Could not open save file for writing."
