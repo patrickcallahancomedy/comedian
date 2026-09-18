@@ -59,6 +59,14 @@ jobs:
             --script res://tests/skeleton_state_test.gd \
             2>&1 | tee skeleton-state-test.log
 
+      - name: Run DRIVE gameplay smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --fixed-fps 120 \
+            --script res://tests/car_drive_test.gd \
+            2>&1 | tee drive-test.log
+
       - name: Select deterministic seed range
         id: fuzz-config
         shell: bash
@@ -117,6 +125,7 @@ jobs:
           name: godot-test-failure-${{ github.run_id }}
           path: |
             skeleton-state-test.log
+            drive-test.log
             boxes-fuzz.log
           if-no-files-found: warn
           retention-days: 14
