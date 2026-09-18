@@ -34,7 +34,6 @@ const OBSTACLE_BLOCKS := [
 @onready var player_car: TextureRect = $Road/PlayerCar
 @onready var left_button: Button = $Controls/LeftButton
 @onready var right_button: Button = $Controls/RightButton
-@onready var title_card: Control = $TitleCard
 @onready var result_panel: PanelContainer = $ResultPanel
 @onready var result_label: Label = $ResultPanel/Margin/Layout/ResultLabel
 @onready var continue_button: Button = $ResultPanel/Margin/Layout/ContinueButton
@@ -64,18 +63,11 @@ func _ready() -> void:
 	right_button.pressed.connect(_on_right_pressed)
 	continue_button.pressed.connect(_finish_and_continue)
 
-	left_button.disabled = true
-	right_button.disabled = true
-	_refresh_visuals()
-
-	await get_tree().create_timer(title_seconds).timeout
-	if not is_inside_tree():
-		return
-
-	title_card.hide()
+	# DRIVE starts immediately. No intro overlay can block the controls.
 	started = true
 	left_button.disabled = false
 	right_button.disabled = false
+	_refresh_visuals()
 
 
 func _process(delta: float) -> void:
