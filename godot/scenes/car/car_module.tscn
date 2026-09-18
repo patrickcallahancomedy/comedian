@@ -22,70 +22,43 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.035, 0.04, 0.055, 1)
-
-[node name="HeaderLabel" type="Label" parent="."]
-layout_mode = 0
-offset_left = 18.0
-offset_top = 16.0
-offset_right = 252.0
-offset_bottom = 42.0
-theme_override_font_sizes/font_size = 18
-text = "7:16 PM • ON THE WAY"
-
-[node name="SubtitleLabel" type="Label" parent="."]
-layout_mode = 0
-offset_left = 18.0
-offset_top = 45.0
-offset_right = 230.0
-offset_bottom = 72.0
-theme_override_colors/font_color = Color(0.7, 0.7, 0.72, 1)
-theme_override_font_sizes/font_size = 15
-text = "Just get there."
+color = Color(0.02, 0.025, 0.025, 1)
 
 [node name="Road" type="Control" parent="."]
 layout_mode = 0
-offset_left = 32.0
-offset_top = 102.0
-offset_right = 398.0
-offset_bottom = 584.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 418.0
+offset_bottom = 646.0
 clip_contents = true
 script = ExtResource("2_road")
 
-[node name="TrafficLayer" type="Control" parent="Road"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
 [node name="PlayerCar" type="ColorRect" parent="Road"]
 layout_mode = 0
-offset_left = 159.0
-offset_top = 390.0
-offset_right = 207.0
-offset_bottom = 468.0
-color = Color(0.20, 0.40, 1, 1)
+offset_left = 185.0
+offset_top = 510.0
+offset_right = 221.0
+offset_bottom = 570.0
+pivot_offset = Vector2(18, 30)
+color = Color(0.18, 0.38, 1, 1)
 mouse_filter = 2
 
 [node name="Windshield" type="ColorRect" parent="Road/PlayerCar"]
 layout_mode = 0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 40.0
-offset_bottom = 26.0
+offset_left = 6.0
+offset_top = 7.0
+offset_right = 30.0
+offset_bottom = 20.0
 color = Color(0.62, 0.84, 0.95, 1)
 mouse_filter = 2
 
 [node name="RearWindow" type="ColorRect" parent="Road/PlayerCar"]
 layout_mode = 0
-offset_left = 9.0
-offset_top = 53.0
-offset_right = 39.0
-offset_bottom = 68.0
-color = Color(0.36, 0.58, 0.72, 1)
+offset_left = 7.0
+offset_top = 43.0
+offset_right = 29.0
+offset_bottom = 54.0
+color = Color(0.35, 0.56, 0.70, 1)
 mouse_filter = 2
 
 [node name="HUD" type="Control" parent="."]
@@ -97,79 +70,57 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="TimeLabel" type="Label" parent="HUD"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 22.0
+offset_right = 120.0
+offset_bottom = 45.0
+theme_override_colors/font_color = Color(0.78, 0.78, 0.8, 1)
+theme_override_font_sizes/font_size = 13
+text = "7:16 PM"
+
 [node name="GPSPanel" type="PanelContainer" parent="HUD"]
 layout_mode = 0
-offset_left = 270.0
-offset_top = 10.0
-offset_right = 420.0
-offset_bottom = 178.0
+offset_left = 292.0
+offset_top = 18.0
+offset_right = 414.0
+offset_bottom = 140.0
 
 [node name="GPSMargin" type="MarginContainer" parent="HUD/GPSPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 4
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_left = 3
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 3
+theme_override_constants/margin_bottom = 3
 
-[node name="GPSLayout" type="VBoxContainer" parent="HUD/GPSPanel/GPSMargin"]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="MapStatusLabel" type="Label" parent="HUD/GPSPanel/GPSMargin/GPSLayout"]
-custom_minimum_size = Vector2(0, 17)
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-text = "TO THE BACK ROOM"
-horizontal_alignment = 1
-
-[node name="MiniMap" type="Control" parent="HUD/GPSPanel/GPSMargin/GPSLayout"]
-custom_minimum_size = Vector2(142, 142)
+[node name="MiniMap" type="Control" parent="HUD/GPSPanel/GPSMargin"]
+custom_minimum_size = Vector2(116, 116)
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("3_map")
 
-[node name="FeedbackLabel" type="Label" parent="HUD"]
-layout_mode = 0
-offset_left = 40.0
-offset_top = 77.0
-offset_right = 260.0
-offset_bottom = 100.0
-theme_override_font_sizes/font_size = 14
-text = ""
-horizontal_alignment = 1
-
 [node name="Controls" type="HBoxContainer" parent="."]
 layout_mode = 0
-offset_left = 28.0
-offset_top = 608.0
-offset_right = 402.0
-offset_bottom = 686.0
-theme_override_constants/separation = 14
+offset_left = 38.0
+offset_top = 670.0
+offset_right = 392.0
+offset_bottom = 734.0
+theme_override_constants/separation = 12
 
 [node name="LeftButton" type="Button" parent="Controls"]
-custom_minimum_size = Vector2(180, 78)
+custom_minimum_size = Vector2(171, 64)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 23
-text = "← LEFT"
+theme_override_font_sizes/font_size = 20
+text = "LEFT"
 
 [node name="RightButton" type="Button" parent="Controls"]
-custom_minimum_size = Vector2(180, 78)
+custom_minimum_size = Vector2(171, 64)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 23
-text = "RIGHT →"
-
-[node name="HintLabel" type="Label" parent="."]
-layout_mode = 0
-offset_left = 24.0
-offset_top = 700.0
-offset_right = 406.0
-offset_bottom = 730.0
-theme_override_colors/font_color = Color(0.60, 0.60, 0.63, 1)
-theme_override_font_sizes/font_size = 12
-text = "FOLLOW THE BLUE LINE. DON'T HIT ANYBODY."
-horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+text = "RIGHT"
 
 [node name="PhoneOverlay" type="Control" parent="."]
 layout_mode = 1
@@ -187,15 +138,15 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.02, 0.025, 0.035, 0.93)
+color = Color(0.015, 0.02, 0.025, 0.96)
 mouse_filter = 2
 
 [node name="PhoneCard" type="PanelContainer" parent="PhoneOverlay"]
 layout_mode = 0
-offset_left = 30.0
-offset_top = 185.0
-offset_right = 400.0
-offset_bottom = 510.0
+offset_left = 28.0
+offset_top = 170.0
+offset_right = 402.0
+offset_bottom = 508.0
 
 [node name="PhoneMargin" type="MarginContainer" parent="PhoneOverlay/PhoneCard"]
 layout_mode = 2
@@ -220,7 +171,7 @@ theme_override_font_sizes/font_size = 28
 text = "NATE"
 
 [node name="MessageLabel" type="Label" parent="PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout"]
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "u going up tonight?"
@@ -244,11 +195,11 @@ text = "PROBABLY"
 
 [node name="DriveWarningLabel" type="Label" parent="PhoneOverlay"]
 layout_mode = 0
-offset_left = 45.0
-offset_top = 552.0
-offset_right = 385.0
-offset_bottom = 596.0
-theme_override_colors/font_color = Color(0.62, 0.62, 0.66, 1)
+offset_left = 48.0
+offset_top = 548.0
+offset_right = 382.0
+offset_bottom = 582.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.63, 1)
 theme_override_font_sizes/font_size = 13
 text = "THE CAR IS STILL MOVING."
 horizontal_alignment = 1
@@ -279,9 +230,9 @@ mouse_filter = 2
 [node name="ResultPanel" type="PanelContainer" parent="."]
 layout_mode = 0
 offset_left = 42.0
-offset_top = 222.0
+offset_top = 234.0
 offset_right = 388.0
-offset_bottom = 484.0
+offset_bottom = 468.0
 
 [node name="ResultMargin" type="MarginContainer" parent="ResultPanel"]
 layout_mode = 2
@@ -292,7 +243,7 @@ theme_override_constants/margin_bottom = 22
 
 [node name="ResultLayout" type="VBoxContainer" parent="ResultPanel/ResultMargin"]
 layout_mode = 2
-theme_override_constants/separation = 15
+theme_override_constants/separation = 14
 
 [node name="TimeLabel" type="Label" parent="ResultPanel/ResultMargin/ResultLayout"]
 layout_mode = 2
@@ -302,14 +253,14 @@ text = "7:34 PM"
 horizontal_alignment = 1
 
 [node name="ResultLabel" type="Label" parent="ResultPanel/ResultMargin/ResultLayout"]
-custom_minimum_size = Vector2(0, 110)
+custom_minimum_size = Vector2(0, 102)
 layout_mode = 2
-theme_override_font_sizes/font_size = 21
+theme_override_font_sizes/font_size = 20
 text = "YOU MADE IT."
 horizontal_alignment = 1
 autowrap_mode = 2
 
 [node name="ContinueButton" type="Button" parent="ResultPanel/ResultMargin/ResultLayout"]
-custom_minimum_size = Vector2(0, 58)
+custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
-text = "GET OUT OF THE CAR"
+text = "GET OUT"
