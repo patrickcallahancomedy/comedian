@@ -66,6 +66,9 @@ func _draw() -> void:
 
 	for i in range(CarRouteData.ROUTE.size() - 1):
 		_draw_street(CarRouteData.ROUTE[i], CarRouteData.ROUTE[i + 1])
+	for loop in CarRouteData.WRONG_LOOPS:
+		for i in range(loop.size() - 1):
+			_draw_street(loop[i], loop[i + 1])
 	for street in CarRouteData.EXTRA_STREETS:
 		_draw_street(street[0], street[1])
 
