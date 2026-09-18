@@ -15,11 +15,11 @@ var _test_baseline: Dictionary = {}
 
 const TESTS: Dictionary = {
 	"car_to_mic": {
-		"label": "CAR — TO THE MIC",
+		"label": "DRIVE — NORMAL",
 		"route_id": "car",
 	},
 	"car_tired": {
-		"label": "CAR — TIRED",
+		"label": "DRIVE — TIRED",
 		"route_id": "car",
 	},
 	"boxes_normal": {
@@ -83,8 +83,6 @@ func begin_test(test_id: String) -> bool:
 	last_result = {}
 	last_state_changes.clear()
 
-	# Lab state is temporary from this point forward. SaveManager ignores writes
-	# while active, so even modules that save during play cannot touch real saves.
 	active = true
 	game_state.call("reset_new_game")
 	_seed_test_state(test_id, game_state)
@@ -116,9 +114,6 @@ func complete_test(module_id: String, result: Dictionary) -> void:
 
 	_restore_saved_state()
 	active = false
-
-	# minigame_lab is a no-save developer route, so returning here still cannot
-	# overwrite the player's real Continue checkpoint.
 	scene_router.call("go_to", "minigame_lab")
 
 
