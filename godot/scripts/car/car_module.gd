@@ -243,8 +243,9 @@ func _refresh_world_visuals() -> void:
 	var anchor := Vector2(road.size.x * 0.5, road.size.y * 0.72)
 	player_car.position = anchor - player_car.size * 0.5
 
-	# The rectangle's "front" is its top edge.
-	player_car.rotation = atan2(car_world_direction.y, car_world_direction.x) + PI * 0.5
+	# The close camera rotates the town so Darren always drives toward the top
+	# of the screen. Keep the car itself upright.
+	player_car.rotation = 0.0
 
 
 # -----------------------------------------------------------------------------
