@@ -63,12 +63,12 @@ theme_override_font_sizes/font_size = 16
 [node name="CarToMicButton" type="Button" parent="Background/Margin/Scroll/Layout"]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-text = "CAR — TO THE MIC"
+text = "DRIVE — NORMAL"
 
 [node name="CarTiredButton" type="Button" parent="Background/Margin/Scroll/Layout"]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-text = "CAR — TIRED"
+text = "DRIVE — TIRED"
 
 [node name="BoxesNormalButton" type="Button" parent="Background/Margin/Scroll/Layout"]
 custom_minimum_size = Vector2(0, 52)
