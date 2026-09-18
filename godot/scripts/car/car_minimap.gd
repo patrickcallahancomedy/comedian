@@ -3,8 +3,8 @@ extends Control
 
 ## Tiny-town-rug minimap for DRIVE.
 ##
-## This is intentionally more toy-like than the main view: tiny colored houses,
-## trees, ponds, roads, Darren, destination, and the blue route.
+## More toy-like than the main view on purpose. It shows the whole little town,
+## the blue route, Darren, and the destination. No written turn instructions.
 
 var car_world_position := CarRouteData.ROUTE[0]
 var car_world_direction := Vector2.UP
@@ -28,14 +28,10 @@ func _map_point(world: Vector2) -> Vector2:
 	)
 
 
-func _map_scale() -> float:
-	return minf(size.x / 775.0, size.y / 900.0)
-
-
 func _draw_street(a_world: Vector2, b_world: Vector2) -> void:
 	var a := _map_point(a_world)
 	var b := _map_point(b_world)
-	draw_line(a, b, Color(0.10, 0.10, 0.095, 1.0), 8.0, true)
+	draw_line(a, b, Color(0.09, 0.09, 0.085, 1.0), 8.0, true)
 	draw_line(a, b, Color(0.31, 0.30, 0.27, 1.0), 5.0, true)
 
 
@@ -57,13 +53,14 @@ func _draw_tiny_house(world: Vector2, index: int) -> void:
 
 
 func _draw_tiny_tree(world: Vector2) -> void:
-	var p := _map_point(world)
-	draw_circle(p, 4.0, Color(0.14, 0.31, 0.13, 1.0))
+	draw_circle(_map_point(world), 4.0, Color(0.14, 0.31, 0.13, 1.0))
 
 
 func _draw() -> void:
+	# Felt-rug green.
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.12, 0.24, 0.11, 1.0))
 
+	# Whole town road network.
 	for i in range(CarRouteData.ROUTE.size() - 1):
 		_draw_street(CarRouteData.ROUTE[i], CarRouteData.ROUTE[i + 1])
 	for loop in CarRouteData.WRONG_LOOPS:
@@ -72,6 +69,7 @@ func _draw() -> void:
 	for street in CarRouteData.EXTRA_STREETS:
 		_draw_street(street[0], street[1])
 
+	# Tiny landmarks.
 	for item in CarRouteData.DECOR:
 		var kind := str(item.get("type", ""))
 		var pos: Vector2 = item.get("pos", Vector2.ZERO)
@@ -87,22 +85,24 @@ func _draw() -> void:
 				draw_rect(Rect2(club - Vector2(6, 5), Vector2(12, 10)), Color(0.66, 0.22, 0.20, 1.0))
 				draw_circle(club + Vector2(0, -7), 3.0, Color(0.84, 0.68, 0.28, 1.0))
 
-	# Blue GPS route sits on top of the rug.
+	# GPS route.
 	var route := PackedVector2Array()
 	for point in CarRouteData.ROUTE:
 		route.append(_map_point(point))
 	draw_polyline(route, Color(0.16, 0.46, 0.95, 1.0), 3.5, true)
 
+	# Destination.
 	var destination := _map_point(CarRouteData.ROUTE[CarRouteData.ROUTE.size() - 1])
-	draw_circle(destination, 4.0, Color(0.84, 0.23, 0.20, 1.0))
+	draw_circle(destination, 4.4, Color(0.84, 0.23, 0.20, 1.0))
+	draw_circle(destination, 1.8, Color(0.92, 0.82, 0.61, 1.0))
 
-	# Tiny car.
+	# Tiny Darren car.
 	var car := _map_point(car_world_position)
 	var direction := car_world_direction.normalized()
 	var side := Vector2(-direction.y, direction.x)
-	var car_shape := PackedVector2Array([
-		car + direction * 4.5,
-		car - direction * 3.5 + side * 2.6,
-		car - direction * 3.5 - side * 2.6,
+	var shape := PackedVector2Array([
+		car + direction * 4.8,
+		car - direction * 3.6 + side * 2.7,
+		car - direction * 3.6 - side * 2.7,
 	])
-	draw_colored_polygon(car_shape, Color(0.18, 0.42, 0.88, 1.0))
+	draw_colored_polygon(shape, Color(0.18, 0.42, 0.88, 1.0))
