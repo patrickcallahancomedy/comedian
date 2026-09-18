@@ -219,7 +219,7 @@ func _resolve_turn() -> void:
 	GameState.increment_history("missed_turns")
 
 	detour_active = true
-	detour_points = CarRouteData.DETOURS[route_segment]
+	detour_points = CarRouteData.WRONG_LOOPS[route_segment]
 	detour_segment = 0
 	pending_turn = 0
 	_refresh_button_state()
