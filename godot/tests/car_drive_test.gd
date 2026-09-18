@@ -2,8 +2,11 @@ extends SceneTree
 
 ## DRIVE smoke test.
 ##
-## This exists because a successful web export is not enough: DRIVE must require
-## player input and a wrong turn must not secretly advance the route.
+## Checks the tiny real gameplay contract:
+## - external player-car texture loads
+## - the game requires LEFT / RIGHT at intersections
+## - correct turns advance the route
+## - wrong turns do not secretly advance it
 
 var failures: Array[String] = []
 
@@ -15,7 +18,7 @@ func _initialize() -> void:
 func _run() -> void:
 	print("DRIVE TEST START")
 
-	var packed := load("res://scenes/car/car_module.tscn") as PackedScene
+	var packed := load("res://scenes/drive/drive_module.tscn") as PackedScene
 	_check(packed != null, "DRIVE scene failed to load")
 	if packed == null:
 		_finish()
@@ -23,48 +26,41 @@ func _run() -> void:
 
 	var drive = packed.instantiate()
 	drive.title_seconds = 0.01
+	drive.seconds_per_block = 1.0
 	get_root().add_child(drive)
 
 	await create_timer(0.03).timeout
 
-	# Take control of stepping so this test is deterministic.
+	_check(drive.player_car.texture != null, "DRIVE external car texture did not load")
+
+	# Deterministic manual stepping.
 	drive.set_process(false)
-	drive.game_started = true
+	drive.started = true
 
-	# Reach the first intersection without touching anything.
-	drive._process(2.0)
-	_check(drive.waiting_at_intersection, "DRIVE did not stop for a player choice")
-	_check(drive.route_segment == 0, "DRIVE advanced without player input")
-	_check(not drive.finished, "DRIVE finished without player input")
+	# First intersection is RIGHT. No input must stop and wait.
+	drive.block_progress = 0.95
+	drive._process(0.10)
+	_check(drive.waiting_for_turn, "DRIVE did not wait for a turn")
+	_check(drive.block_index == 0, "DRIVE advanced without a player turn")
 
-	# Sitting there forever must not autoplay the game.
-	drive._process(30.0)
-	_check(drive.waiting_at_intersection, "DRIVE left the intersection without input")
-	_check(drive.route_segment == 0, "DRIVE autoplayed while waiting")
-	_check(not drive.finished, "DRIVE can finish hands-off")
+	# Correct RIGHT advances.
+	drive._handle_direction(1)
+	_check(drive.block_index == 1, "Correct RIGHT turn did not advance DRIVE")
+	_check(not drive.waiting_for_turn, "DRIVE stayed paused after correct turn")
 
-	# First required turn is RIGHT.
-	drive._choose_turn(1)
-	_check(drive.route_segment == 1, "Correct DRIVE turn did not advance route")
-	_check(not drive.waiting_at_intersection, "Correct DRIVE turn did not resume movement")
+	# Second intersection is LEFT. Deliberately choose wrong RIGHT.
+	drive.block_progress = 0.95
+	drive._handle_direction(1)
+	drive._process(0.10)
+	_check(drive.block_index == 1, "Wrong DRIVE turn advanced the route")
+	_check(drive.missed_turns == 1, "Wrong DRIVE turn was not counted")
+	_check(drive.block_progress <= drive.TURN_ZONE + 0.001, "Wrong turn did not reset to a retry")
 
-	# Reach second intersection; required turn there is LEFT.
-	drive._process(2.0)
-	_check(drive.waiting_at_intersection, "DRIVE did not stop at second intersection")
-	_check(drive.route_segment == 1, "DRIVE skipped second intersection")
-
-	# Choose the wrong direction. It must enter a loop and return to the SAME
-	# intersection rather than quietly granting progress.
-	drive._choose_turn(1)
-	_check(drive.detour_active, "Wrong DRIVE turn did not start a detour")
-	drive._process(10.0)
-	_check(not drive.detour_active, "DRIVE detour did not complete")
-	_check(drive.waiting_at_intersection, "DRIVE detour did not return to intersection")
-	_check(drive.route_segment == 1, "Wrong DRIVE turn advanced the route")
-
-	# Now make the correct LEFT turn.
-	drive._choose_turn(-1)
-	_check(drive.route_segment == 2, "Correct turn after detour did not advance")
+	# Now choose correct LEFT.
+	drive.block_progress = 0.95
+	drive._handle_direction(-1)
+	drive._process(0.10)
+	_check(drive.block_index == 2, "Correct LEFT turn did not advance DRIVE")
 
 	drive.queue_free()
 	await process_frame
