@@ -14,6 +14,14 @@ var _saved_state: Dictionary = {}
 var _test_baseline: Dictionary = {}
 
 const TESTS: Dictionary = {
+	"car_to_mic": {
+		"label": "CAR — TO THE MIC",
+		"route_id": "car",
+	},
+	"car_tired": {
+		"label": "CAR — TIRED",
+		"route_id": "car",
+	},
 	"boxes_normal": {
 		"label": "BOXES — NORMAL SHIFT",
 		"route_id": "work",
@@ -39,6 +47,10 @@ const TESTS: Dictionary = {
 const SIMPLE_STATE_KEYS: Array[String] = [
 	"money",
 	"energy",
+	"stress",
+	"current_intoxication",
+	"car_condition",
+	"gas",
 	"reputation",
 	"career_phase",
 	"job_status",
@@ -151,8 +163,17 @@ func get_last_summary() -> String:
 func _seed_test_state(test_id: String, game_state: Node) -> void:
 	game_state.set("money", 500)
 	game_state.set("energy", 80)
+	game_state.set("stress", 20)
+	game_state.set("current_intoxication", 0)
+	game_state.set("car_condition", 75)
+	game_state.set("gas", 60)
 
 	match test_id:
+		"car_to_mic":
+			pass
+		"car_tired":
+			game_state.set("energy", 20)
+			game_state.set("stress", 55)
 		"boxes_normal":
 			game_state.call("mark_milestone", "opening_boxes_complete")
 		"boxes_tired":
@@ -219,6 +240,25 @@ func _summarize_state_changes(before: Dictionary, after: Dictionary) -> Array[St
 				_format_value(new_relationship),
 			])
 
+	var old_history: Dictionary = before.get("history", {})
+	var new_history: Dictionary = after.get("history", {})
+	for history_id in new_history.keys():
+		var old_count := int(old_history.get(history_id, 0))
+		var new_count := int(new_history.get(history_id, 0))
+		if old_count != new_count:
+			changes.append("history.%s: %d -> %d" % [str(history_id), old_count, new_count])
+
+	var old_night: Dictionary = before.get("night_context", {})
+	var new_night: Dictionary = after.get("night_context", {})
+	for context_id in new_night.keys():
+		var old_context: Variant = old_night.get(context_id)
+		var new_context: Variant = new_night[context_id]
+		if old_context != new_context:
+			changes.append("night.%s: %s" % [
+				str(context_id),
+				_format_value(new_context),
+			])
+
 	var old_milestones: Dictionary = before.get("milestones", {})
 	var new_milestones: Dictionary = after.get("milestones", {})
 	for milestone_id in new_milestones.keys():
@@ -233,4 +273,6 @@ func _format_value(value: Variant) -> String:
 		return "yes" if bool(value) else "no"
 	if typeof(value) == TYPE_STRING:
 		return str(value) if not str(value).is_empty() else "(none)"
+	if value == null:
+		return "(none)"
 	return str(value)
