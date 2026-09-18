@@ -63,7 +63,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          godot --headless --path godot --fixed-fps 120 \
+          timeout 20s godot --headless --path godot --fixed-fps 120 \
             --script res://tests/car_drive_test.gd \
             2>&1 | tee drive-test.log
 
