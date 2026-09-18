@@ -1,6 +1,6 @@
 extends GameModule
 
-## DRIVE v0.4 — one verb: drive.
+## DRIVE v0.5 — one verb: drive.
 ##
 ## STATE READS:
 ## energy, car_condition
@@ -16,19 +16,15 @@ extends GameModule
 ## real_drive_seconds
 ##
 ## PLAYER EXPERIENCE:
-## A tiny route through a little maze-town. The car moves forward automatically.
-## The player only presses LEFT or RIGHT at intersections while glancing between
-## the close road view and the whole-route minimap.
+## Darren actually travels through a tiny top-down town. The whole maze sits in
+## the corner. The car keeps moving. LEFT / RIGHT selects the next turn.
 ##
+## Wrong turns physically drive a short loop before rejoining the route.
 ## No phone game. No relationship game. No visible stat math.
-## Tiredness and car condition only change how DRIVE itself feels.
 
 @export_category("Drive Tuning")
-@export_range(0.8, 3.0, 0.05) var seconds_per_block: float = 1.50
-@export_range(0.6, 2.5, 0.05) var final_block_seconds: float = 1.00
-@export_range(0.6, 4.0, 0.05) var wrong_turn_detour_seconds: float = 1.55
-@export_range(80.0, 400.0, 5.0) var road_scroll_speed: float = 210.0
-@export_range(0.3, 1.5, 0.05) var title_seconds: float = 0.75
+@export_range(70.0, 240.0, 5.0) var drive_speed: float = 125.0
+@export_range(0.3, 1.5, 0.05) var title_seconds: float = 0.70
 
 @export_category("Comedy Night Clock")
 @export var departure_clock_minutes: int = 19 * 60 + 16
@@ -50,19 +46,18 @@ extends GameModule
 @onready var result_label: Label = $ResultPanel/ResultMargin/ResultLayout/ResultLabel
 @onready var continue_button: Button = $ResultPanel/ResultMargin/ResultLayout/ContinueButton
 
-# 1 = right, -1 = left. The minimap is the only navigation aid.
-const TURN_PATTERN := [1, -1, 1, -1, -1, 1, 1, -1]
+var car_world_position := CarRouteData.ROUTE[0]
+var car_world_direction := Vector2.UP
 
+# route_segment means Darren is travelling ROUTE[n] -> ROUTE[n + 1].
 var route_segment: int = 0
-var segment_progress: float = 0.0
-var player_choice: int = 0
+var pending_turn: int = 0
 
 var detour_active: bool = false
-var detour_progress: float = 0.0
-var detour_direction: int = 1
+var detour_points := PackedVector2Array()
+var detour_segment: int = 0
 
 var drive_elapsed: float = 0.0
-var road_scroll: float = 0.0
 var missed_turns: int = 0
 var finished: bool = false
 var game_started: bool = false
@@ -72,9 +67,6 @@ var fatigue_wait_timer: float = 99.0
 var fatigue_blink_elapsed: float = 0.0
 var fatigue_blink_duration: float = 0.0
 var fatigue_blinking: bool = false
-var fatigue_drift: float = 0.0
-var fatigue_drift_target: float = 0.0
-var fatigue_drift_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -90,21 +82,18 @@ func _ready() -> void:
 	title_card.show()
 	_set_eye_closure(0.0)
 
-	road.set_selected_turn(0)
-	road.set_detour_active(false)
-	minimap.set_route_progress(route_segment, segment_progress)
-	minimap.set_detour(false)
-
 	left_button.pressed.connect(_choose_left)
 	right_button.pressed.connect(_choose_right)
 	continue_button.pressed.connect(_finish_and_continue)
 
 	left_button.disabled = true
 	right_button.disabled = true
+	_refresh_world_visuals()
 
 	await get_tree().create_timer(title_seconds).timeout
 	if not is_inside_tree():
 		return
+
 	title_card.hide()
 	game_started = true
 	left_button.disabled = false
@@ -117,16 +106,9 @@ func _process(delta: float) -> void:
 		return
 
 	drive_elapsed += delta
-	road_scroll += road_scroll_speed * delta
-	road.set_travel_scroll(road_scroll)
-
 	_update_fatigue(delta)
-	_update_car_visual(delta)
-
-	if detour_active:
-		_update_detour(delta)
-	else:
-		_update_route(delta)
+	_move_car(delta)
+	_refresh_world_visuals()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -158,41 +140,78 @@ func _choose_right() -> void:
 func _choose_turn(direction: int) -> void:
 	if finished or not game_started or detour_active:
 		return
-	if route_segment >= TURN_PATTERN.size():
+	if route_segment >= CarRouteData.TURNS.size():
 		return
 
-	player_choice = direction
-	road.set_selected_turn(player_choice)
+	pending_turn = direction
+	_refresh_button_state()
 
 
-func _effective_block_seconds() -> float:
-	var base := final_block_seconds if route_segment >= TURN_PATTERN.size() else seconds_per_block
-	var condition_factor := lerpf(1.20, 1.0, float(GameState.car_condition) / 100.0)
-	return maxf(0.45, base * condition_factor)
+func _refresh_button_state() -> void:
+	var selected := Color(0.82, 0.78, 0.68, 1.0)
+	var normal := Color(1, 1, 1, 1)
+
+	left_button.modulate = selected if pending_turn < 0 else normal
+	right_button.modulate = selected if pending_turn > 0 else normal
 
 
-func _update_route(delta: float) -> void:
-	segment_progress += delta / _effective_block_seconds()
-	segment_progress = minf(segment_progress, 1.0)
+func _effective_speed() -> float:
+	# Bad condition quietly slows the trip. No car-condition UI belongs here.
+	var condition := clampf(float(GameState.car_condition) / 100.0, 0.0, 1.0)
+	return drive_speed * lerpf(0.82, 1.0, condition)
 
-	road.set_approach_progress(segment_progress)
-	minimap.set_route_progress(route_segment, segment_progress)
 
-	if segment_progress < 1.0:
+func _move_car(delta: float) -> void:
+	var remaining := _effective_speed() * delta
+
+	while remaining > 0.0 and not finished:
+		var target := _current_target()
+		var offset := target - car_world_position
+		var distance := offset.length()
+
+		if distance <= 0.001:
+			_arrive_at_target()
+			continue
+
+		car_world_direction = offset / distance
+
+		if remaining < distance:
+			car_world_position += car_world_direction * remaining
+			remaining = 0.0
+		else:
+			car_world_position = target
+			remaining -= distance
+			_arrive_at_target()
+
+
+func _current_target() -> Vector2:
+	if detour_active:
+		return detour_points[detour_segment + 1]
+	return CarRouteData.ROUTE[route_segment + 1]
+
+
+func _arrive_at_target() -> void:
+	if detour_active:
+		detour_segment += 1
+		if detour_segment >= detour_points.size() - 1:
+			_finish_detour()
 		return
 
-	if route_segment >= TURN_PATTERN.size():
+	# Final route point reached.
+	if route_segment >= CarRouteData.ROUTE.size() - 2:
 		_end_drive()
 		return
 
-	_resolve_intersection()
+	_resolve_turn()
 
 
-func _resolve_intersection() -> void:
-	var required_turn := int(TURN_PATTERN[route_segment])
+func _resolve_turn() -> void:
+	var required := int(CarRouteData.TURNS[route_segment])
 
-	if player_choice == required_turn:
-		_advance_to_next_block()
+	if pending_turn == required:
+		route_segment += 1
+		pending_turn = 0
+		_refresh_button_state()
 		return
 
 	missed_turns += 1
@@ -200,54 +219,32 @@ func _resolve_intersection() -> void:
 	GameState.increment_history("missed_turns")
 
 	detour_active = true
-	detour_progress = 0.0
-	detour_direction = player_choice if player_choice != 0 else -required_turn
-	road.set_detour_active(true)
-	road.set_selected_turn(0)
-	minimap.set_detour(true, detour_direction, detour_progress)
+	detour_points = CarRouteData.DETOURS[route_segment]
+	detour_segment = 0
+	pending_turn = 0
+	_refresh_button_state()
 
 
-func _update_detour(delta: float) -> void:
-	detour_progress += delta / maxf(0.2, wrong_turn_detour_seconds)
-	detour_progress = minf(detour_progress, 1.0)
-
-	road.set_approach_progress(0.0)
-	minimap.set_detour(true, detour_direction, detour_progress)
-
-	if detour_progress < 1.0:
-		return
-
+func _finish_detour() -> void:
 	detour_active = false
-	road.set_detour_active(false)
-	minimap.set_detour(false)
-	_advance_to_next_block()
+	detour_points = PackedVector2Array()
+	detour_segment = 0
 
-
-func _advance_to_next_block() -> void:
+	# GPS has rerouted Darren back to the same intersection; from there he
+	# continues along the intended street automatically.
 	route_segment += 1
-	segment_progress = 0.0
-	player_choice = 0
-
-	road.set_selected_turn(0)
-	road.set_approach_progress(0.0)
-	minimap.set_route_progress(route_segment, 0.0)
 
 
-func _update_car_visual(delta: float) -> void:
-	var center_x := road.size.x * 0.5 - player_car.size.x * 0.5
-	var turn_shift := 0.0
+func _refresh_world_visuals() -> void:
+	road.set_car_world_state(car_world_position, car_world_direction)
+	minimap.set_car_world_state(car_world_position, car_world_direction)
 
-	# As the intersection reaches Darren, the car visibly commits toward the
-	# selected branch. It recenters after the new block loads.
-	if not detour_active and player_choice != 0:
-		var commit := clampf((segment_progress - 0.50) / 0.50, 0.0, 1.0)
-		turn_shift = float(player_choice) * 34.0 * commit
+	# Car node stays near the lower center while the world scrolls underneath.
+	var anchor := Vector2(road.size.x * 0.5, road.size.y * 0.72)
+	player_car.position = anchor - player_car.size * 0.5
 
-	var target_x := center_x + turn_shift + fatigue_drift
-	player_car.position.x = move_toward(player_car.position.x, target_x, 180.0 * delta)
-
-	var target_rotation := float(player_choice) * 0.18 if player_choice != 0 else 0.0
-	player_car.rotation = move_toward(player_car.rotation, target_rotation, 0.9 * delta)
+	# The rectangle's "front" is its top edge.
+	player_car.rotation = atan2(car_world_direction.y, car_world_direction.x) + PI * 0.5
 
 
 # -----------------------------------------------------------------------------
@@ -256,22 +253,7 @@ func _update_car_visual(delta: float) -> void:
 
 func _update_fatigue(delta: float) -> void:
 	if fatigue_strength <= 0.0:
-		fatigue_drift = move_toward(fatigue_drift, 0.0, 15.0 * delta)
 		return
-
-	fatigue_drift_timer -= delta
-	if fatigue_drift_timer <= 0.0:
-		fatigue_drift_target = randf_range(
-			-lerpf(3.0, 18.0, fatigue_strength),
-			lerpf(3.0, 18.0, fatigue_strength)
-		)
-		fatigue_drift_timer = randf_range(0.8, 1.5)
-
-	fatigue_drift = move_toward(
-		fatigue_drift,
-		fatigue_drift_target,
-		lerpf(5.0, 18.0, fatigue_strength) * delta
-	)
 
 	if fatigue_blinking:
 		fatigue_blink_elapsed += delta
