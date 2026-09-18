@@ -60,6 +60,16 @@ layout_mode = 2
 text = "PLAYABLE RIGHT NOW"
 theme_override_font_sizes/font_size = 16
 
+[node name="CarToMicButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "CAR — TO THE MIC"
+
+[node name="CarTiredButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "CAR — TIRED"
+
 [node name="BoxesNormalButton" type="Button" parent="Background/Margin/Scroll/Layout"]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
@@ -87,7 +97,7 @@ text = "TRAVEL — REGIONAL"
 
 [node name="ComingNextLabel" type="Label" parent="Background/Margin/Scroll/Layout"]
 layout_mode = 2
-text = "COMING INTO THE LAB AS WE BUILD THEM:\nCAR • SIGNUP • PRE-SHOW • SET BUILDER • POST-SHOW"
+text = "NEXT COMEDY-NIGHT MODULES:\nSIGNUP • PRE-SHOW • SET BUILDER • POST-SHOW"
 autowrap_mode = 2
 theme_override_colors/font_color = Color(0.58, 0.58, 0.62, 1)
 
@@ -116,6 +126,8 @@ custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 text = "BACK TO DEV MENU"
 
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/CarToMicButton" to="." method="_on_car_to_mic_button_pressed"]
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/CarTiredButton" to="." method="_on_car_tired_button_pressed"]
 [connection signal="pressed" from="Background/Margin/Scroll/Layout/BoxesNormalButton" to="." method="_on_boxes_normal_button_pressed"]
 [connection signal="pressed" from="Background/Margin/Scroll/Layout/BoxesTiredButton" to="." method="_on_boxes_tired_button_pressed"]
 [connection signal="pressed" from="Background/Margin/Scroll/Layout/StageFirstMicButton" to="." method="_on_stage_first_mic_button_pressed"]
