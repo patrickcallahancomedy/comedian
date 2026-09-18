@@ -11,7 +11,7 @@ extends Control
 
 func _ready() -> void:
 	_refresh_result()
-	$Background/Margin/Scroll/Layout/BoxesNormalButton.grab_focus()
+	$Background/Margin/Scroll/Layout/CarToMicButton.grab_focus()
 
 
 func _lab() -> Node:
@@ -37,6 +37,14 @@ func _refresh_result() -> void:
 	result_panel.show()
 	result_label.text = str(lab.call("get_last_summary"))
 	status_label.text = "LAB RUN COMPLETE — REAL SAVE RESTORED."
+
+
+func _on_car_to_mic_button_pressed() -> void:
+	_start_test("car_to_mic")
+
+
+func _on_car_tired_button_pressed() -> void:
+	_start_test("car_tired")
 
 
 func _on_boxes_normal_button_pressed() -> void:
