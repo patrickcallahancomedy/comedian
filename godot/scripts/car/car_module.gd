@@ -1,6 +1,6 @@
 extends GameModule
 
-## DRIVE v0.5 — one verb: drive.
+## DRIVE v0.6 — one verb: drive.
 ##
 ## STATE READS:
 ## energy, car_condition
@@ -16,10 +16,14 @@ extends GameModule
 ## real_drive_seconds
 ##
 ## PLAYER EXPERIENCE:
-## Darren actually travels through a tiny top-down town. The whole maze sits in
-## the corner. The car keeps moving. LEFT / RIGHT selects the next turn.
+## Darren actually travels through a tiny top-down town. The whole toy-town map
+## sits in the corner. The car moves between intersections. LEFT / RIGHT chooses
+## the next street.
 ##
-## Wrong turns physically drive a short loop before rejoining the route.
+## The game CANNOT finish by itself. At every intersection, the player must make
+## a choice. Wrong turns physically drive a little loop and return to the same
+## intersection.
+##
 ## No phone game. No relationship game. No visible stat math.
 
 @export_category("Drive Tuning")
@@ -52,6 +56,7 @@ var car_world_direction := Vector2.UP
 # route_segment means Darren is travelling ROUTE[n] -> ROUTE[n + 1].
 var route_segment: int = 0
 var pending_turn: int = 0
+var waiting_at_intersection: bool = false
 
 var detour_active: bool = false
 var detour_points := PackedVector2Array()
@@ -94,7 +99,8 @@ func _ready() -> void:
 	if not is_inside_tree():
 		return
 
-	title_card.hide()
+	# Remove the title card completely so it can never sit behind the result UI.
+	title_card.queue_free()
 	game_started = true
 	left_button.disabled = false
 	right_button.disabled = false
@@ -107,7 +113,10 @@ func _process(delta: float) -> void:
 
 	drive_elapsed += delta
 	_update_fatigue(delta)
-	_move_car(delta)
+
+	if not waiting_at_intersection:
+		_move_car(delta)
+
 	_refresh_world_visuals()
 
 
@@ -146,6 +155,10 @@ func _choose_turn(direction: int) -> void:
 	pending_turn = direction
 	_refresh_button_state()
 
+	# If Darren is already sitting at the intersection, the press IS the turn.
+	if waiting_at_intersection:
+		_resolve_turn()
+
 
 func _refresh_button_state() -> void:
 	var selected := Color(0.82, 0.78, 0.68, 1.0)
@@ -156,7 +169,6 @@ func _refresh_button_state() -> void:
 
 
 func _effective_speed() -> float:
-	# Bad condition quietly slows the trip. No car-condition UI belongs here.
 	var condition := clampf(float(GameState.car_condition) / 100.0, 0.0, 1.0)
 	return drive_speed * lerpf(0.82, 1.0, condition)
 
@@ -164,7 +176,7 @@ func _effective_speed() -> float:
 func _move_car(delta: float) -> void:
 	var remaining := _effective_speed() * delta
 
-	while remaining > 0.0 and not finished:
+	while remaining > 0.0 and not finished and not waiting_at_intersection:
 		var target := _current_target()
 		var offset := target - car_world_position
 		var distance := offset.length()
@@ -197,16 +209,21 @@ func _arrive_at_target() -> void:
 			_finish_detour()
 		return
 
-	# Final route point reached.
 	if route_segment >= CarRouteData.ROUTE.size() - 2:
 		_end_drive()
 		return
 
-	_resolve_turn()
+	# If the player queued a choice while approaching, resolve it immediately.
+	# Otherwise Darren stops at the intersection and waits. No autoplay.
+	if pending_turn != 0:
+		_resolve_turn()
+	else:
+		waiting_at_intersection = true
 
 
 func _resolve_turn() -> void:
 	var required := int(CarRouteData.TURNS[route_segment])
+	waiting_at_intersection = false
 
 	if pending_turn == required:
 		route_segment += 1
@@ -229,22 +246,22 @@ func _finish_detour() -> void:
 	detour_active = false
 	detour_points = PackedVector2Array()
 	detour_segment = 0
+	pending_turn = 0
 
-	# GPS has rerouted Darren back to the same intersection; from there he
-	# continues along the intended street automatically.
-	route_segment += 1
+	# Wrong turn returns Darren to the SAME intersection.
+	# Stop there and require another LEFT / RIGHT choice.
+	waiting_at_intersection = true
+	_refresh_button_state()
 
 
 func _refresh_world_visuals() -> void:
 	road.set_car_world_state(car_world_position, car_world_direction)
 	minimap.set_car_world_state(car_world_position, car_world_direction)
 
-	# Car node stays near the lower center while the world scrolls underneath.
 	var anchor := Vector2(road.size.x * 0.5, road.size.y * 0.72)
 	player_car.position = anchor - player_car.size * 0.5
 
-	# The close camera rotates the town so Darren always drives toward the top
-	# of the screen. Keep the car itself upright.
+	# The town rotates; Darren's car stays pointed toward the top of the screen.
 	player_car.rotation = 0.0
 
 
