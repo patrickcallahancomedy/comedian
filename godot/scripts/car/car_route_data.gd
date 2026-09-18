@@ -25,6 +25,19 @@ const ROUTE := PackedVector2Array([
 # 1 = RIGHT, -1 = LEFT relative to Darren's current direction.
 const TURNS := [1, -1, 1, -1, -1, 1, 1, -1]
 
+# Wrong choices are real little neighborhood loops, already visible on the map.
+# They are not spawned after the player makes a mistake.
+const WRONG_LOOPS := [
+	PackedVector2Array([Vector2(0, 660), Vector2(-110, 660), Vector2(-110, 740), Vector2(0, 740), Vector2(0, 660)]),
+	PackedVector2Array([Vector2(170, 660), Vector2(170, 770), Vector2(90, 770), Vector2(90, 660), Vector2(170, 660)]),
+	PackedVector2Array([Vector2(170, 500), Vector2(60, 500), Vector2(60, 580), Vector2(170, 580), Vector2(170, 500)]),
+	PackedVector2Array([Vector2(350, 500), Vector2(350, 610), Vector2(270, 610), Vector2(270, 500), Vector2(350, 500)]),
+	PackedVector2Array([Vector2(350, 330), Vector2(460, 330), Vector2(460, 410), Vector2(350, 410), Vector2(350, 330)]),
+	PackedVector2Array([Vector2(170, 330), Vector2(170, 440), Vector2(250, 440), Vector2(250, 330), Vector2(170, 330)]),
+	PackedVector2Array([Vector2(170, 170), Vector2(60, 170), Vector2(60, 250), Vector2(170, 250), Vector2(170, 170)]),
+	PackedVector2Array([Vector2(350, 170), Vector2(350, 280), Vector2(270, 280), Vector2(270, 170), Vector2(350, 170)]),
+]
+
 # Extra roads make the town feel like a real little maze instead of one route.
 # Each entry is one straight street.
 const EXTRA_STREETS := [
