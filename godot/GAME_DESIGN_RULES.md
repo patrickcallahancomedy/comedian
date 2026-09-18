@@ -24,7 +24,24 @@ A module should:
 The player should feel:
 "I played a bunch of little things and somehow that became a story."
 
-## 2. Home is the decompression / control center
+## 2. One microgame = one primary verb
+
+Every microgame should be describable immediately with a one- or two-word command.
+
+Examples:
+- DRIVE
+- SIGN UP
+- PERFORM
+- GET DRESSED
+- SORT BOXES
+- WRITE
+- AVOID TROY
+
+If the player action needs a long explanation or contains an "and," the game is probably too big and should be split.
+
+One simple action may still read or change many states. The state system creates depth underneath the action; the player should not be asked to perform several unrelated actions at once.
+
+## 3. Home is the decompression / control center
 
 Most of the game should move quickly from one microgame to the next.
 
@@ -42,7 +59,7 @@ Rhythm:
 
 PLAY -> PLAY -> PLAY -> PLAY -> HOME -> UNDERSTAND WHAT HAPPENED -> GO BACK OUT
 
-## 3. Small world. Small mechanics. Deep consequences. Heavy reuse.
+## 4. Small world. Small mechanics. Deep consequences. Heavy reuse.
 
 This is a solo game being built by Patrick with ChatGPT.
 
@@ -58,7 +75,7 @@ Prefer:
 
 Do not add large systems when a tiny mechanic plus state can create the same feeling.
 
-## 4. The simulation must stay underneath the fun
+## 5. The simulation must stay underneath the fun
 
 Do not turn the game into visible RPG math.
 
@@ -68,13 +85,16 @@ Examples:
 - tiredness can make Darren's eyes close, steering drift, timing worsen
 - intoxication can alter perception, memory, reaction, judgment
 - arriving late can remove time to socialize or prepare
-- relationships can change who texts, helps, ignores, or books Darren
+- relationships can change who helps, ignores, or books Darren later
 
 Avoid:
 "TIREDNESS +8"
 when the game can instead make the player feel tired.
 
-## 5. Comedy authenticity is a core mechanic
+The important long-term feeling is delayed recognition:
+"I did this five minigames ago and now it is affecting me."
+
+## 6. Comedy authenticity is a core mechanic
 
 COMEDIAN must be funny and must feel like actual stand-up comedy culture.
 
@@ -93,7 +113,7 @@ Patrick's real comedy experience is the authority for:
 
 Build systems around that knowledge. Do not replace it with generic game-design assumptions.
 
-## 6. Authored destination, simulated journey
+## 7. Authored destination, simulated journey
 
 The game can have authored major destinations, but the path between them should emerge from play and remembered state.
 
@@ -109,63 +129,60 @@ A player may:
 
 Do not force every run through the same clean career ladder.
 
-## 7. Modules create facts; the simulation creates meaning
+## 8. Modules create facts; the simulation creates meaning
 
 A module should report concrete facts.
 
 Example:
 
-CAR RESULT
+DRIVE RESULT
 - arrived 8 minutes before signup
 - missed 1 turn
-- hit 0 cars
-- picked up Nate
+- used gas
+- Darren was exhausted
 
 The simulation decides what those facts mean next:
 - how much pre-show time remains
-- whether Nate is with Darren
-- relationship changes
-- whether Darren can prep
 - whether signup is still possible
+- whether Darren is more stressed
+- whether later driving feels worse
 
 Do not make every module responsible for the whole narrative tree.
 
-## 8. Locked Car design direction
+## 9. Locked DRIVE design direction
 
-The Car module is intentionally small.
+DRIVE has one verb: drive.
 
 Main view:
-- close top-down driving
-- simple left/right control
-- traffic / obstacles
+- close top-down road view
+- automatic forward motion
+- LEFT / RIGHT decisions at intersections
 - immediately understandable
+- no separate phone/dialogue/relationship mechanic inside DRIVE
 
 Minimap:
-- tiny town / street network
+- tiny town / corn-maze-like street network
 - Darren's tiny moving car
 - destination
-- visible GPS route
+- visible blue route
 - roughly 6-8 turns
-- player must glance between road and minimap
+- player glances between the close road and the whole route
 
-Distractions:
-- phone popups can cover much of the screen
-- texts/calls/notifications interrupt attention
-- the car keeps moving
-- some interruptions may also contain choices
+Wrong turns:
+- visibly leave the route
+- create extra driving
+- quietly cost time
+- no giant RPG penalty message
 
-State should affect physical play:
-- tiredness: eyelids closing, micro-sleeps, drift, sluggish control
-- intoxication later: perception / timing / control problems
-- car condition later: handling / reliability problems
+State should affect DRIVE itself:
+- tiredness: eyelids closing, micro-sleeps, drift
+- car condition: travel/handling can worsen
+- intoxication can affect DRIVE later if that state is present
 
 The route itself is the timer.
-Do not rely on a giant visible countdown or RPG-style penalty messages.
+The player should usually discover the important consequence after arriving, not through a score screen.
 
-The important consequence is downstream:
-the player may only realize after arriving that the drive cost them prep/social/signup time.
-
-## 9. Preserve fun before adding systems
+## 10. Preserve fun before adding systems
 
 If a tiny game is already fun, do not "improve" it by making it complicated.
 
@@ -173,7 +190,7 @@ Add consequences underneath it.
 
 The player-facing mechanic should usually stay simpler than the systems behind it.
 
-## 10. Production split
+## 11. Production split
 
 Patrick owns:
 - comedy truth
