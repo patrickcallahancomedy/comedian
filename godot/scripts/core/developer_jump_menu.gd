@@ -9,7 +9,7 @@ extends Control
 
 func _ready() -> void:
 	status_label.text = "DEV JUMPS SEED SAFE PLACEHOLDER STATE"
-	$Background/Layout/OpeningButton.grab_focus()
+	$Background/Layout/MinigameLabButton.grab_focus()
 
 
 func _seed_basics() -> void:
@@ -22,6 +22,10 @@ func _jump(route_id: String) -> void:
 	SaveManager.save_game()
 	if not SceneRouter.go_to(route_id):
 		status_label.text = "UNKNOWN ROUTE: %s" % route_id
+
+
+func _on_minigame_lab_button_pressed() -> void:
+	SceneRouter.go_to("minigame_lab")
 
 
 func _on_opening_button_pressed() -> void:
