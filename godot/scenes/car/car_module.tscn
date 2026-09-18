@@ -22,7 +22,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.02, 0.025, 0.025, 1)
+color = Color(0.045, 0.04, 0.035, 1)
 
 [node name="Road" type="Control" parent="."]
 layout_mode = 0
@@ -40,7 +40,7 @@ offset_top = 510.0
 offset_right = 221.0
 offset_bottom = 570.0
 pivot_offset = Vector2(18, 30)
-color = Color(0.18, 0.38, 1, 1)
+color = Color(0.22, 0.38, 0.78, 1)
 mouse_filter = 2
 
 [node name="Windshield" type="ColorRect" parent="Road/PlayerCar"]
@@ -49,7 +49,7 @@ offset_left = 6.0
 offset_top = 7.0
 offset_right = 30.0
 offset_bottom = 20.0
-color = Color(0.62, 0.84, 0.95, 1)
+color = Color(0.62, 0.77, 0.80, 1)
 mouse_filter = 2
 
 [node name="RearWindow" type="ColorRect" parent="Road/PlayerCar"]
@@ -58,7 +58,7 @@ offset_left = 7.0
 offset_top = 43.0
 offset_right = 29.0
 offset_bottom = 54.0
-color = Color(0.35, 0.56, 0.70, 1)
+color = Color(0.34, 0.47, 0.50, 1)
 mouse_filter = 2
 
 [node name="HUD" type="Control" parent="."]
@@ -72,30 +72,30 @@ mouse_filter = 2
 
 [node name="TimeLabel" type="Label" parent="HUD"]
 layout_mode = 0
-offset_left = 24.0
-offset_top = 22.0
-offset_right = 120.0
-offset_bottom = 45.0
-theme_override_colors/font_color = Color(0.78, 0.78, 0.8, 1)
+offset_left = 22.0
+offset_top = 20.0
+offset_right = 126.0
+offset_bottom = 44.0
+theme_override_colors/font_color = Color(0.78, 0.76, 0.70, 1)
 theme_override_font_sizes/font_size = 13
 text = "7:16 PM"
 
 [node name="GPSPanel" type="PanelContainer" parent="HUD"]
 layout_mode = 0
-offset_left = 292.0
-offset_top = 18.0
+offset_left = 262.0
+offset_top = 16.0
 offset_right = 414.0
-offset_bottom = 140.0
+offset_bottom = 168.0
 
 [node name="GPSMargin" type="MarginContainer" parent="HUD/GPSPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 3
-theme_override_constants/margin_top = 3
-theme_override_constants/margin_right = 3
-theme_override_constants/margin_bottom = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
 
 [node name="MiniMap" type="Control" parent="HUD/GPSPanel/GPSMargin"]
-custom_minimum_size = Vector2(116, 116)
+custom_minimum_size = Vector2(144, 144)
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("3_map")
@@ -122,88 +122,6 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 20
 text = "RIGHT"
 
-[node name="PhoneOverlay" type="Control" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 0
-
-[node name="Dim" type="ColorRect" parent="PhoneOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.015, 0.02, 0.025, 0.96)
-mouse_filter = 2
-
-[node name="PhoneCard" type="PanelContainer" parent="PhoneOverlay"]
-layout_mode = 0
-offset_left = 28.0
-offset_top = 170.0
-offset_right = 402.0
-offset_bottom = 508.0
-
-[node name="PhoneMargin" type="MarginContainer" parent="PhoneOverlay/PhoneCard"]
-layout_mode = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 24
-
-[node name="PhoneLayout" type="VBoxContainer" parent="PhoneOverlay/PhoneCard/PhoneMargin"]
-layout_mode = 2
-theme_override_constants/separation = 18
-
-[node name="NotificationLabel" type="Label" parent="PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.58, 0.58, 0.62, 1)
-theme_override_font_sizes/font_size = 13
-text = "MESSAGE"
-
-[node name="SenderLabel" type="Label" parent="PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = "NATE"
-
-[node name="MessageLabel" type="Label" parent="PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout"]
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "u going up tonight?"
-autowrap_mode = 2
-
-[node name="ChoiceRow" type="HBoxContainer" parent="PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="PositiveButton" type="Button" parent="PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout/ChoiceRow"]
-custom_minimum_size = Vector2(145, 58)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "YEAH"
-
-[node name="NegativeButton" type="Button" parent="PhoneOverlay/PhoneCard/PhoneMargin/PhoneLayout/ChoiceRow"]
-custom_minimum_size = Vector2(145, 58)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "PROBABLY"
-
-[node name="DriveWarningLabel" type="Label" parent="PhoneOverlay"]
-layout_mode = 0
-offset_left = 48.0
-offset_top = 548.0
-offset_right = 382.0
-offset_bottom = 582.0
-theme_override_colors/font_color = Color(0.6, 0.6, 0.63, 1)
-theme_override_font_sizes/font_size = 13
-text = "THE CAR IS STILL MOVING."
-horizontal_alignment = 1
-
 [node name="FatigueOverlay" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -216,7 +134,7 @@ mouse_filter = 2
 [node name="TopLid" type="ColorRect" parent="FatigueOverlay"]
 layout_mode = 0
 offset_right = 430.0
-color = Color(0, 0, 0, 1)
+color = Color(0.02, 0.018, 0.016, 1)
 mouse_filter = 2
 
 [node name="BottomLid" type="ColorRect" parent="FatigueOverlay"]
@@ -224,8 +142,39 @@ layout_mode = 0
 offset_top = 764.0
 offset_right = 430.0
 offset_bottom = 764.0
-color = Color(0, 0, 0, 1)
+color = Color(0.02, 0.018, 0.016, 1)
 mouse_filter = 2
+
+[node name="TitleCard" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Dim" type="ColorRect" parent="TitleCard"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.045, 0.04, 0.035, 1)
+mouse_filter = 2
+
+[node name="ActionLabel" type="Label" parent="TitleCard"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 328.0
+offset_right = 390.0
+offset_bottom = 392.0
+theme_override_colors/font_color = Color(0.88, 0.84, 0.74, 1)
+theme_override_font_sizes/font_size = 42
+text = "DRIVE"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="ResultPanel" type="PanelContainer" parent="."]
 layout_mode = 0
@@ -247,9 +196,9 @@ theme_override_constants/separation = 14
 
 [node name="TimeLabel" type="Label" parent="ResultPanel/ResultMargin/ResultLayout"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.66, 0.66, 0.70, 1)
+theme_override_colors/font_color = Color(0.66, 0.64, 0.60, 1)
 theme_override_font_sizes/font_size = 15
-text = "7:34 PM"
+text = "7:30 PM"
 horizontal_alignment = 1
 
 [node name="ResultLabel" type="Label" parent="ResultPanel/ResultMargin/ResultLayout"]
