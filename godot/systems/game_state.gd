@@ -3,7 +3,7 @@ extends Node
 ## GameState is the one place for information that must survive between modules.
 ##
 ## Put long-term facts here: day, money, career progress, relationships, venues,
-## bookings, and comedy material.
+## bookings, comedy material, and current life conditions.
 ##
 ## Do NOT put scene transitions here. SceneRouter decides where the player goes
 ## next. Individual modules report what happened and update this state through
@@ -32,7 +32,7 @@ enum JobStatus {
 	LEFT_BOXES,
 }
 
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 
 const DAY_NAMES: Array[String] = [
 	"Monday",
@@ -52,6 +52,22 @@ var week: int = 1
 var day_index: int = 0
 var money: int = 0
 var energy: int = 100
+var stress: int = 20
+var current_intoxication: int = 0
+
+# Car state is persistent because the same car will eventually be used for work,
+# mics, road gigs, errands, and the drive home.
+var car_condition: int = 75
+var gas: int = 60
+
+# Temporary context shared by modules during one outing/night. Example:
+# the car module writes arrival_minutes_before_signup and the signup/pre-show
+# modules consume it. This is saveable so quitting mid-night is safe.
+var night_context: Dictionary = {}
+
+# Small counters for things that happened repeatedly. Keep named counters here
+# instead of inventing hidden one-off variables inside individual minigames.
+var history: Dictionary = {}
 
 # SceneRouter updates this whenever it successfully changes modules. SaveManager
 # stores it so Continue can return Darren to the correct place.
@@ -141,8 +157,40 @@ func change_energy(amount: int) -> void:
 	energy = clampi(energy + amount, 0, 100)
 
 
+func change_stress(amount: int) -> void:
+	stress = clampi(stress + amount, 0, 100)
+
+
+func change_intoxication(amount: int) -> void:
+	current_intoxication = clampi(current_intoxication + amount, 0, 100)
+
+
+func change_car_condition(amount: int) -> void:
+	car_condition = clampi(car_condition + amount, 0, 100)
+
+
+func change_gas(amount: int) -> void:
+	gas = clampi(gas + amount, 0, 100)
+
+
 func add_reputation(amount: int) -> void:
 	reputation = maxi(0, reputation + amount)
+
+
+func change_relationship(relationship_id: String, amount: int) -> void:
+	if relationship_id.is_empty():
+		return
+	relationships[relationship_id] = clampi(
+		int(relationships.get(relationship_id, 0)) + amount,
+		-100,
+		100
+	)
+
+
+func increment_history(history_id: String, amount: int = 1) -> void:
+	if history_id.is_empty():
+		return
+	history[history_id] = int(history.get(history_id, 0)) + amount
 
 
 func mark_milestone(milestone_id: String) -> void:
@@ -226,6 +274,12 @@ func to_save_data() -> Dictionary:
 		"day_index": day_index,
 		"money": money,
 		"energy": energy,
+		"stress": stress,
+		"current_intoxication": current_intoxication,
+		"car_condition": car_condition,
+		"gas": gas,
+		"night_context": night_context.duplicate(true),
+		"history": history.duplicate(true),
 		"current_route_id": current_route_id,
 		"career_phase": career_phase,
 		"reputation": reputation,
@@ -248,7 +302,25 @@ func load_save_data(data: Dictionary) -> void:
 	day_index = clampi(int(data.get("day_index", 0)), 0, DAY_NAMES.size() - 1)
 	money = int(data.get("money", 0))
 	energy = clampi(int(data.get("energy", 100)), 0, 100)
+	stress = clampi(int(data.get("stress", 20)), 0, 100)
+	current_intoxication = clampi(int(data.get("current_intoxication", 0)), 0, 100)
+	car_condition = clampi(int(data.get("car_condition", 75)), 0, 100)
+	gas = clampi(int(data.get("gas", 60)), 0, 100)
 	current_route_id = str(data.get("current_route_id", "story_intro"))
+
+	var loaded_night_context = data.get("night_context", {})
+	night_context = (
+		loaded_night_context.duplicate(true)
+		if typeof(loaded_night_context) == TYPE_DICTIONARY
+		else {}
+	)
+
+	var loaded_history = data.get("history", {})
+	history = (
+		loaded_history.duplicate(true)
+		if typeof(loaded_history) == TYPE_DICTIONARY
+		else {}
+	)
 
 	career_phase = clampi(
 		int(data.get("career_phase", CareerPhase.BEFORE_COMEDY)),
@@ -265,7 +337,9 @@ func load_save_data(data: Dictionary) -> void:
 
 	var loaded_relationships = data.get("relationships", {})
 	if typeof(loaded_relationships) == TYPE_DICTIONARY:
-		relationships = loaded_relationships.duplicate(true)
+		relationships = _default_relationships()
+		for relationship_id in loaded_relationships.keys():
+			relationships[relationship_id] = int(loaded_relationships[relationship_id])
 	else:
 		relationships = _default_relationships()
 
@@ -320,6 +394,12 @@ func reset_new_game() -> void:
 	day_index = 0
 	money = 0
 	energy = 100
+	stress = 20
+	current_intoxication = 0
+	car_condition = 75
+	gas = 60
+	night_context.clear()
+	history.clear()
 	current_route_id = "story_intro"
 
 	career_phase = CareerPhase.BEFORE_COMEDY
