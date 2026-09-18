@@ -1,0 +1,125 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/minigame_lab_menu.gd" id="1_lab"]
+
+[node name="MinigameLabMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lab")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.075, 0.075, 0.085, 1)
+
+[node name="Margin" type="MarginContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 22.0
+offset_right = -24.0
+offset_bottom = -22.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Background/Margin"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Layout" type="VBoxContainer" parent="Background/Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="Background/Margin/Scroll/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "MINIGAME LAB"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.72, 1)
+text = "TEST A REAL MODULE WITHOUT TOUCHING YOUR SAVE."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="CurrentLabel" type="Label" parent="Background/Margin/Scroll/Layout"]
+layout_mode = 2
+text = "PLAYABLE RIGHT NOW"
+theme_override_font_sizes/font_size = 16
+
+[node name="BoxesNormalButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "BOXES — NORMAL SHIFT"
+
+[node name="BoxesTiredButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "BOXES — TIRED"
+
+[node name="StageFirstMicButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "STAGE — FIRST MIC"
+
+[node name="StagePaidSetButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "STAGE — PAID SET"
+
+[node name="TravelRegionalButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "TRAVEL — REGIONAL"
+
+[node name="ComingNextLabel" type="Label" parent="Background/Margin/Scroll/Layout"]
+layout_mode = 2
+text = "COMING INTO THE LAB AS WE BUILD THEM:\nCAR • SIGNUP • PRE-SHOW • SET BUILDER • POST-SHOW"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.58, 0.62, 1)
+
+[node name="ResultPanel" type="PanelContainer" parent="Background/Margin/Scroll/Layout"]
+layout_mode = 2
+
+[node name="ResultMargin" type="MarginContainer" parent="Background/Margin/Scroll/Layout/ResultPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="ResultLabel" type="Label" parent="Background/Margin/Scroll/Layout/ResultPanel/ResultMargin"]
+layout_mode = 2
+text = "RESULT"
+autowrap_mode = 2
+
+[node name="ReplayButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "PLAY LAST TEST AGAIN"
+
+[node name="BackButton" type="Button" parent="Background/Margin/Scroll/Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "BACK TO DEV MENU"
+
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/BoxesNormalButton" to="." method="_on_boxes_normal_button_pressed"]
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/BoxesTiredButton" to="." method="_on_boxes_tired_button_pressed"]
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/StageFirstMicButton" to="." method="_on_stage_first_mic_button_pressed"]
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/StagePaidSetButton" to="." method="_on_stage_paid_set_button_pressed"]
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/TravelRegionalButton" to="." method="_on_travel_regional_button_pressed"]
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/ReplayButton" to="." method="_on_replay_button_pressed"]
+[connection signal="pressed" from="Background/Margin/Scroll/Layout/BackButton" to="." method="_on_back_button_pressed"]
