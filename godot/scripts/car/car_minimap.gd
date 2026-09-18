@@ -1,27 +1,29 @@
 class_name CarMinimap
 extends Control
 
-## Tiny fixed town map for the Car microgame.
+## Whole-trip map for the Car microgame.
 ##
-## The route is deliberately authored and small. The player should be able to
-## glance at the whole trip, see their little car moving on the blue line, and
-## work out the next turn without a giant LEFT/RIGHT instruction.
+## The map does the navigation work. The close-up road deliberately does not
+## tell the player which direction is correct.
 
 const ROUTE_POINTS := PackedVector2Array([
-	Vector2(18, 136),
-	Vector2(18, 112),
-	Vector2(52, 112),
-	Vector2(52, 88),
-	Vector2(112, 88),
-	Vector2(112, 61),
-	Vector2(78, 61),
-	Vector2(78, 35),
-	Vector2(125, 35),
-	Vector2(125, 13),
+	Vector2(18, 132),
+	Vector2(18, 108),
+	Vector2(49, 108),
+	Vector2(49, 83),
+	Vector2(104, 83),
+	Vector2(104, 57),
+	Vector2(75, 57),
+	Vector2(75, 33),
+	Vector2(123, 33),
+	Vector2(123, 12),
 ])
 
 var segment_index: int = 0
 var segment_progress: float = 0.0
+var detour_active: bool = false
+var detour_direction: int = 1
+var detour_progress: float = 0.0
 
 
 func set_route_progress(new_segment_index: int, new_segment_progress: float) -> void:
@@ -30,53 +32,60 @@ func set_route_progress(new_segment_index: int, new_segment_progress: float) -> 
 	queue_redraw()
 
 
+func set_detour(active: bool, direction: int = 1, progress: float = 0.0) -> void:
+	detour_active = active
+	detour_direction = -1 if direction < 0 else 1
+	detour_progress = clampf(progress, 0.0, 1.0)
+	queue_redraw()
+
+
 func _draw() -> void:
-	# Map background.
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.09, 0.10, 0.98))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.045, 0.055, 0.05, 0.97))
 
-	# A tiny town: a few blocks and streets. These are intentionally simple
-	# shapes so Patrick can replace the whole visual later without touching logic.
-	var road_color := Color(0.27, 0.29, 0.31, 1.0)
-	var block_color := Color(0.14, 0.15, 0.17, 1.0)
+	var street := Color(0.26, 0.28, 0.27, 1.0)
+	var block := Color(0.08, 0.11, 0.085, 1.0)
 
-	for block in [
-		Rect2(27, 43, 18, 11),
-		Rect2(86, 43, 19, 11),
-		Rect2(27, 68, 18, 13),
-		Rect2(86, 68, 19, 13),
-		Rect2(27, 95, 18, 10),
-		Rect2(86, 95, 19, 10),
-		Rect2(59, 119, 13, 11),
+	for rect in [
+		Rect2(26, 40, 15, 12),
+		Rect2(84, 40, 16, 12),
+		Rect2(26, 65, 15, 11),
+		Rect2(84, 65, 16, 11),
+		Rect2(26, 90, 15, 10),
+		Rect2(84, 90, 16, 10),
+		Rect2(57, 116, 11, 9),
 	]:
-		draw_rect(block, block_color)
+		draw_rect(rect, block)
 
-	for x in [18.0, 52.0, 78.0, 112.0, 125.0]:
-		draw_line(Vector2(x, 4), Vector2(x, 142), road_color, 4.0)
+	for x in [18.0, 49.0, 75.0, 104.0, 123.0]:
+		draw_line(Vector2(x, 4), Vector2(x, 138), street, 4.0)
 
-	for y in [13.0, 35.0, 61.0, 88.0, 112.0, 136.0]:
-		draw_line(Vector2(5, y), Vector2(140, y), road_color, 4.0)
+	for y in [12.0, 33.0, 57.0, 83.0, 108.0, 132.0]:
+		draw_line(Vector2(5, y), Vector2(138, y), street, 4.0)
 
-	# GPS route.
 	draw_polyline(ROUTE_POINTS, Color(0.12, 0.48, 1.0, 1.0), 4.0, true)
 
-	# Destination.
 	var destination := ROUTE_POINTS[ROUTE_POINTS.size() - 1]
-	draw_circle(destination, 6.5, Color(0.95, 0.32, 0.28, 1.0))
-	draw_circle(destination, 2.5, Color(1.0, 0.95, 0.90, 1.0))
+	draw_circle(destination, 5.5, Color(0.95, 0.30, 0.24, 1.0))
+	draw_circle(destination, 2.0, Color(1.0, 0.92, 0.88, 1.0))
 
-	# Player car.
+	var car_position := _get_car_position()
+	draw_circle(car_position, 4.4, Color(0.18, 0.58, 1.0, 1.0))
+	draw_circle(car_position, 1.4, Color(0.84, 0.94, 1.0, 1.0))
+
+
+func _get_car_position() -> Vector2:
 	var a := ROUTE_POINTS[segment_index]
 	var b := ROUTE_POINTS[segment_index + 1]
-	var car_position := a.lerp(b, segment_progress)
-	var direction := (b - a).normalized()
-	var side := Vector2(-direction.y, direction.x)
-	var forward := direction * 5.0
-	var half_width := side * 3.0
-	var car_shape := PackedVector2Array([
-		car_position + forward + half_width,
-		car_position + forward - half_width,
-		car_position - forward - half_width,
-		car_position - forward + half_width,
-	])
-	draw_colored_polygon(car_shape, Color(0.18, 0.58, 1.0, 1.0))
-	draw_circle(car_position, 1.5, Color(0.85, 0.95, 1.0, 1.0))
+
+	if not detour_active:
+		return a.lerp(b, segment_progress)
+
+	# Wrong turn: visibly leave the blue route and curl back toward the same
+	# intersection before navigation resumes on the next route segment.
+	var incoming := (b - a).normalized()
+	var side := Vector2(-incoming.y, incoming.x) * float(detour_direction)
+	var branch_end := b + side * 17.0
+
+	if detour_progress < 0.5:
+		return b.lerp(branch_end, detour_progress * 2.0)
+	return branch_end.lerp(b, (detour_progress - 0.5) * 2.0)
