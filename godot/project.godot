@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameState="*res://systems/game_state.gd"
+MinigameLab="*res://systems/minigame_lab.gd"
 SaveManager="*res://systems/save_manager.gd"
 SceneRouter="*res://systems/scene_router.gd"
 
