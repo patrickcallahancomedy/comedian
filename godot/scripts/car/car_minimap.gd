@@ -1,23 +1,44 @@
 class_name CarMinimap
 extends Control
 
-## Whole-trip map for the Car microgame.
+## Whole-trip map for DRIVE.
 ##
-## The map does the navigation work. The close-up road deliberately does not
-## tell the player which direction is correct.
+## This is intentionally closer to a tiny corn maze than a navigation app.
+## The player sees the whole little street puzzle, the blue route, their car,
+## and the destination. No text tells them which turn to make.
 
 const ROUTE_POINTS := PackedVector2Array([
-	Vector2(18, 132),
-	Vector2(18, 108),
-	Vector2(49, 108),
-	Vector2(49, 83),
-	Vector2(104, 83),
-	Vector2(104, 57),
-	Vector2(75, 57),
-	Vector2(75, 33),
-	Vector2(123, 33),
-	Vector2(123, 12),
+	Vector2(16, 128),
+	Vector2(16, 106),
+	Vector2(48, 106),
+	Vector2(48, 82),
+	Vector2(104, 82),
+	Vector2(104, 58),
+	Vector2(76, 58),
+	Vector2(76, 34),
+	Vector2(124, 34),
+	Vector2(124, 14),
 ])
+
+const MAZE_SEGMENTS := [
+	[Vector2(16, 138), Vector2(16, 96)],
+	[Vector2(6, 106), Vector2(62, 106)],
+	[Vector2(48, 118), Vector2(48, 70)],
+	[Vector2(26, 82), Vector2(132, 82)],
+	[Vector2(104, 94), Vector2(104, 46)],
+	[Vector2(58, 58), Vector2(132, 58)],
+	[Vector2(76, 70), Vector2(76, 22)],
+	[Vector2(42, 34), Vector2(136, 34)],
+	[Vector2(124, 46), Vector2(124, 7)],
+
+	# Little wrong-looking branches / dead ends.
+	[Vector2(31, 106), Vector2(31, 126)],
+	[Vector2(62, 82), Vector2(62, 94)],
+	[Vector2(116, 82), Vector2(116, 96)],
+	[Vector2(104, 48), Vector2(132, 48)],
+	[Vector2(58, 58), Vector2(58, 44)],
+	[Vector2(76, 22), Vector2(92, 22)],
+]
 
 var segment_index: int = 0
 var segment_progress: float = 0.0
@@ -40,37 +61,56 @@ func set_detour(active: bool, direction: int = 1, progress: float = 0.0) -> void
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.045, 0.055, 0.05, 0.97))
+	var paper_dark := Color(0.075, 0.082, 0.068, 1.0)
+	var maze_wall := Color(0.12, 0.15, 0.105, 1.0)
+	var street_shadow := Color(0.16, 0.15, 0.135, 1.0)
+	var street := Color(0.34, 0.32, 0.275, 1.0)
+	var route_blue := Color(0.18, 0.43, 0.82, 1.0)
 
-	var street := Color(0.26, 0.28, 0.27, 1.0)
-	var block := Color(0.08, 0.11, 0.085, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, size), paper_dark)
 
+	# Loose block shapes make the map feel like a tiny place rather than a grid UI.
 	for rect in [
-		Rect2(26, 40, 15, 12),
-		Rect2(84, 40, 16, 12),
-		Rect2(26, 65, 15, 11),
-		Rect2(84, 65, 16, 11),
-		Rect2(26, 90, 15, 10),
-		Rect2(84, 90, 16, 10),
-		Rect2(57, 116, 11, 9),
+		Rect2(24, 8, 28, 20),
+		Rect2(93, 8, 20, 18),
+		Rect2(7, 40, 39, 50),
+		Rect2(84, 40, 14, 11),
+		Rect2(112, 64, 24, 12),
+		Rect2(58, 88, 35, 12),
+		Rect2(67, 113, 48, 23),
+		Rect2(25, 115, 18, 17),
 	]:
-		draw_rect(rect, block)
+		draw_rect(rect, maze_wall)
 
-	for x in [18.0, 49.0, 75.0, 104.0, 123.0]:
-		draw_line(Vector2(x, 4), Vector2(x, 138), street, 4.0)
+	# Road network.
+	for segment in MAZE_SEGMENTS:
+		var a: Vector2 = segment[0]
+		var b: Vector2 = segment[1]
+		draw_line(a, b, street_shadow, 8.0, true)
+		draw_line(a, b, street, 5.0, true)
 
-	for y in [12.0, 33.0, 57.0, 83.0, 108.0, 132.0]:
-		draw_line(Vector2(5, y), Vector2(138, y), street, 4.0)
-
-	draw_polyline(ROUTE_POINTS, Color(0.12, 0.48, 1.0, 1.0), 4.0, true)
+	# The only explicit navigation information.
+	draw_polyline(ROUTE_POINTS, route_blue, 4.0, true)
 
 	var destination := ROUTE_POINTS[ROUTE_POINTS.size() - 1]
-	draw_circle(destination, 5.5, Color(0.95, 0.30, 0.24, 1.0))
-	draw_circle(destination, 2.0, Color(1.0, 0.92, 0.88, 1.0))
+	draw_circle(destination, 6.0, Color(0.72, 0.26, 0.22, 1.0))
+	draw_circle(destination, 2.2, Color(0.88, 0.82, 0.70, 1.0))
 
 	var car_position := _get_car_position()
-	draw_circle(car_position, 4.4, Color(0.18, 0.58, 1.0, 1.0))
-	draw_circle(car_position, 1.4, Color(0.84, 0.94, 1.0, 1.0))
+	var next_index := mini(segment_index + 1, ROUTE_POINTS.size() - 1)
+	var direction := (ROUTE_POINTS[next_index] - ROUTE_POINTS[segment_index]).normalized()
+	if detour_active:
+		direction = Vector2(float(detour_direction), 0.0)
+
+	var side := Vector2(-direction.y, direction.x)
+	var nose := car_position + direction * 4.5
+	var rear := car_position - direction * 4.0
+	var car_shape := PackedVector2Array([
+		nose,
+		rear + side * 3.0,
+		rear - side * 3.0,
+	])
+	draw_colored_polygon(car_shape, Color(0.22, 0.44, 0.90, 1.0))
 
 
 func _get_car_position() -> Vector2:
@@ -80,11 +120,10 @@ func _get_car_position() -> Vector2:
 	if not detour_active:
 		return a.lerp(b, segment_progress)
 
-	# Wrong turn: visibly leave the blue route and curl back toward the same
-	# intersection before navigation resumes on the next route segment.
+	# Wrong turn: leave the blue path briefly and curl back to the same junction.
 	var incoming := (b - a).normalized()
 	var side := Vector2(-incoming.y, incoming.x) * float(detour_direction)
-	var branch_end := b + side * 17.0
+	var branch_end := b + side * 16.0
 
 	if detour_progress < 0.5:
 		return b.lerp(branch_end, detour_progress * 2.0)
