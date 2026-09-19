@@ -2,7 +2,6 @@ extends Control
 
 const WORLD_CONFIG = preload("res://scripts/drive/drive_world_config.gd")
 
-
 #constants
 # DRIVE is one continuous 20x20 road world.
 # The main view is intentionally close while the minimap shows the whole trip.
@@ -26,6 +25,15 @@ const CITY_ONE_WAY_COUNT := 12
 # world_size mirrors the config constant so tests/debug tools can inspect it.
 var world_size: int = WORLD_SIZE
 var intersections: Array[Vector2i] = []
+
+#physical world positions
+# Intersections still use simple Vector2i IDs for pathfinding,
+# but their actual visual position is stored separately.
+# For now these positions exactly match the old grid coordinates.
+# Later neighborhood/highway/city can use different spacing without
+# changing the road graph or GPS logic.
+var intersection_positions: Dictionary = {}
+
 var roads: Array = []
 var rng := RandomNumberGenerator.new()
 
@@ -53,6 +61,10 @@ var shortest_route: Array[Vector2i] = []
 var current_intersection: Vector2i = WORLD_CONFIG.START
 var target_intersection: Vector2i = WORLD_CONFIG.START
 var camera_position := Vector2(WORLD_CONFIG.START)
+# Physical position used by the close driving view.
+# This can eventually move through long neighborhood blocks and short city blocks
+# while current_intersection still stays a simple graph ID.
+var camera_world_position := Vector2(WORLD_CONFIG.START)
 var is_driving: bool = false
 var drive_complete: bool = false
 
@@ -424,16 +436,30 @@ func _region_is_connected(
 
 
 # Collect unique road endpoints after the world graph is generated.
+# Each intersection gets a separate physical world position.
+# For this first refactor step, position still matches the old grid coordinate
+# so gameplay and visuals should remain unchanged.
 func _collect_intersections_from_roads() -> void:
 	intersections.clear()
+	intersection_positions.clear()
+
 	var seen: Dictionary = {}
 
 	for road in roads:
-		seen[_road_start(road)] = true
-		seen[_road_end(road)] = true
+		var road_start: Vector2i = _road_start(road)
+		var road_end: Vector2i = _road_end(road)
+
+		seen[road_start] = true
+		seen[road_end] = true
 
 	for intersection in seen.keys():
 		intersections.append(intersection)
+
+		intersection_positions[intersection] = Vector2(
+			intersection.x,
+			intersection.y
+		)
+
 #end collect intersections
 
 
@@ -496,6 +522,10 @@ func _reset_drive_position() -> void:
 	current_intersection = start_intersection
 	target_intersection = start_intersection
 	camera_position = Vector2(start_intersection)
+	camera_world_position = intersection_positions.get(
+		start_intersection,
+		Vector2(start_intersection)
+	)
 	is_driving = false
 	drive_complete = false
 	wrong_turns = 0
@@ -894,8 +924,18 @@ func _draw_region_cell(region_id: String, cell: Vector2i) -> void:
 # Draw every road in the master graph, including simple road markings.
 func _draw_world_roads() -> void:
 	for road in roads:
-		var road_start := _world_to_main(Vector2(_road_start(road)))
-		var road_end := _world_to_main(Vector2(_road_end(road)))
+		var road_start_world: Vector2 = intersection_positions.get(
+			_road_start(road),
+			Vector2(_road_start(road))
+		)
+
+		var road_end_world: Vector2 = intersection_positions.get(
+			_road_end(road),
+			Vector2(_road_end(road))
+		)
+
+		var road_start := _world_to_main(road_start_world)
+		var road_end := _world_to_main(road_end_world)
 		var road_type := str(road.get("road_type", "neighborhood"))
 
 		var current_width := road_width
