@@ -23,6 +23,8 @@ const CITY_ONE_WAY_COUNT := 12
 #world data
 # Every region contributes roads into these same arrays.
 # There are no map loads or position resets during the drive.
+# world_size mirrors the config constant so tests/debug tools can inspect it.
+var world_size: int = WORLD_SIZE
 var intersections: Array[Vector2i] = []
 var roads: Array = []
 var rng := RandomNumberGenerator.new()
