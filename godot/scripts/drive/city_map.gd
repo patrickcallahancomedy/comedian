@@ -16,6 +16,10 @@ var current_intersection := Vector2i(0, 4)
 var heading := Vector2i(0, -1)
 var view_rotation: float = 0.0
 
+@onready var left_button: Button = $"../TouchControls/LeftButton"
+@onready var forward_button: Button = $"../TouchControls/ForwardButton"
+@onready var right_button: Button = $"../TouchControls/RightButton"
+
 #functions
 func _ready() -> void:
 	rng.randomize()
@@ -29,6 +33,10 @@ func _ready() -> void:
 		destination_intersection
 	)
 	
+	left_button.pressed.connect(_turn_left)
+	forward_button.pressed.connect(_move_forward)
+	right_button.pressed.connect(_turn_right)
+
 	print("City connected: ", _city_is_connected())
 #end of ready()
 
@@ -256,6 +264,22 @@ func _try_move(direction: Vector2i) -> void:
 	queue_redraw()
 #end try inbetween
 
+func _turn_left() -> void:
+	heading = Vector2i(heading.y, -heading.x)
+	view_rotation += PI / 2.0
+	queue_redraw()
+
+
+func _turn_right() -> void:
+	heading = Vector2i(-heading.y, heading.x)
+	view_rotation -= PI / 2.0
+	queue_redraw()
+
+
+func _move_forward() -> void:
+	_try_move(heading)
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey:
 		return
@@ -273,14 +297,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_RIGHT:
 			_try_move(Vector2i(1, 0))
 		KEY_A:
-			heading = Vector2i(heading.y, -heading.x)
-			view_rotation += PI / 2.0
-			queue_redraw()
+			_turn_left()
 		KEY_D:
-			heading = Vector2i(-heading.y, heading.x)
-			view_rotation -= PI / 2.0
-			queue_redraw()
+			_turn_right()
 		KEY_W:
-			_try_move(heading)
+			_move_forward()
 			
 #end unhandled key input
