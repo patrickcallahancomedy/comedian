@@ -67,12 +67,10 @@ jobs:
           echo "COMEDIAN Skeleton Alpha build: ${GITHUB_SHA}"
           grep -o "${BUILD_NAME}[^\" ]*" build/skeleton-alpha/index.html | sort -u
 
-      - name: Deploy Skeleton Alpha to GitHub Pages subfolder
+      - name: Deploy Skeleton Alpha to GitHub Pages root
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: godot/build/skeleton-alpha
-          target-folder: skeleton-alpha
-          # Do not clean the whole gh-pages branch: the existing live build at
-          # the repository root must stay untouched.
-          clean: false
+          clean: true
+          single-commit: true
