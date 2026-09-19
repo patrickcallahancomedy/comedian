@@ -44,6 +44,11 @@ var target_view_rotation: float = 0.0
 var wrong_turns: int = 0
 var drive_time: float = 0.0
 
+#gps feedback
+# True only while Darren is physically travelling along a road that was not
+# the GPS-recommended next segment when he committed to it.
+var current_segment_off_route: bool = false
+
 
 #touch / keyboard controls
 # The buttons and keyboard both call the same movement functions below.
@@ -189,6 +194,7 @@ func _process(delta: float) -> void:
 			# Destination reached.
 			if current_intersection == destination_intersection:
 				is_driving = false
+				current_segment_off_route = false
 
 				print("ARRIVED")
 				print("Drive time: ", snappedf(drive_time, 0.1), " seconds")
@@ -206,13 +212,17 @@ func _process(delta: float) -> void:
 				intersections.has(next_intersection)
 				and _road_exists_between(current_intersection, next_intersection)
 			):
-				# Compare Darren's choice with the GPS recommendation.
-				if shortest_route.size() >= 2:
-					var recommended_direction: Vector2i = (
-						shortest_route[1] - current_intersection
-					)
+				# Compare Darren's chosen road with the GPS recommendation.
+				# This state also drives the route color in _draw():
+				# orange/red = Darren is currently off-route,
+				# yellow = Darren is following the corrected GPS route.
+				current_segment_off_route = false
 
-					if heading != recommended_direction:
+				if shortest_route.size() >= 2:
+					var recommended_intersection := shortest_route[1]
+					current_segment_off_route = next_intersection != recommended_intersection
+
+					if current_segment_off_route:
 						wrong_turns += 1
 						print("Wrong turns: ", wrong_turns)
 
@@ -230,6 +240,7 @@ func _process(delta: float) -> void:
 				# No road exists in the direction Darren is facing, so the current
 				# prototype stops instead of letting him drive off the road.
 				is_driving = false
+				current_segment_off_route = false
 
 	queue_redraw()
 
@@ -349,17 +360,23 @@ func _draw() -> void:
 		var point := _city_to_screen(intersection)
 		draw_circle(point, 5.0, Color.RED)
 
-	# While Darren is driving toward the next intersection,
-	# keep the current GPS road visible underneath him.
+	# Draw the road Darren is physically travelling on.
+	# If he missed the GPS turn, this segment turns orange/red while the
+	# corrected route ahead stays yellow. That makes "you missed it" readable
+	# without adding another button, popup, or punishment screen.
 	if is_driving:
 		var car_point := size * 0.5
 		var next_point := _city_to_screen(target_intersection)
+		var current_route_color := Color.YELLOW
+
+		if current_segment_off_route:
+			current_route_color = Color(1.0, 0.32, 0.10)
 
 		draw_line(
 			car_point,
 			next_point,
-			Color.YELLOW,
-			4.0
+			current_route_color,
+			8.0
 		)
 
 	# Draw the current shortest GPS route.
@@ -371,7 +388,7 @@ func _draw() -> void:
 			a,
 			b,
 			Color.YELLOW,
-			4.0
+			8.0
 		)
 
 	# Darren never moves visually. The city moves underneath him.
@@ -567,6 +584,11 @@ func _move_forward() -> void:
 
 	if not _road_exists_between(current_intersection, next_intersection):
 		return
+
+	if shortest_route.size() >= 2:
+		current_segment_off_route = next_intersection != shortest_route[1]
+	else:
+		current_segment_off_route = false
 
 	target_intersection = next_intersection
 	is_driving = true
