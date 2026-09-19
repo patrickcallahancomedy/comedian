@@ -14,6 +14,7 @@ var shortest_route: Array[Vector2i] = []
 var rng := RandomNumberGenerator.new()
 var current_intersection := Vector2i(0, 4)
 var heading := Vector2i(0, -1)
+var view_rotation: float = 0.0
 
 #functions
 func _ready() -> void:
@@ -62,25 +63,25 @@ func _build_roads() -> void:
 				
 #end of build roads
 
+func _city_to_screen(intersection: Vector2i) -> Vector2:
+	# Darren stays fixed in the center of the screen.
+	# Every city point is drawn relative to Darren, then rotated so his
+	# current heading always appears to point toward the top of the screen.
+	var grid_offset := intersection - current_intersection
+	var world_offset := Vector2(grid_offset.x, grid_offset.y) * block_size
+	var rotated_offset := world_offset.rotated(view_rotation)
+
+	return size * 0.5 + rotated_offset
+#end city to screen
+
+
 func _draw() -> void:
-	var city_width := (grid_size - 1) * block_size
-	var city_height := (grid_size - 1) * block_size
-
-	# Center the city on the screen.
-	var start := Vector2(
-		(size.x - city_width) / 2.0,
-		(size.y - city_height) / 2.0
-	)
-
 	var road_color := Color(0.2, 0.2, 0.2)
 
-	# Draw every road stored in our roads list.
+	# Draw the roads from the same generated city data.
 	for road in roads:
-		var start_intersection: Vector2i = road[0]
-		var end_intersection: Vector2i = road[1]
-
-		var road_start := start + Vector2(start_intersection) * block_size
-		var road_end := start + Vector2(end_intersection) * block_size
+		var road_start := _city_to_screen(road[0])
+		var road_end := _city_to_screen(road[1])
 
 		draw_line(
 			road_start,
@@ -89,35 +90,38 @@ func _draw() -> void:
 			road_width
 		)
 
-	# Draw a red dot at every intersection.
+	# Draw every intersection.
 	for intersection in intersections:
-		var point := start + Vector2(intersection) * block_size
+		var point := _city_to_screen(intersection)
 		draw_circle(point, 5.0, Color.RED)
-		
-		
+
+	# Draw the current shortest GPS route.
 	for i in range(shortest_route.size() - 1):
-		var a := start + Vector2(shortest_route[i]) * block_size
-		var b := start + Vector2(shortest_route[i + 1]) * block_size
+		var a := _city_to_screen(shortest_route[i])
+		var b := _city_to_screen(shortest_route[i + 1])
 
 		draw_line(
 			a,
 			b,
 			Color.YELLOW,
 			4.0
-	)
-	var current_point := start + Vector2(current_intersection) * block_size
-	var destination_point := start + Vector2(destination_intersection) * block_size
+		)
+
+	# Darren never moves visually. The city moves underneath him.
+	var current_point := size * 0.5
+	var destination_point := _city_to_screen(destination_intersection)
 
 	draw_circle(current_point, 10.0, Color.GREEN)
-	var heading_end := current_point + Vector2(heading) * 22.0
+	draw_circle(destination_point, 10.0, Color.BLUE)
 
+	# Because the world rotates opposite Darren's heading, this debug marker
+	# should stay pointing toward the top of the screen.
 	draw_line(
 		current_point,
-		heading_end,
+		current_point + Vector2.UP * 22.0,
 		Color.GREEN,
 		5.0
 	)
-	draw_circle(destination_point, 10.0, Color.BLUE)
 #end of draw
 
 func _city_is_connected() -> bool:
@@ -270,9 +274,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_try_move(Vector2i(1, 0))
 		KEY_A:
 			heading = Vector2i(heading.y, -heading.x)
+			view_rotation += PI / 2.0
 			queue_redraw()
 		KEY_D:
 			heading = Vector2i(-heading.y, heading.x)
+			view_rotation -= PI / 2.0
 			queue_redraw()
 		KEY_W:
 			_try_move(heading)
