@@ -65,7 +65,7 @@ func _phase(name: String) -> int:
 
 func _test_main_scene() -> void:
 	var main_scene := str(ProjectSettings.get_setting("application/run/main_scene", ""))
-	_check(main_scene == "res://scenes/core/main_menu.tscn", "Project does not start at Skeleton Alpha main menu")
+	_check(main_scene == "res://scenes/drive/drive_module.tscn", "Current test build does not start at DRIVE")
 
 
 func _test_routes_exist() -> void:
