@@ -373,13 +373,12 @@ func _assign_intersection_positions() -> void:
 		if assigned:
 			continue
 
-		match intersection:
-			Vector2i(10, 10):
-				intersection_positions[intersection] = Vector2(31.4, 14.2)
-			Vector2i(10, 9):
-				intersection_positions[intersection] = Vector2(31.4, 13.2)
-			_:
-				intersection_positions[intersection] = Vector2(intersection)
+		if intersection == Vector2i(10, 10):
+			intersection_positions[intersection] = Vector2(31.4, 14.2)
+		elif intersection == Vector2i(10, 9):
+			intersection_positions[intersection] = Vector2(31.4, 13.2)
+		else:
+			intersection_positions[intersection] = Vector2(intersection)
 
 
 func _point_is_in_region(
