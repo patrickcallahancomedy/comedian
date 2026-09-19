@@ -57,7 +57,7 @@ func _run() -> void:
 		)
 
 	if city_map != null:
-		var world_size := int(city_map.get("WORLD_SIZE"))
+		var world_size := int(city_map.get("world_size"))
 		var intersections = city_map.get("intersections")
 		var roads = city_map.get("roads")
 		var route = city_map.get("shortest_route")
