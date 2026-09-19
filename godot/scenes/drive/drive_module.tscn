@@ -38,7 +38,7 @@ offset_top = 14.0
 offset_right = 278.0
 offset_bottom = 40.0
 theme_override_font_sizes/font_size = 17
-text = "NEIGHBORHOOD  •  25 MPH"
+text = "NEIGHBORHOOD"
 
 [node name="StatusLabel" type="Label" parent="." unique_id=683560994]
 layout_mode = 0
