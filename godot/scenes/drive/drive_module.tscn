@@ -29,9 +29,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_boj34")
+road_width = 320.0
 
 [node name="PlayerCar" type="TextureRect" parent="." unique_id=1726496357]
-visible = false
 layout_mode = 0
 offset_left = 85.0
 offset_top = 252.0
@@ -42,8 +42,7 @@ texture = ExtResource("1_car")
 expand_mode = 1
 stretch_mode = 5
 
-
-[node name="TouchControls" type="HBoxContainer" parent="."]
+[node name="TouchControls" type="HBoxContainer" parent="." unique_id=162859420]
 layout_mode = 0
 offset_left = 20.0
 offset_top = 686.0
@@ -51,19 +50,19 @@ offset_right = 410.0
 offset_bottom = 746.0
 theme_override_constants/separation = 10
 
-[node name="LeftButton" type="Button" parent="TouchControls"]
+[node name="LeftButton" type="Button" parent="TouchControls" unique_id=1378762602]
 custom_minimum_size = Vector2(123, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "LEFT"
 
-[node name="ForwardButton" type="Button" parent="TouchControls"]
+[node name="ForwardButton" type="Button" parent="TouchControls" unique_id=2034903650]
 custom_minimum_size = Vector2(123, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "GO"
 
-[node name="RightButton" type="Button" parent="TouchControls"]
+[node name="RightButton" type="Button" parent="TouchControls" unique_id=727376704]
 custom_minimum_size = Vector2(123, 60)
 layout_mode = 2
 size_flags_horizontal = 3

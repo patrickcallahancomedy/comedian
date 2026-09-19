@@ -1,21 +1,33 @@
 extends Control
 #constants
 @export var grid_size: int = 5
-@export var block_size: float = 70.0
-@export var road_width: float = 8.0
+@export var block_size: float = 650.0
+@export var road_width: float = 380.0
 @export var roads_to_remove: int = 8
+@export var drive_speed: float = 0.35
 
 #variables
+#build map
 var intersections: Array[Vector2i] = []
 var roads: Array = []
+var rng := RandomNumberGenerator.new()
+#shortest route calc
 var start_intersection := Vector2i(0, 4)
 var destination_intersection := Vector2i(4, 0)
 var shortest_route: Array[Vector2i] = []
-var rng := RandomNumberGenerator.new()
+#drive time calc
 var current_intersection := Vector2i(0, 4)
+var camera_position := Vector2(0, 4)
+var is_driving: bool = false
+var target_intersection := Vector2i(0, 4)
+var camera_target := Vector2(0, 4)
 var heading := Vector2i(0, -1)
 var view_rotation: float = 0.0
 var target_view_rotation: float = 0.0
+#drive time stats
+var wrong_turns: int = 0
+var drive_time: float = 0.0
+
 
 @onready var left_button: Button = $"../TouchControls/LeftButton"
 @onready var forward_button: Button = $"../TouchControls/ForwardButton"
@@ -58,36 +70,108 @@ func _build_roads() -> void:
 
 			# Connect to the intersection on the right.
 			if x < grid_size - 1:
-				roads.append([
-					Vector2i(x, y),
-					Vector2i(x + 1, y)
-				])
+				roads.append({
+					"from": Vector2i(x, y),
+					"to": Vector2i(x + 1, y),
+					"length": 1,
+					"one_way": false
+				})
 
 			# Connect to the intersection below.
 			if y < grid_size - 1:
-				roads.append([
-					Vector2i(x, y),
-					Vector2i(x, y + 1)
-				])
+				roads.append({
+					"from": Vector2i(x, y),
+					"to": Vector2i(x, y + 1),
+					"length": 1,
+					"one_way": false
+				})
 				
+	if roads.size() > 0:
+		roads[0]["one_way"] = true
 #end of build roads
 
 func _process(delta: float) -> void:
-	# Smoothly rotate the city under Darren instead of snapping 90 degrees.
+	# Smoothly rotate the city underneath the fixed car.
 	if not is_equal_approx(view_rotation, target_view_rotation):
 		view_rotation = lerp_angle(
 			view_rotation,
 			target_view_rotation,
 			minf(1.0, delta * 10.0)
 		)
-		queue_redraw()
 
+	if is_driving:
+		drive_time += delta
+
+		var target_position := Vector2(target_intersection)
+
+		# Smoothly move the city until Darren reaches the next intersection.
+		camera_position = camera_position.move_toward(
+			target_position,
+			drive_speed * delta
+		)
+
+		# Darren has reached the intersection.
+		if camera_position.is_equal_approx(target_position):
+			camera_position = target_position
+			current_intersection = target_intersection
+
+			# Calculate the correct route from where Darren is now.
+			shortest_route = _find_shortest_route(
+				current_intersection,
+				destination_intersection
+			)
+
+			# Destination reached.
+			if current_intersection == destination_intersection:
+				is_driving = false
+
+				print("ARRIVED")
+				print("Drive time: ", snappedf(drive_time, 0.1), " seconds")
+				print("Wrong turns: ", wrong_turns)
+
+				queue_redraw()
+				return
+
+			# Look at the road Darren is currently pointing toward.
+			var next_intersection := current_intersection + heading
+
+			if (
+				intersections.has(next_intersection)
+				and _road_exists_between(current_intersection, next_intersection)
+			):
+				# Compare Darren's choice with the GPS recommendation.
+				if shortest_route.size() >= 2:
+					var recommended_direction: Vector2i = (
+						shortest_route[1] - current_intersection
+					)
+
+					if heading != recommended_direction:
+						wrong_turns += 1
+						print("Wrong turns: ", wrong_turns)
+
+				# Continue driving in Darren's chosen direction.
+				target_intersection = next_intersection
+
+				# Immediately reroute from the intersection we're now
+				# approaching so the GPS gives the player time to react.
+				shortest_route = _find_shortest_route(
+					target_intersection,
+					destination_intersection
+				)
+
+			else:
+				# No road in the direction Darren is facing.
+				is_driving = false
+
+	queue_redraw()
+
+#end of process
 
 func _city_to_screen(intersection: Vector2i) -> Vector2:
 	# Darren stays fixed in the center of the screen.
 	# Every city point is drawn relative to Darren, then rotated so his
 	# current heading always appears to point toward the top of the screen.
-	var grid_offset := intersection - current_intersection
+	var grid_offset := Vector2(intersection) - camera_position
 	var world_offset := Vector2(grid_offset.x, grid_offset.y) * block_size
 	var rotated_offset := world_offset.rotated(view_rotation)
 
@@ -100,9 +184,9 @@ func _draw() -> void:
 
 	# Draw the roads from the same generated city data.
 	for road in roads:
-		var road_start := _city_to_screen(road[0])
-		var road_end := _city_to_screen(road[1])
-
+		var road_start := _city_to_screen(_road_start(road))
+		var road_end := _city_to_screen(_road_end(road))
+	
 		draw_line(
 			road_start,
 			road_end,
@@ -142,6 +226,8 @@ func _draw() -> void:
 		Color.GREEN,
 		5.0
 	)
+	
+	
 #end of draw
 
 func _city_is_connected() -> bool:
@@ -159,8 +245,8 @@ func _city_is_connected() -> bool:
 		var current: Vector2i = queue.pop_front()
 
 		for road in roads:
-			var a: Vector2i = road[0]
-			var b: Vector2i = road[1]
+			var a: Vector2i = _road_start(road)
+			var b: Vector2i = _road_end(road)
 
 			var neighbor := Vector2i.ZERO
 			var found_neighbor := false
@@ -214,8 +300,8 @@ func _find_shortest_route(
 			break
 
 		for road in roads:
-			var a: Vector2i = road[0]
-			var b: Vector2i = road[1]
+			var a: Vector2i =  _road_start(road)
+			var b: Vector2i = _road_end(road)
 
 			var neighbor := Vector2i.ZERO
 			var found_neighbor := false
@@ -248,14 +334,7 @@ func _find_shortest_route(
 #end of find shortest route
 
 func _road_exists_between(a: Vector2i, b: Vector2i) -> bool:
-	for road in roads:
-		var road_a: Vector2i = road[0]
-		var road_b: Vector2i = road[1]
-
-		if (road_a == a and road_b == b) or (road_a == b and road_b == a):
-			return true
-
-	return false
+	return _get_road_between(a, b) != null
 #end road exist between
 
 func _try_move(direction: Vector2i) -> void:
@@ -268,6 +347,7 @@ func _try_move(direction: Vector2i) -> void:
 		return
 
 	current_intersection = next_intersection
+	camera_target = Vector2(current_intersection)
 
 	shortest_route = _find_shortest_route(
 		current_intersection,
@@ -279,16 +359,28 @@ func _try_move(direction: Vector2i) -> void:
 func _turn_left() -> void:
 	heading = Vector2i(heading.y, -heading.x)
 	target_view_rotation += PI / 2.0
-
+#end turn left
 
 func _turn_right() -> void:
 	heading = Vector2i(-heading.y, heading.x)
 	target_view_rotation -= PI / 2.0
-
+#end turn right
 
 func _move_forward() -> void:
-	_try_move(heading)
+	if is_driving:
+		return
+		
+	var next_intersection := current_intersection + heading
 
+	if not intersections.has(next_intersection):
+		return
+
+	if not _road_exists_between(current_intersection, next_intersection):
+		return
+
+	target_intersection = next_intersection
+	is_driving = true
+#end move forward
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey:
@@ -298,19 +390,51 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 
 	match event.keycode:
-		KEY_UP:
-			_try_move(Vector2i(0, -1))
-		KEY_DOWN:
-			_try_move(Vector2i(0, 1))
-		KEY_LEFT:
-			_try_move(Vector2i(-1, 0))
-		KEY_RIGHT:
-			_try_move(Vector2i(1, 0))
 		KEY_A:
 			_turn_left()
+
 		KEY_D:
 			_turn_right()
+
 		KEY_W:
 			_move_forward()
 			
 #end unhandled key input
+
+#helper functions
+func _road_start(road) -> Vector2i:
+	if typeof(road) == TYPE_DICTIONARY:
+		return road["from"]
+
+	return road[0]
+#end road start
+func _road_end(road) -> Vector2i:
+	if typeof(road) == TYPE_DICTIONARY:
+		return road["to"]
+
+	return road[1]
+#end road end
+func _get_road_between(a: Vector2i, b: Vector2i):
+	for road in roads:
+		var road_a: Vector2i = _road_start(road)
+		var road_b: Vector2i = _road_end(road)
+
+		if (road_a == a and road_b == b) or (road_a == b and road_b == a):
+			return road
+
+	return null
+#end get road between
+func _is_wrong_way(
+	road,
+	travel_from: Vector2i,
+	travel_to: Vector2i
+) -> bool:
+
+	if not road["one_way"]:
+		return false
+
+	var legal_from: Vector2i = _road_start(road)
+	var legal_to: Vector2i = _road_end(road)
+
+	return travel_from != legal_from or travel_to != legal_to
+#end is wrong way
