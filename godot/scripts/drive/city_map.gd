@@ -15,6 +15,7 @@ var rng := RandomNumberGenerator.new()
 var current_intersection := Vector2i(0, 4)
 var heading := Vector2i(0, -1)
 var view_rotation: float = 0.0
+var target_view_rotation: float = 0.0
 
 @onready var left_button: Button = $"../TouchControls/LeftButton"
 @onready var forward_button: Button = $"../TouchControls/ForwardButton"
@@ -70,6 +71,17 @@ func _build_roads() -> void:
 				])
 				
 #end of build roads
+
+func _process(delta: float) -> void:
+	# Smoothly rotate the city under Darren instead of snapping 90 degrees.
+	if not is_equal_approx(view_rotation, target_view_rotation):
+		view_rotation = lerp_angle(
+			view_rotation,
+			target_view_rotation,
+			minf(1.0, delta * 10.0)
+		)
+		queue_redraw()
+
 
 func _city_to_screen(intersection: Vector2i) -> Vector2:
 	# Darren stays fixed in the center of the screen.
@@ -266,14 +278,12 @@ func _try_move(direction: Vector2i) -> void:
 
 func _turn_left() -> void:
 	heading = Vector2i(heading.y, -heading.x)
-	view_rotation += PI / 2.0
-	queue_redraw()
+	target_view_rotation += PI / 2.0
 
 
 func _turn_right() -> void:
 	heading = Vector2i(-heading.y, heading.x)
-	view_rotation -= PI / 2.0
-	queue_redraw()
+	target_view_rotation -= PI / 2.0
 
 
 func _move_forward() -> void:
