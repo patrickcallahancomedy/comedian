@@ -16,6 +16,11 @@ extends Control
 var intersections: Array[Vector2i] = []
 var roads: Array = []
 var rng := RandomNumberGenerator.new()
+#block size variation
+# These control how physically long each column and row of city blocks is.
+# Using shared lengths keeps every intersection lined up correctly.
+var column_lengths: Array[float] = []
+var row_lengths: Array[float] = []
 #shortest route calc
 # These values describe where Darren starts, where he is going,
 # and the current GPS route between those two points.
@@ -56,6 +61,7 @@ func _ready() -> void:
 
 	# Build the city in three passes: points, roads, then safe random removals.
 	_build_intersections()
+	_build_block_lengths()
 	_build_roads()
 	_remove_random_roads()
 	
@@ -97,7 +103,9 @@ func _build_roads() -> void:
 				roads.append({
 					"from": Vector2i(x, y),
 					"to": Vector2i(x + 1, y),
-					"length": 1,
+					"length": rng.randi_range(2, 5),
+					"road_type": "neighborhood",
+					"speed_limit": 25,
 					"one_way": false
 				})
 
@@ -105,8 +113,10 @@ func _build_roads() -> void:
 			if y < grid_size - 1:
 				roads.append({
 					"from": Vector2i(x, y),
-					"to": Vector2i(x, y + 1),
-					"length": 1,
+					"to": Vector2i(x + 1, y),
+					"length": rng.randi_range(2, 5),
+					"road_type": "neighborhood",
+					"speed_limit": 25,
 					"one_way": false
 				})
 				
@@ -116,7 +126,24 @@ func _build_roads() -> void:
 	if roads.size() > 0:
 		roads[0]["one_way"] = true
 #end of build roads
+# Build the physical spacing between columns and rows.
+# Each value represents how long that stretch of road should feel.
+func _build_block_lengths() -> void:
+	column_lengths.clear()
+	row_lengths.clear()
 
+	# There is one gap between each pair of columns.
+	for x in range(grid_size - 1):
+		column_lengths.append(
+			float(rng.randi_range(2, 5))
+		)
+
+	# There is one gap between each pair of rows.
+	for y in range(grid_size - 1):
+		row_lengths.append(
+			float(rng.randi_range(2, 5))
+		)
+#end build block lengths
 # Runs every frame.
 # This is the heart of the current driving prototype:
 # 1. smoothly rotate the city when Darren turns,
@@ -205,20 +232,96 @@ func _process(delta: float) -> void:
 
 #end of process
 
+# Convert a grid position into a physical position in the generated city.
+# Grid coordinates can contain decimals because camera_position moves smoothly
+# between intersections while Darren is driving.
+#
+# Example:
+# grid (0, 0) = world (0, 0)
+# if the first column is length 4, grid (1, 0) is 4 road-units away.
+# Convert a grid position into a physical position in the generated city.
+# Grid coordinates can contain decimals because camera_position moves smoothly
+# between intersections while Darren is driving.
+#
+# The city has grid_size intersections, but only grid_size - 1 spaces
+# between them. This function carefully handles the outer edge so we never
+# ask for a row/column length that does not exist.
+func _grid_to_world(grid_position: Vector2) -> Vector2:
+	var world_x := 0.0
+	var world_y := 0.0
+
+	# Keep positions inside the generated city bounds.
+	var safe_x := clampf(
+		grid_position.x,
+		0.0,
+		float(grid_size - 1)
+	)
+
+	var safe_y := clampf(
+		grid_position.y,
+		0.0,
+		float(grid_size - 1)
+	)
+
+	# -------------------------
+	# HORIZONTAL POSITION
+	# -------------------------
+
+	var whole_x := int(floor(safe_x))
+
+	# Add every fully completed column gap.
+	for x in range(mini(whole_x, column_lengths.size())):
+		world_x += column_lengths[x] * block_size
+
+	# If we are currently between two intersections,
+	# add only the fraction of that road we have travelled.
+	if whole_x < column_lengths.size():
+		var x_fraction := safe_x - float(whole_x)
+
+		world_x += (
+			column_lengths[whole_x]
+			* block_size
+			* x_fraction
+		)
+
+	# -------------------------
+	# VERTICAL POSITION
+	# -------------------------
+
+	var whole_y := int(floor(safe_y))
+
+	# Add every fully completed row gap.
+	for y in range(mini(whole_y, row_lengths.size())):
+		world_y += row_lengths[y] * block_size
+
+	# If we are currently between two intersections,
+	# add only the fraction of that road we have travelled.
+	if whole_y < row_lengths.size():
+		var y_fraction := safe_y - float(whole_y)
+
+		world_y += (
+			row_lengths[whole_y]
+			* block_size
+			* y_fraction
+		)
+
+	return Vector2(world_x, world_y)
+
+#end grid to world
+
 # Convert a city intersection into an on-screen position.
-# The car stays fixed. Instead, every road/intersection is positioned relative
-# to Darren and then rotated so the map moves underneath him.
+# Instead of assuming every block is the same size, this uses the generated
+# row/column lengths so some roads can be much longer than others.
 func _city_to_screen(intersection: Vector2i) -> Vector2:
-	# Darren stays fixed in the center of the screen.
-	# Every city point is drawn relative to Darren, then rotated so his
-	# current heading always appears to point toward the top of the screen.
-	var grid_offset := Vector2(intersection) - camera_position
-	var world_offset := Vector2(grid_offset.x, grid_offset.y) * block_size
+	var intersection_world := _grid_to_world(Vector2(intersection))
+	var camera_world := _grid_to_world(camera_position)
+
+	var world_offset := intersection_world - camera_world
 	var rotated_offset := world_offset.rotated(view_rotation)
 
 	return size * 0.5 + rotated_offset
-#end city to screen
 
+#end city to screen
 
 # Draw the current debug version of the city.
 # This is only the renderer: it reads the generated city data and paints roads,
@@ -242,6 +345,19 @@ func _draw() -> void:
 	for intersection in intersections:
 		var point := _city_to_screen(intersection)
 		draw_circle(point, 5.0, Color.RED)
+
+	# While Darren is driving toward the next intersection,
+	# keep the current GPS road visible underneath him.
+	if is_driving:
+		var car_point := size * 0.5
+		var next_point := _city_to_screen(target_intersection)
+
+		draw_line(
+			car_point,
+			next_point,
+			Color.YELLOW,
+			4.0
+		)
 
 	# Draw the current shortest GPS route.
 	for i in range(shortest_route.size() - 1):
