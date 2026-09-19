@@ -13,13 +13,14 @@ grow_vertical = 2
 metadata/_edit_vertical_guides_ = [215.0]
 metadata/_edit_horizontal_guides_ = [382.0]
 
-[node name="WhiteBackground" type="ColorRect" parent="." unique_id=1313100671]
+[node name="GroundBackground" type="ColorRect" parent="." unique_id=1313100671]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+color = Color(0.69, 0.72, 0.62, 1)
 
 [node name="CityMap" type="Control" parent="." unique_id=1442815347]
 layout_mode = 1
@@ -29,34 +30,33 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_boj34")
-road_width = 320.0
 
 [node name="MapLabel" type="Label" parent="."]
 layout_mode = 0
-offset_left = 20.0
-offset_top = 18.0
-offset_right = 410.0
-offset_bottom = 46.0
-theme_override_font_sizes/font_size = 18
-text = "1/4  NEIGHBORHOOD  •  25 MPH"
-horizontal_alignment = 1
+offset_left = 12.0
+offset_top = 14.0
+offset_right = 278.0
+offset_bottom = 40.0
+theme_override_font_sizes/font_size = 17
+text = "NEIGHBORHOOD  •  25 MPH"
+horizontal_alignment = 0
 
 [node name="StatusLabel" type="Label" parent="."]
 layout_mode = 0
-offset_left = 20.0
-offset_top = 50.0
-offset_right = 410.0
-offset_bottom = 76.0
-theme_override_font_sizes/font_size = 15
+offset_left = 12.0
+offset_top = 42.0
+offset_right = 278.0
+offset_bottom = 66.0
+theme_override_font_sizes/font_size = 14
 text = "PRESS GO"
-horizontal_alignment = 1
+horizontal_alignment = 0
 
 [node name="PlayerCar" type="TextureRect" parent="." unique_id=1726496357]
 layout_mode = 0
-offset_left = 85.0
-offset_top = 252.0
-offset_right = 345.0
-offset_bottom = 513.0
+offset_left = 166.0
+offset_top = 333.0
+offset_right = 264.0
+offset_bottom = 431.0
 mouse_filter = 2
 texture = ExtResource("1_car")
 expand_mode = 1
