@@ -1,83 +1,77 @@
 extends Control
 
-const DRIVE_MAP_CONFIGS = preload("res://scripts/drive/drive_map_configs.gd")
+const WORLD_CONFIG = preload("res://scripts/drive/drive_world_config.gd")
+
 
 #constants
-# These are the main tuning values for the current DRIVE prototype.
-# They are exposed in the Inspector so we can change feel/scale without rewriting code.
-@export var block_size: float = 650.0
-@export var road_width: float = 320.0
+# DRIVE is one continuous 20x20 road world.
+# The main view is intentionally close while the minimap shows the whole trip.
+const WORLD_SIZE: int = WORLD_CONFIG.WORLD_SIZE
+const NEIGHBORHOOD_ROADS_TO_REMOVE := 16
+const CITY_ONE_WAY_COUNT := 12
 
-# Base movement speed at 25 MPH.
-# Individual road speed limits scale this up/down without changing the controls.
-@export var drive_speed: float = 1.0
+# Main-view scale.
+# Roughly 2-3 intersections fit across the phone screen at this spacing.
+@export var block_size: float = 160.0
+@export var road_width: float = 56.0
+
+# Whole-world minimap size in the top-right corner.
+@export var minimap_size: float = 132.0
 
 
 #variables
-#map sequence
-# DRIVE is one microgame made from four small maps.
-# Reaching a map's destination loads the next map and stops the car until GO is pressed.
-var map_configs: Array[Dictionary] = DRIVE_MAP_CONFIGS.get_maps()
-var current_map_index: int = 0
-var current_map: Dictionary = {}
-var drive_complete: bool = false
-
-#build map
-# The generated map lives in these collections.
-# intersections = every possible point Darren can reach.
-# roads = the actual connections between those points.
-var grid_size: int = 5
-var roads_to_remove: int = 0
+#world data
+# Every region contributes roads into these same arrays.
+# There are no map loads or position resets during the drive.
 var intersections: Array[Vector2i] = []
 var roads: Array = []
 var rng := RandomNumberGenerator.new()
 
-#block size variation
-# These control how physically long each column and row of blocks is.
-# Using shared lengths keeps every connected intersection lined up correctly.
-var column_lengths: Array[float] = []
-var row_lengths: Array[float] = []
+#region data
+# Region definitions are fixed placement/tuning data from drive_world_config.gd.
+var region_ids: Array[String] = WORLD_CONFIG.get_region_ids()
 
-#parking lot data
-# Parking reuses the same road graph, but some final slot connections are blocked.
+#parking data
+# Two spaces are open each run. Blocked spaces use the same road-access flag
+# that can later support gates or other restricted roads.
 var parking_slots: Array[Vector2i] = []
 var open_parking_slots: Array[Vector2i] = []
 var blocked_parking_slots: Array[Vector2i] = []
 
-#shortest route calc
-# These values describe where Darren starts, where he is going,
-# and the current GPS route between those two points.
-var start_intersection := Vector2i.ZERO
+#route data
+# GPS is calculated across the entire 20x20 world from Darren's current position
+# to the final open parking space.
+var start_intersection: Vector2i = WORLD_CONFIG.START
 var destination_intersection := Vector2i.ZERO
 var shortest_route: Array[Vector2i] = []
 
 #drive position
-# current_intersection is exact game logic.
-# camera_position can sit between intersections so the world can slide smoothly
-# underneath the stationary car.
-var current_intersection := Vector2i.ZERO
-var target_intersection := Vector2i.ZERO
-var camera_position := Vector2.ZERO
+# current_intersection is exact logic.
+# camera_position moves smoothly between intersections while the car sprite stays still.
+var current_intersection: Vector2i = WORLD_CONFIG.START
+var target_intersection: Vector2i = WORLD_CONFIG.START
+var camera_position := Vector2(WORLD_CONFIG.START)
 var is_driving: bool = false
+var drive_complete: bool = false
+
+#turning
+# Heading changes immediately when LEFT/RIGHT is pressed.
+# The view rotation eases toward it, preserving the queued-turn behavior.
 var heading := Vector2i.UP
 var view_rotation: float = 0.0
 var target_view_rotation: float = 0.0
 
 #drive stats
-# These are result values we can eventually hand back to the larger COMEDIAN game.
 var wrong_turns: int = 0
 var wrong_way_tickets: int = 0
 var drive_time: float = 0.0
 
 #gps feedback
-# off_route = Darren chose a road other than the GPS recommendation.
-# wrong_way = Darren is travelling against a one-way street.
 var current_segment_off_route: bool = false
 var current_segment_wrong_way: bool = false
 
 
 #touch / keyboard controls
-# The buttons and keyboard both call the same movement functions below.
 @onready var left_button: Button = $"../TouchControls/LeftButton"
 @onready var forward_button: Button = $"../TouchControls/ForwardButton"
 @onready var right_button: Button = $"../TouchControls/RightButton"
@@ -87,7 +81,8 @@ var current_segment_wrong_way: bool = false
 
 #functions
 # Scene setup.
-# Creates the first map and connects the shared controls.
+# Build one continuous world, calculate one whole-trip GPS route,
+# then connect the same controls used on desktop and phone.
 func _ready() -> void:
 	rng.randomize()
 
@@ -95,190 +90,150 @@ func _ready() -> void:
 	forward_button.pressed.connect(_move_forward)
 	right_button.pressed.connect(_turn_right)
 
-	_load_map(0)
-#end of ready()
+	_build_world()
+	_reset_drive_position()
+
+	print("DRIVE world intersections: ", intersections.size())
+	print("DRIVE world roads: ", roads.size())
+	print("Whole trip route found: ", not shortest_route.is_empty())
+#end ready
 
 
-# Load one of the four DRIVE maps.
-# Every map resets position/heading, but the total drive timer and mistake stats
-# continue across the full trip.
-func _load_map(map_index: int) -> void:
-	current_map_index = map_index
-	current_map = map_configs[current_map_index]
-
-	grid_size = int(current_map.get("grid_size", 5))
-	roads_to_remove = int(current_map.get("roads_to_remove", 0))
-	start_intersection = current_map.get("start", Vector2i.ZERO)
-	destination_intersection = current_map.get("destination", Vector2i.ZERO)
-
+# Build the full 20x20 world in one pass.
+# The four 5x5 regions are physically connected, so Darren never teleports
+# or resets between neighborhood, highway, city, and parking.
+func _build_world() -> void:
 	intersections.clear()
 	roads.clear()
 	parking_slots.clear()
 	open_parking_slots.clear()
 	blocked_parking_slots.clear()
 
-	_build_block_lengths()
-
-	var generator := str(current_map.get("generator", "grid"))
-
-	match generator:
-		"highway":
-			_build_highway_map()
-		"parking":
-			_build_parking_map()
-		_:
-			_build_intersections()
-			_build_grid_roads(
-				str(current_map.get("road_type", "neighborhood")),
-				int(current_map.get("speed_limit", 25))
-			)
-			_remove_random_roads()
-
-			if int(current_map.get("one_way_count", 0)) > 0:
-				_add_city_one_ways(int(current_map.get("one_way_count", 0)))
-
-	current_intersection = start_intersection
-	target_intersection = start_intersection
-	camera_position = Vector2(start_intersection)
-	is_driving = false
-	current_segment_off_route = false
-	current_segment_wrong_way = false
-
-	shortest_route = _find_shortest_route(
-		current_intersection,
-		destination_intersection
-	)
-
-	# Face the first GPS road so every map begins in a readable orientation.
-	if shortest_route.size() >= 2:
-		heading = shortest_route[1] - shortest_route[0]
-	else:
-		heading = Vector2i.UP
-
-	view_rotation = _rotation_for_heading(heading)
-	target_view_rotation = view_rotation
-
-	forward_button.disabled = false
-	left_button.disabled = false
-	right_button.disabled = false
-
-	_update_map_label()
-	status_label.text = "PRESS GO"
-
-	print(
-		"DRIVE MAP: ",
-		str(current_map.get("name", "MAP")),
-		" | connected: ",
-		_city_is_connected(false),
-		" | roads: ",
-		roads.size()
-	)
-
-	queue_redraw()
-#end load map
-
-
-# Build every possible intersection in a square grid.
-# Example: grid_size 5 creates coordinates from (0,0) through (4,4).
-func _build_intersections() -> void:
-	intersections.clear()
-
-	for y in range(grid_size):
-		for x in range(grid_size):
-			intersections.append(Vector2i(x, y))
-#end build intersections
-
-
-# Build a normal square street grid.
-# Neighborhood and city both use this base, then change it differently:
-# neighborhood removes many roads; city keeps the grid dense and adds one-ways.
-func _build_grid_roads(road_type: String, speed_limit: int) -> void:
-	roads.clear()
-
-	for y in range(grid_size):
-		for x in range(grid_size):
-			# Connect to the intersection on the right.
-			if x < grid_size - 1:
-				_add_road(
-					Vector2i(x, y),
-					Vector2i(x + 1, y),
-					road_type,
-					speed_limit
-				)
-
-			# Connect to the intersection below.
-			if y < grid_size - 1:
-				_add_road(
-					Vector2i(x, y),
-					Vector2i(x, y + 1),
-					road_type,
-					speed_limit
-				)
-#end build grid roads
-
-
-# Build the highway as a mostly straight route with two optional exit/detour loops.
-# This intentionally has far fewer decisions than neighborhood/city driving.
-func _build_highway_map() -> void:
-	roads.clear()
-
-	# Main highway spine.
-	_add_road(Vector2i(2, 4), Vector2i(2, 3), "highway", 65)
-	_add_road(Vector2i(2, 3), Vector2i(2, 2), "highway", 65)
-	_add_road(Vector2i(2, 2), Vector2i(2, 1), "highway", 65)
-	_add_road(Vector2i(2, 1), Vector2i(2, 0), "highway", 65)
-
-	# First optional exit loop.
-	_add_road(Vector2i(2, 3), Vector2i(1, 3), "ramp", 45)
-	_add_road(Vector2i(1, 3), Vector2i(1, 2), "ramp", 45)
-	_add_road(Vector2i(1, 2), Vector2i(2, 2), "ramp", 45)
-
-	# Second optional exit loop.
-	_add_road(Vector2i(2, 1), Vector2i(3, 1), "ramp", 45)
-	_add_road(Vector2i(3, 1), Vector2i(3, 0), "ramp", 45)
-	_add_road(Vector2i(3, 0), Vector2i(2, 0), "ramp", 45)
+	_build_neighborhood()
+	_build_highway()
+	_build_city()
+	_build_parking_lot()
+	_build_region_connectors()
 
 	_collect_intersections_from_roads()
-#end build highway map
+
+	# One-way streets are added only after the final destination exists,
+	# so every candidate can be checked against the complete trip.
+	_add_city_one_ways(CITY_ONE_WAY_COUNT)
+
+	# Recollect in case future road-generation edits add/remove endpoints.
+	_collect_intersections_from_roads()
+#end build world
 
 
-# Build the parking lot from two parking aisles plus one center entrance lane.
-# Four edge nodes act as parking spaces. Two are open each run and the others
-# are blocked using the same road-access logic that later supports gates.
-func _build_parking_map() -> void:
-	roads.clear()
+# Build a full 5x5 neighborhood grid, then safely remove 16 road connections.
+# This creates winding residential streets while keeping every neighborhood
+# intersection reachable.
+func _build_neighborhood() -> void:
+	var region := WORLD_CONFIG.get_region("neighborhood")
+	var origin: Vector2i = region["origin"]
+	var region_size: Vector2i = region["size"]
 
-	# Center entrance / travel lane.
-	_add_road(Vector2i(2, 4), Vector2i(2, 3), "parking", 10)
-	_add_road(Vector2i(2, 3), Vector2i(2, 2), "parking", 10)
-	_add_road(Vector2i(2, 2), Vector2i(2, 1), "parking", 10)
-	_add_road(Vector2i(2, 1), Vector2i(2, 0), "parking", 10)
+	_add_region_grid(
+		"neighborhood",
+		origin,
+		region_size,
+		"neighborhood",
+		25
+	)
 
-	# Lower parking aisle.
-	for x in range(grid_size - 1):
-		_add_road(Vector2i(x, 3), Vector2i(x + 1, 3), "parking", 10)
+	var neighborhood_nodes := _region_nodes(origin, region_size)
+
+	_remove_region_roads(
+		"neighborhood",
+		NEIGHBORHOOD_ROADS_TO_REMOVE,
+		neighborhood_nodes
+	)
+#end build neighborhood
+
+
+# Build the highway inside its 5x5 region.
+# It is mostly a straight route with one optional exit loop.
+# We are deliberately not inventing a lane-changing mechanic yet.
+func _build_highway() -> void:
+	# Entry ramp from the bottom-left edge of the highway region.
+	_add_road(Vector2i(5, 12), Vector2i(5, 11), "ramp", 40, "highway")
+	_add_road(Vector2i(5, 11), Vector2i(5, 10), "ramp", 40, "highway")
+
+	# Main highway spine.
+	_add_road(Vector2i(5, 10), Vector2i(6, 10), "highway", 65, "highway")
+	_add_road(Vector2i(6, 10), Vector2i(7, 10), "highway", 65, "highway")
+	_add_road(Vector2i(7, 10), Vector2i(8, 10), "highway", 65, "highway")
+	_add_road(Vector2i(8, 10), Vector2i(9, 10), "highway", 65, "highway")
+
+	# Optional off-ramp loop creates the highway's small navigation choice.
+	_add_road(Vector2i(7, 10), Vector2i(7, 9), "ramp", 45, "highway")
+	_add_road(Vector2i(7, 9), Vector2i(8, 9), "ramp", 45, "highway")
+	_add_road(Vector2i(8, 9), Vector2i(8, 10), "ramp", 45, "highway")
+#end build highway
+
+
+# Build the full 5x5 downtown grid.
+# No streets are removed. One-way directions are assigned later after the
+# complete world exists so GPS can verify that the trip remains possible.
+func _build_city() -> void:
+	var region := WORLD_CONFIG.get_region("city")
+
+	_add_region_grid(
+		"city",
+		region["origin"],
+		region["size"],
+		"city",
+		30
+	)
+#end build city
+
+
+# Build a compact parking lot inside its own 5x5 region.
+# Four endpoint nodes act as spaces. Two are open each run and two are blocked.
+func _build_parking_lot() -> void:
+	# Entrance lane.
+	_add_road(Vector2i(15, 4), Vector2i(16, 4), "parking", 10, "parking")
+	_add_road(Vector2i(16, 4), Vector2i(17, 4), "parking", 10, "parking")
+
+	# Center travel lane.
+	_add_road(Vector2i(17, 4), Vector2i(17, 5), "parking", 10, "parking")
+	_add_road(Vector2i(17, 5), Vector2i(17, 6), "parking", 10, "parking")
+	_add_road(Vector2i(17, 6), Vector2i(17, 7), "parking", 10, "parking")
+	_add_road(Vector2i(17, 7), Vector2i(17, 8), "parking", 10, "parking")
 
 	# Upper parking aisle.
-	for x in range(grid_size - 1):
-		_add_road(Vector2i(x, 1), Vector2i(x + 1, 1), "parking", 10)
+	_add_road(Vector2i(15, 5), Vector2i(16, 5), "parking", 10, "parking")
+	_add_road(Vector2i(16, 5), Vector2i(17, 5), "parking", 10, "parking")
+	_add_road(Vector2i(17, 5), Vector2i(18, 5), "parking", 10, "parking")
+	_add_road(Vector2i(18, 5), Vector2i(19, 5), "parking", 10, "parking")
+
+	# Lower parking aisle.
+	_add_road(Vector2i(15, 7), Vector2i(16, 7), "parking", 10, "parking")
+	_add_road(Vector2i(16, 7), Vector2i(17, 7), "parking", 10, "parking")
+	_add_road(Vector2i(17, 7), Vector2i(18, 7), "parking", 10, "parking")
+	_add_road(Vector2i(18, 7), Vector2i(19, 7), "parking", 10, "parking")
 
 	parking_slots = [
-		Vector2i(0, 3),
-		Vector2i(4, 3),
-		Vector2i(0, 1),
-		Vector2i(4, 1),
+		Vector2i(15, 5),
+		Vector2i(19, 5),
+		Vector2i(15, 7),
+		Vector2i(19, 7),
 	]
 
-	# Pick two open spaces. GPS prefers the first one, but either open space
-	# completes the final parking map.
+	# Pick two unique open spaces.
 	var first_open_index := rng.randi_range(0, parking_slots.size() - 1)
-	open_parking_slots.append(parking_slots[first_open_index])
-
 	var second_open_index := first_open_index
+
 	while second_open_index == first_open_index:
 		second_open_index = rng.randi_range(0, parking_slots.size() - 1)
-	open_parking_slots.append(parking_slots[second_open_index])
 
+	open_parking_slots = [
+		parking_slots[first_open_index],
+		parking_slots[second_open_index],
+	]
+
+	# GPS chooses one of the open spaces, but parking in either one completes DRIVE.
 	destination_intersection = open_parking_slots[0]
 
 	for slot in parking_slots:
@@ -287,25 +242,74 @@ func _build_parking_map() -> void:
 
 		blocked_parking_slots.append(slot)
 
-		var neighbor := Vector2i(1, slot.y)
-		if slot.x == 4:
-			neighbor = Vector2i(3, slot.y)
+		var aisle_neighbor := Vector2i(16, slot.y)
 
-		var gate_road = _get_road_between(slot, neighbor)
-		if gate_road != null:
-			gate_road["blocked"] = true
+		if slot.x == 19:
+			aisle_neighbor = Vector2i(18, slot.y)
 
-	_collect_intersections_from_roads()
-#end build parking map
+		var blocked_road = _get_road_between(slot, aisle_neighbor)
+
+		if blocked_road != null:
+			blocked_road["blocked"] = true
+#end build parking lot
+
+
+# Physically connect the four regions inside the 20x20 coordinate system.
+# These are normal road objects, not scene transitions.
+func _build_region_connectors() -> void:
+	# Neighborhood exit -> highway entry.
+	_add_road(Vector2i(4, 12), Vector2i(5, 12), "ramp", 35, "highway")
+
+	# Highway exit -> downtown entry.
+	_add_road(Vector2i(9, 10), Vector2i(10, 10), "arterial", 40, "city")
+	_add_road(Vector2i(10, 10), Vector2i(10, 9), "arterial", 40, "city")
+	_add_road(Vector2i(10, 9), Vector2i(10, 8), "arterial", 40, "city")
+
+	# Downtown exit -> parking lot entrance.
+	_add_road(Vector2i(14, 4), Vector2i(15, 4), "parking", 10, "parking")
+#end build region connectors
+
+
+# Add a normal square grid inside one region.
+func _add_region_grid(
+	region_id: String,
+	origin: Vector2i,
+	region_size: Vector2i,
+	road_type: String,
+	speed_limit: int
+) -> void:
+	for local_y in range(region_size.y):
+		for local_x in range(region_size.x):
+			var point := origin + Vector2i(local_x, local_y)
+
+			if local_x < region_size.x - 1:
+				_add_road(
+					point,
+					point + Vector2i.RIGHT,
+					road_type,
+					speed_limit,
+					region_id
+				)
+
+			if local_y < region_size.y - 1:
+				_add_road(
+					point,
+					point + Vector2i.DOWN,
+					road_type,
+					speed_limit,
+					region_id
+				)
+#end add region grid
 
 
 # Add one road dictionary.
-# Keeping road creation in one place makes future road properties easy to add.
+# Every road carries the same small set of readable properties.
 func _add_road(
 	from_intersection: Vector2i,
 	to_intersection: Vector2i,
 	road_type: String,
 	speed_limit: int,
+	region_id: String,
 	one_way: bool = false,
 	blocked: bool = false
 ) -> void:
@@ -314,14 +318,110 @@ func _add_road(
 		"to": to_intersection,
 		"road_type": road_type,
 		"speed_limit": speed_limit,
+		"region": region_id,
 		"one_way": one_way,
 		"blocked": blocked,
 	})
 #end add road
 
 
-# Custom highway/parking maps do not use every point in the 5x5 grid.
-# Build their intersection list directly from the roads they actually contain.
+# Return all intersection coordinates inside a rectangular region.
+func _region_nodes(
+	origin: Vector2i,
+	region_size: Vector2i
+) -> Array[Vector2i]:
+	var nodes: Array[Vector2i] = []
+
+	for y in range(region_size.y):
+		for x in range(region_size.x):
+			nodes.append(origin + Vector2i(x, y))
+
+	return nodes
+#end region nodes
+
+
+# Safely remove roads only from one region.
+# A removal is kept only if all 25 region nodes remain connected.
+func _remove_region_roads(
+	region_id: String,
+	target_count: int,
+	region_nodes: Array[Vector2i]
+) -> void:
+	var removed_count := 0
+	var attempts := 0
+
+	while removed_count < target_count and attempts < 3000:
+		attempts += 1
+
+		var candidate_indices: Array[int] = []
+
+		for index in range(roads.size()):
+			if str(roads[index].get("region", "")) == region_id:
+				candidate_indices.append(index)
+
+		if candidate_indices.is_empty():
+			break
+
+		var road_index := candidate_indices[
+			rng.randi_range(0, candidate_indices.size() - 1)
+		]
+		var removed_road = roads[road_index]
+
+		roads.remove_at(road_index)
+
+		if _region_is_connected(region_id, region_nodes):
+			removed_count += 1
+		else:
+			roads.insert(road_index, removed_road)
+
+	print(region_id, " roads removed: ", removed_count, "/", target_count)
+#end remove region roads
+
+
+# Check physical connectivity inside one named region.
+func _region_is_connected(
+	region_id: String,
+	region_nodes: Array[Vector2i]
+) -> bool:
+	if region_nodes.is_empty():
+		return true
+
+	var visited: Dictionary = {}
+	var queue: Array[Vector2i] = [region_nodes[0]]
+	visited[region_nodes[0]] = true
+
+	while not queue.is_empty():
+		var current: Vector2i = queue.pop_front()
+
+		for road in roads:
+			if str(road.get("region", "")) != region_id:
+				continue
+
+			var a: Vector2i = _road_start(road)
+			var b: Vector2i = _road_end(road)
+			var neighbor := Vector2i.ZERO
+			var found_neighbor := false
+
+			if a == current:
+				neighbor = b
+				found_neighbor = true
+			elif b == current:
+				neighbor = a
+				found_neighbor = true
+
+			if (
+				found_neighbor
+				and region_nodes.has(neighbor)
+				and not visited.has(neighbor)
+			):
+				visited[neighbor] = true
+				queue.append(neighbor)
+
+	return visited.size() == region_nodes.size()
+#end region is connected
+
+
+# Collect unique road endpoints after the world graph is generated.
 func _collect_intersections_from_roads() -> void:
 	intersections.clear()
 	var seen: Dictionary = {}
@@ -335,71 +435,100 @@ func _collect_intersections_from_roads() -> void:
 #end collect intersections
 
 
-# Build the physical spacing between rows/columns.
-# Neighborhood roads are longer, highway stretches are longest,
-# city blocks are short, and parking spaces are compact.
-func _build_block_lengths() -> void:
-	column_lengths.clear()
-	row_lengths.clear()
-
-	var minimum_length := int(current_map.get("block_min", 1))
-	var maximum_length := int(current_map.get("block_max", minimum_length))
-
-	for x in range(grid_size - 1):
-		column_lengths.append(
-			float(rng.randi_range(minimum_length, maximum_length))
-		)
-
-	for y in range(grid_size - 1):
-		row_lengths.append(
-			float(rng.randi_range(minimum_length, maximum_length))
-		)
-#end build block lengths
-
-
-# Turn some CITY roads into one-way streets.
-# A candidate is only kept if there is still a legal GPS route from the city's
-# start to its destination.
+# Convert some downtown roads to one-way streets.
+# Each candidate is reverted if it would destroy the legal GPS path from Darren's
+# house to the final parking space.
 func _add_city_one_ways(target_count: int) -> void:
 	var added := 0
 	var attempts := 0
 
-	while added < target_count and attempts < 300:
+	while added < target_count and attempts < 500:
 		attempts += 1
 
-		var road_index := rng.randi_range(0, roads.size() - 1)
-		var road: Dictionary = roads[road_index]
+		var city_indices: Array[int] = []
 
-		if bool(road.get("one_way", false)):
-			continue
+		for index in range(roads.size()):
+			var road = roads[index]
+
+			if (
+				str(road.get("region", "")) == "city"
+				and str(road.get("road_type", "")) == "city"
+				and not bool(road.get("one_way", false))
+			):
+				city_indices.append(index)
+
+		if city_indices.is_empty():
+			break
+
+		var road_index := city_indices[
+			rng.randi_range(0, city_indices.size() - 1)
+		]
+		var road: Dictionary = roads[road_index]
 
 		var original_from: Vector2i = _road_start(road)
 		var original_to: Vector2i = _road_end(road)
 
-		# Randomize the legal direction.
+		# Randomize which direction is legal.
 		if rng.randi_range(0, 1) == 1:
 			road["from"] = original_to
 			road["to"] = original_from
 
 		road["one_way"] = true
 
-		if _find_shortest_route(start_intersection, destination_intersection).is_empty():
+		if _find_shortest_route(
+			start_intersection,
+			destination_intersection
+		).is_empty():
 			road["from"] = original_from
 			road["to"] = original_to
 			road["one_way"] = false
 		else:
 			added += 1
+
+	print("City one-way roads: ", added)
 #end add city one ways
 
 
+# Put Darren at the house and aim him down the first GPS road.
+func _reset_drive_position() -> void:
+	current_intersection = start_intersection
+	target_intersection = start_intersection
+	camera_position = Vector2(start_intersection)
+	is_driving = false
+	drive_complete = false
+	wrong_turns = 0
+	wrong_way_tickets = 0
+	drive_time = 0.0
+	current_segment_off_route = false
+	current_segment_wrong_way = false
+
+	shortest_route = _find_shortest_route(
+		current_intersection,
+		destination_intersection
+	)
+
+	if shortest_route.size() >= 2:
+		heading = shortest_route[1] - shortest_route[0]
+	else:
+		heading = Vector2i.UP
+
+	view_rotation = _rotation_for_heading(heading)
+	target_view_rotation = view_rotation
+
+	_update_region_label("neighborhood", 25)
+	status_label.text = "PRESS GO"
+
+	forward_button.disabled = false
+	left_button.disabled = false
+	right_button.disabled = false
+
+	queue_redraw()
+#end reset drive position
+
+
 # Runs every frame.
-# 1. smoothly rotate the map when Darren turns,
-# 2. slide the map underneath the fixed car,
-# 3. detect intersections,
-# 4. continue straight / take the queued turn,
-# 5. transition to the next map at each destination.
+# The car stays visually fixed while the continuous 20x20 world slides/rotates below it.
 func _process(delta: float) -> void:
-	# Smoothly rotate the world underneath the stationary car.
 	if not is_equal_approx(view_rotation, target_view_rotation):
 		view_rotation = lerp_angle(
 			view_rotation,
@@ -411,48 +540,34 @@ func _process(delta: float) -> void:
 		drive_time += delta
 
 		var target_position := Vector2(target_intersection)
+		var current_road = _get_road_between(
+			current_intersection,
+			target_intersection
+		)
 
-		# Keep visual speed consistent across long/short blocks,
-		# then scale it using the road's speed limit.
-		var segment_length := _segment_length_units(
-			current_intersection,
-			target_intersection
-		)
-		var speed_limit := _segment_speed_limit(
-			current_intersection,
-			target_intersection
-		)
-		var speed_factor := float(speed_limit) / 25.0
-		var grid_speed := (
-			drive_speed
-			* speed_factor
-			/ maxf(segment_length, 0.001)
-		)
+		var movement_speed := _movement_speed_for_road(current_road)
 
 		camera_position = camera_position.move_toward(
 			target_position,
-			grid_speed * delta
+			movement_speed * delta
 		)
 
-		# Darren has reached the intersection.
 		if camera_position.is_equal_approx(target_position):
 			camera_position = target_position
 			current_intersection = target_intersection
+
+			# Either open parking space is a valid finish.
+			if open_parking_slots.has(current_intersection):
+				_finish_drive()
+				queue_redraw()
+				return
 
 			shortest_route = _find_shortest_route(
 				current_intersection,
 				destination_intersection
 			)
 
-			# Reaching the map destination moves the trip into the next environment.
-			if _destination_reached():
-				_finish_current_map()
-				queue_redraw()
-				return
-
-			# Heading can change while Darren is between intersections.
-			# That preserves the fun accidental "queue/drift the turn" behavior:
-			# be facing the road you want when you reach the intersection.
+			# Keep travelling in whichever direction the player has queued.
 			var next_intersection := current_intersection + heading
 
 			if not _commit_to_segment(next_intersection):
@@ -465,8 +580,9 @@ func _process(delta: float) -> void:
 #end process
 
 
-# Commit Darren to the next road segment.
-# This is shared by GO and automatic intersection-to-intersection driving.
+# Commit Darren to one road.
+# The player can physically drive against a one-way street, but it is marked
+# as a wrong-way ticket and the GPS never recommends it.
 func _commit_to_segment(next_intersection: Vector2i) -> bool:
 	if not intersections.has(next_intersection):
 		return false
@@ -477,7 +593,7 @@ func _commit_to_segment(next_intersection: Vector2i) -> bool:
 		return false
 
 	if bool(road.get("blocked", false)):
-		status_label.text = "BLOCKED"
+		status_label.text = "BLOCKED SPACE"
 		return false
 
 	current_segment_wrong_way = _is_wrong_way(
@@ -502,288 +618,101 @@ func _commit_to_segment(next_intersection: Vector2i) -> bool:
 
 	target_intersection = next_intersection
 
-	# Once Darren commits to a road, the GPS immediately shows the route from
-	# the intersection he is approaching so the player can prepare the next turn.
+	# GPS reroutes from the intersection Darren is approaching.
 	shortest_route = _find_shortest_route(
 		target_intersection,
 		destination_intersection
 	)
 
+	_update_region_label(
+		str(road.get("region", "neighborhood")),
+		int(road.get("speed_limit", 25))
+	)
 	_update_status_label()
+
 	return true
 #end commit segment
 
 
-# Complete one map and either load the next map or finish DRIVE.
-func _finish_current_map() -> void:
+# Finish DRIVE when Darren reaches either open parking space.
+func _finish_drive() -> void:
 	is_driving = false
+	drive_complete = true
 	current_segment_off_route = false
 	current_segment_wrong_way = false
 
-	print("MAP COMPLETE: ", str(current_map.get("name", "MAP")))
-
-	if current_map_index < map_configs.size() - 1:
-		_load_map(current_map_index + 1)
-		return
-
-	drive_complete = true
 	forward_button.disabled = true
 	left_button.disabled = true
 	right_button.disabled = true
 
-	map_label.text = "4/4  PARKING LOT"
-	status_label.text = "PARKED  •  %.1f SEC" % drive_time
+	map_label.text = "PARKED"
+	status_label.text = "%.1f SEC  •  %d WRONG TURNS" % [
+		drive_time,
+		wrong_turns,
+	]
 
 	print("DRIVE COMPLETE")
 	print("Drive time: ", snappedf(drive_time, 0.1), " seconds")
 	print("Wrong turns: ", wrong_turns)
 	print("Wrong-way tickets: ", wrong_way_tickets)
-#end finish current map
+#end finish drive
 
 
-# Parking has two open spaces. Either one counts as a successful park.
-# All other maps have one normal destination intersection.
-func _destination_reached() -> bool:
-	if str(current_map.get("id", "")) == "parking":
-		return open_parking_slots.has(current_intersection)
+#movement controls
+# GO only starts/restarts movement. Once Darren is rolling, LEFT/RIGHT are the
+# actual driving verb.
+func _move_forward() -> void:
+	if drive_complete or is_driving:
+		return
 
-	return current_intersection == destination_intersection
-#end destination reached
+	var next_intersection := current_intersection + heading
 
-
-# Convert a grid position into a physical position in the generated map.
-# Grid coordinates can contain decimals because camera_position moves smoothly.
-func _grid_to_world(grid_position: Vector2) -> Vector2:
-	var world_x := 0.0
-	var world_y := 0.0
-
-	var safe_x := clampf(
-		grid_position.x,
-		0.0,
-		float(grid_size - 1)
-	)
-	var safe_y := clampf(
-		grid_position.y,
-		0.0,
-		float(grid_size - 1)
-	)
-
-	var whole_x := int(floor(safe_x))
-
-	for x in range(mini(whole_x, column_lengths.size())):
-		world_x += column_lengths[x] * block_size
-
-	if whole_x < column_lengths.size():
-		var x_fraction := safe_x - float(whole_x)
-		world_x += (
-			column_lengths[whole_x]
-			* block_size
-			* x_fraction
-		)
-
-	var whole_y := int(floor(safe_y))
-
-	for y in range(mini(whole_y, row_lengths.size())):
-		world_y += row_lengths[y] * block_size
-
-	if whole_y < row_lengths.size():
-		var y_fraction := safe_y - float(whole_y)
-		world_y += (
-			row_lengths[whole_y]
-			* block_size
-			* y_fraction
-		)
-
-	return Vector2(world_x, world_y)
-#end grid to world
+	if _commit_to_segment(next_intersection):
+		is_driving = true
+#end move forward
 
 
-# Convert a city intersection into an on-screen position.
-# The car stays fixed; the generated map moves/rotates underneath it.
-func _city_to_screen(intersection: Vector2i) -> Vector2:
-	var intersection_world := _grid_to_world(Vector2(intersection))
-	var camera_world := _grid_to_world(camera_position)
+# Queue a left turn and rotate the world under the fixed car.
+func _turn_left() -> void:
+	if drive_complete:
+		return
 
-	var world_offset := intersection_world - camera_world
-	var rotated_offset := world_offset.rotated(view_rotation)
-
-	return size * 0.5 + rotated_offset
-#end city to screen
+	heading = Vector2i(heading.y, -heading.x)
+	target_view_rotation += PI / 2.0
+#end turn left
 
 
-# Draw the current map.
-# This is still intentionally simple debug art; the graph/gameplay is the part
-# being proved before production road/building assets are added.
-func _draw() -> void:
-	for road in roads:
-		var road_start := _city_to_screen(_road_start(road))
-		var road_end := _city_to_screen(_road_end(road))
-		var road_type := str(road.get("road_type", "neighborhood"))
+# Queue a right turn and rotate the world under the fixed car.
+func _turn_right() -> void:
+	if drive_complete:
+		return
 
-		var current_road_color := Color(0.20, 0.20, 0.20)
-		var current_road_width := road_width
-
-		match road_type:
-			"highway":
-				current_road_color = Color(0.16, 0.17, 0.19)
-				current_road_width = road_width * 1.35
-			"ramp":
-				current_road_color = Color(0.20, 0.21, 0.23)
-				current_road_width = road_width * 1.05
-			"city":
-				current_road_color = Color(0.24, 0.24, 0.24)
-				current_road_width = road_width * 0.85
-			"parking":
-				current_road_color = Color(0.30, 0.30, 0.30)
-				current_road_width = road_width * 0.60
-
-		if bool(road.get("blocked", false)):
-			current_road_color = Color(0.36, 0.12, 0.12)
-			current_road_width *= 0.65
-
-		draw_line(
-			road_start,
-			road_end,
-			current_road_color,
-			current_road_width
-		)
-
-	# Small intersection markers remain useful while the map generator is debug art.
-	for intersection in intersections:
-		var point := _city_to_screen(intersection)
-		draw_circle(point, 5.0, Color.RED)
-
-	# Parking spaces are simple outlines for now.
-	if str(current_map.get("id", "")) == "parking":
-		for slot in parking_slots:
-			var slot_point := _city_to_screen(slot)
-			var slot_color := Color(0.35, 0.35, 0.35)
-
-			if blocked_parking_slots.has(slot):
-				slot_color = Color(0.55, 0.16, 0.16)
-			elif slot == destination_intersection:
-				slot_color = Color(0.18, 0.42, 0.95)
-			elif open_parking_slots.has(slot):
-				slot_color = Color(0.20, 0.55, 0.28)
-
-			draw_rect(
-				Rect2(slot_point - Vector2(34, 52), Vector2(68, 104)),
-				slot_color,
-				false,
-				7.0
-			)
-
-	# Draw the road Darren is physically travelling on.
-	# Yellow = correct route.
-	# Orange = missed GPS turn.
-	# Red = wrong way on a one-way street.
-	if is_driving:
-		var car_point := size * 0.5
-		var next_point := _city_to_screen(target_intersection)
-		var current_route_color := Color.YELLOW
-
-		if current_segment_off_route:
-			current_route_color = Color(1.0, 0.35, 0.08)
-
-		if current_segment_wrong_way:
-			current_route_color = Color(0.90, 0.08, 0.08)
-
-		draw_line(
-			car_point,
-			next_point,
-			current_route_color,
-			12.0
-		)
-
-	# Corrected GPS route ahead always stays yellow.
-	for i in range(shortest_route.size() - 1):
-		var a := _city_to_screen(shortest_route[i])
-		var b := _city_to_screen(shortest_route[i + 1])
-
-		draw_line(
-			a,
-			b,
-			Color.YELLOW,
-			12.0
-		)
-
-	# Normal map destination.
-	if str(current_map.get("id", "")) != "parking":
-		var destination_point := _city_to_screen(destination_intersection)
-		draw_circle(destination_point, 14.0, Color.BLUE)
-#end draw
+	heading = Vector2i(-heading.y, heading.x)
+	target_view_rotation -= PI / 2.0
+#end turn right
 
 
-# Safety check for procedural generation.
-# obey_access = false checks physical connectivity only.
-# obey_access = true also respects one-way/blocked roads.
-func _city_is_connected(obey_access: bool = false) -> bool:
-	if intersections.is_empty():
-		return true
+# Desktop controls mirror the phone buttons.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not event is InputEventKey:
+		return
 
-	var visited: Dictionary = {}
-	var queue: Array[Vector2i] = []
+	if not event.pressed or event.echo:
+		return
 
-	var first_intersection: Vector2i = intersections[0]
-	queue.append(first_intersection)
-	visited[first_intersection] = true
-
-	while not queue.is_empty():
-		var current: Vector2i = queue.pop_front()
-
-		for road in roads:
-			if obey_access and bool(road.get("blocked", false)):
-				continue
-
-			var a: Vector2i = _road_start(road)
-			var b: Vector2i = _road_end(road)
-
-			var neighbors: Array[Vector2i] = []
-
-			if bool(road.get("one_way", false)) and obey_access:
-				if a == current:
-					neighbors.append(b)
-			else:
-				if a == current:
-					neighbors.append(b)
-				elif b == current:
-					neighbors.append(a)
-
-			for neighbor in neighbors:
-				if not visited.has(neighbor):
-					visited[neighbor] = true
-					queue.append(neighbor)
-
-	return visited.size() == intersections.size()
-#end city is connected
+	match event.keycode:
+		KEY_A:
+			_turn_left()
+		KEY_D:
+			_turn_right()
+		KEY_W:
+			_move_forward()
+#end unhandled key input
 
 
-# Procedurally remove roads to make the neighborhood sparse.
-# A road removal is only kept if every grid intersection stays physically connected.
-func _remove_random_roads() -> void:
-	var removed_count := 0
-	var attempts := 0
-
-	while removed_count < roads_to_remove and attempts < 2000:
-		attempts += 1
-
-		var road_index := rng.randi_range(0, roads.size() - 1)
-		var removed_road = roads[road_index]
-
-		roads.remove_at(road_index)
-
-		if _city_is_connected(false):
-			removed_count += 1
-		else:
-			roads.insert(road_index, removed_road)
-
-	print("Roads removed: ", removed_count, "/", roads_to_remove)
-#end remove random roads
-
-
-# GPS / pathfinding.
-# Uses breadth-first search because the current GPS optimizes for fewest road
-# segments. One-way and blocked roads are respected by the GPS.
+#pathfinding
+# GPS runs across the same master graph shown by the minimap.
+# One-way and blocked roads are respected.
 func _find_shortest_route(
 	start_node: Vector2i,
 	end_node: Vector2i
@@ -820,9 +749,7 @@ func _find_shortest_route(
 #end find shortest route
 
 
-# Return every legal GPS neighbor from one intersection.
-# The PLAYER can still physically drive the wrong way on a one-way street;
-# this restriction is for GPS/pathfinding only.
+# Return every road Darren's GPS may legally use from one intersection.
 func _legal_neighbors_from(current: Vector2i) -> Array[Vector2i]:
 	var neighbors: Array[Vector2i] = []
 
@@ -846,75 +773,488 @@ func _legal_neighbors_from(current: Vector2i) -> Array[Vector2i]:
 #end legal neighbors
 
 
-# Start the drive.
-# GO is only a start/restart control; once moving, LEFT/RIGHT are the real verb.
-func _move_forward() -> void:
-	if drive_complete or is_driving:
-		return
-
-	var next_intersection := current_intersection + heading
-
-	if _commit_to_segment(next_intersection):
-		is_driving = true
-#end move forward
-
-
-# Turn Darren's logical heading left.
-# The car sprite stays still; target_view_rotation rotates the map underneath it.
-func _turn_left() -> void:
-	if drive_complete:
-		return
-
-	heading = Vector2i(heading.y, -heading.x)
-	target_view_rotation += PI / 2.0
-#end turn left
+#drawing
+# Draw the close main view first, then draw a north-up minimap of the same world.
+func _draw() -> void:
+	_draw_main_ground()
+	_draw_region_surfaces()
+	_draw_world_roads()
+	_draw_main_gps()
+	_draw_parking_spaces()
+	_draw_destination_marker()
+	_draw_minimap()
+#end draw
 
 
-# Turn Darren's logical heading right.
-# The car sprite stays still; target_view_rotation rotates the map underneath it.
-func _turn_right() -> void:
-	if drive_complete:
-		return
-
-	heading = Vector2i(-heading.y, heading.x)
-	target_view_rotation -= PI / 2.0
-#end turn right
+# Neutral ground outside the four authored regions.
+func _draw_main_ground() -> void:
+	draw_rect(
+		Rect2(Vector2.ZERO, size),
+		Color(0.69, 0.72, 0.62)
+	)
+#end draw main ground
 
 
-# Desktop test controls.
-# A = left, D = right, W = start/restart.
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not event is InputEventKey:
-		return
+# Give the spaces between roads enough texture that motion and location are readable.
+# These are simple procedural prototype surfaces, not final art assets.
+func _draw_region_surfaces() -> void:
+	for region_id in region_ids:
+		var region := WORLD_CONFIG.get_region(region_id)
+		var origin: Vector2i = region["origin"]
+		var region_size: Vector2i = region["size"]
 
-	if not event.pressed or event.echo:
-		return
+		for y in range(region_size.y - 1):
+			for x in range(region_size.x - 1):
+				var cell := origin + Vector2i(x, y)
+				_draw_region_cell(region_id, cell)
+#end draw region surfaces
 
-	match event.keycode:
-		KEY_A:
-			_turn_left()
-		KEY_D:
-			_turn_right()
-		KEY_W:
-			_move_forward()
-#end unhandled key input
+
+# Draw one textured block between four intersection coordinates.
+func _draw_region_cell(region_id: String, cell: Vector2i) -> void:
+	var fill_color := Color(0.67, 0.72, 0.58)
+
+	match region_id:
+		"highway":
+			fill_color = Color(0.57, 0.66, 0.48)
+		"city":
+			fill_color = Color(0.58, 0.59, 0.58)
+		"parking":
+			fill_color = Color(0.25, 0.26, 0.26)
+
+	_draw_world_rect(
+		Rect2(Vector2(cell), Vector2.ONE),
+		fill_color
+	)
+
+	# Neighborhood: simple house + driveway footprints.
+	if region_id == "neighborhood":
+		_draw_world_rect(
+			Rect2(
+				Vector2(cell) + Vector2(0.24, 0.22),
+				Vector2(0.48, 0.34)
+			),
+			Color(0.66, 0.50, 0.38)
+		)
+
+		_draw_world_rect(
+			Rect2(
+				Vector2(cell) + Vector2(0.44, 0.56),
+				Vector2(0.10, 0.34)
+			),
+			Color(0.55, 0.55, 0.51)
+		)
+
+	# Highway: alternating grass bands provide obvious motion reference.
+	elif region_id == "highway":
+		for stripe in range(3):
+			var stripe_x := 0.10 + float(stripe) * 0.30
+
+			_draw_world_rect(
+				Rect2(
+					Vector2(cell) + Vector2(stripe_x, 0.08),
+					Vector2(0.10, 0.84)
+				),
+				Color(0.53, 0.62, 0.44)
+			)
+
+	# City: large building footprints make blocks read immediately.
+	elif region_id == "city":
+		_draw_world_rect(
+			Rect2(
+				Vector2(cell) + Vector2(0.15, 0.14),
+				Vector2(0.70, 0.72)
+			),
+			Color(0.38, 0.40, 0.42)
+		)
+
+		_draw_world_rect(
+			Rect2(
+				Vector2(cell) + Vector2(0.28, 0.26),
+				Vector2(0.18, 0.16)
+			),
+			Color(0.48, 0.50, 0.52)
+		)
+
+	# Parking: subtle painted divider bands.
+	elif region_id == "parking":
+		for line_index in range(1, 4):
+			var line_x := float(line_index) * 0.25
+			_draw_world_line(
+				Vector2(cell) + Vector2(line_x, 0.12),
+				Vector2(cell) + Vector2(line_x, 0.88),
+				Color(0.55, 0.55, 0.50),
+				1.5
+			)
+#end draw region cell
+
+
+# Draw every road in the master graph, including simple road markings.
+func _draw_world_roads() -> void:
+	for road in roads:
+		var road_start := _world_to_main(Vector2(_road_start(road)))
+		var road_end := _world_to_main(Vector2(_road_end(road)))
+		var road_type := str(road.get("road_type", "neighborhood"))
+
+		var current_width := road_width
+		var road_color := Color(0.20, 0.21, 0.21)
+
+		match road_type:
+			"highway":
+				current_width = road_width * 1.25
+				road_color = Color(0.15, 0.16, 0.17)
+			"ramp", "arterial":
+				current_width = road_width * 1.05
+				road_color = Color(0.18, 0.19, 0.20)
+			"city":
+				current_width = road_width * 0.92
+				road_color = Color(0.22, 0.23, 0.24)
+			"parking":
+				current_width = road_width * 0.70
+				road_color = Color(0.27, 0.28, 0.28)
+
+		draw_line(
+			road_start,
+			road_end,
+			road_color,
+			current_width,
+			true
+		)
+
+		# Simple center markings make speed/direction easier to read.
+		if road_type == "highway":
+			draw_dashed_line(
+				road_start,
+				road_end,
+				Color(0.88, 0.88, 0.82),
+				2.0,
+				14.0,
+				true
+			)
+		elif road_type != "parking":
+			draw_dashed_line(
+				road_start,
+				road_end,
+				Color(0.78, 0.67, 0.24),
+				2.0,
+				12.0,
+				true
+			)
+
+		if bool(road.get("one_way", false)):
+			_draw_one_way_arrow(road_start, road_end)
+
+		if bool(road.get("blocked", false)):
+			_draw_blocked_gate(road_start, road_end)
+#end draw world roads
+
+
+# Draw a small directional arrow on one-way city roads.
+func _draw_one_way_arrow(road_start: Vector2, road_end: Vector2) -> void:
+	var direction := (road_end - road_start).normalized()
+	var side := Vector2(-direction.y, direction.x)
+	var midpoint := road_start.lerp(road_end, 0.5)
+	var tip := midpoint + direction * 9.0
+
+	var arrow := PackedVector2Array([
+		tip,
+		midpoint - direction * 7.0 + side * 6.0,
+		midpoint - direction * 7.0 - side * 6.0,
+	])
+
+	draw_colored_polygon(
+		arrow,
+		Color(0.92, 0.92, 0.88)
+	)
+#end draw one way arrow
+
+
+# Draw a red parking gate across a blocked parking-space connection.
+func _draw_blocked_gate(road_start: Vector2, road_end: Vector2) -> void:
+	var direction := (road_end - road_start).normalized()
+	var side := Vector2(-direction.y, direction.x)
+	var gate_center := road_start.lerp(road_end, 0.22)
+
+	draw_line(
+		gate_center - side * 18.0,
+		gate_center + side * 18.0,
+		Color(0.78, 0.10, 0.08),
+		5.0,
+		true
+	)
+#end draw blocked gate
+
+
+# Main-view GPS.
+# Current committed road is colored independently from the corrected route ahead.
+func _draw_main_gps() -> void:
+	if is_driving:
+		var car_point := size * 0.5
+		var next_point := _world_to_main(Vector2(target_intersection))
+		var current_route_color := Color(0.95, 0.78, 0.08)
+
+		if current_segment_off_route:
+			current_route_color = Color(0.95, 0.32, 0.06)
+
+		if current_segment_wrong_way:
+			current_route_color = Color(0.86, 0.07, 0.06)
+
+		draw_line(
+			car_point,
+			next_point,
+			current_route_color,
+			7.0,
+			true
+		)
+
+	for index in range(shortest_route.size() - 1):
+		draw_line(
+			_world_to_main(Vector2(shortest_route[index])),
+			_world_to_main(Vector2(shortest_route[index + 1])),
+			Color(0.95, 0.78, 0.08),
+			7.0,
+			true
+		)
+#end draw main gps
+
+
+# Draw parking spaces clearly in the close view.
+func _draw_parking_spaces() -> void:
+	for slot in parking_slots:
+		var slot_point := _world_to_main(Vector2(slot))
+		var slot_color := Color(0.74, 0.74, 0.68)
+
+		if blocked_parking_slots.has(slot):
+			slot_color = Color(0.58, 0.18, 0.16)
+		elif slot == destination_intersection:
+			slot_color = Color(0.15, 0.42, 0.90)
+		elif open_parking_slots.has(slot):
+			slot_color = Color(0.22, 0.60, 0.30)
+
+		draw_rect(
+			Rect2(
+				slot_point - Vector2(18, 28),
+				Vector2(36, 56)
+			),
+			slot_color,
+			false,
+			4.0
+		)
+#end draw parking spaces
+
+
+# Final destination marker remains visible in the close view.
+func _draw_destination_marker() -> void:
+	var destination_point := _world_to_main(
+		Vector2(destination_intersection)
+	)
+
+	draw_circle(
+		destination_point,
+		8.0,
+		Color(0.13, 0.38, 0.92)
+	)
+#end draw destination marker
+
+
+# Draw the entire 20x20 master world in the top-right corner.
+# This is the exact same road/route data as the main view, just north-up and scaled down.
+func _draw_minimap() -> void:
+	var map_rect := _minimap_rect()
+
+	draw_rect(
+		map_rect,
+		Color(0.08, 0.09, 0.09, 0.88),
+		true
+	)
+	draw_rect(
+		map_rect,
+		Color(0.82, 0.82, 0.78),
+		false,
+		2.0
+	)
+
+	# Region footprints help the player understand the shape of the whole trip.
+	for region_id in region_ids:
+		var region := WORLD_CONFIG.get_region(region_id)
+		var origin: Vector2i = region["origin"]
+		var region_size: Vector2i = region["size"]
+
+		var region_start := _world_to_minimap(Vector2(origin))
+		var region_end := _world_to_minimap(
+			Vector2(origin + region_size - Vector2i.ONE)
+		)
+
+		var region_color := Color(0.28, 0.34, 0.27, 0.55)
+
+		match region_id:
+			"highway":
+				region_color = Color(0.24, 0.30, 0.22, 0.55)
+			"city":
+				region_color = Color(0.34, 0.34, 0.36, 0.55)
+			"parking":
+				region_color = Color(0.22, 0.23, 0.24, 0.70)
+
+		draw_rect(
+			Rect2(
+				region_start,
+				region_end - region_start
+			),
+			region_color,
+			true
+		)
+
+	# Whole road graph.
+	for road in roads:
+		var line_color := Color(0.72, 0.72, 0.68)
+
+		if bool(road.get("blocked", false)):
+			line_color = Color(0.62, 0.18, 0.16)
+
+		draw_line(
+			_world_to_minimap(Vector2(_road_start(road))),
+			_world_to_minimap(Vector2(_road_end(road))),
+			line_color,
+			1.5,
+			true
+		)
+
+	# Current committed segment.
+	if is_driving:
+		var current_color := Color(0.98, 0.78, 0.06)
+
+		if current_segment_off_route:
+			current_color = Color(0.98, 0.34, 0.05)
+
+		if current_segment_wrong_way:
+			current_color = Color(0.90, 0.06, 0.05)
+
+		draw_line(
+			_world_to_minimap(camera_position),
+			_world_to_minimap(Vector2(target_intersection)),
+			current_color,
+			3.0,
+			true
+		)
+
+	# Corrected whole-trip GPS route.
+	for index in range(shortest_route.size() - 1):
+		draw_line(
+			_world_to_minimap(Vector2(shortest_route[index])),
+			_world_to_minimap(Vector2(shortest_route[index + 1])),
+			Color(0.98, 0.78, 0.06),
+			2.5,
+			true
+		)
+
+	# Darren + destination.
+	draw_circle(
+		_world_to_minimap(camera_position),
+		4.0,
+		Color(0.16, 0.88, 0.46)
+	)
+	draw_circle(
+		_world_to_minimap(Vector2(destination_intersection)),
+		4.0,
+		Color(0.16, 0.42, 0.98)
+	)
+#end draw minimap
+
+
+#drawing helpers
+# Convert any world-grid point to the close rotating main view.
+func _world_to_main(world_point: Vector2) -> Vector2:
+	var grid_offset := world_point - camera_position
+	var pixel_offset := grid_offset * block_size
+	var rotated_offset := pixel_offset.rotated(view_rotation)
+
+	return size * 0.5 + rotated_offset
+#end world to main
+
+
+# Draw a rectangle defined in grid coordinates so it rotates with the world.
+func _draw_world_rect(world_rect: Rect2, color: Color) -> void:
+	var top_left := _world_to_main(world_rect.position)
+	var top_right := _world_to_main(
+		world_rect.position + Vector2(world_rect.size.x, 0.0)
+	)
+	var bottom_right := _world_to_main(
+		world_rect.position + world_rect.size
+	)
+	var bottom_left := _world_to_main(
+		world_rect.position + Vector2(0.0, world_rect.size.y)
+	)
+
+	draw_colored_polygon(
+		PackedVector2Array([
+			top_left,
+			top_right,
+			bottom_right,
+			bottom_left,
+		]),
+		color
+	)
+#end draw world rect
+
+
+# Draw a line whose endpoints are written in world-grid coordinates.
+func _draw_world_line(
+	world_start: Vector2,
+	world_end: Vector2,
+	color: Color,
+	width: float
+) -> void:
+	draw_line(
+		_world_to_main(world_start),
+		_world_to_main(world_end),
+		color,
+		width,
+		true
+	)
+#end draw world line
+
+
+# Minimap rectangle.
+func _minimap_rect() -> Rect2:
+	return Rect2(
+		Vector2(size.x - minimap_size - 10.0, 10.0),
+		Vector2(minimap_size, minimap_size)
+	)
+#end minimap rect
+
+
+# Convert a world-grid position into the north-up minimap.
+func _world_to_minimap(world_point: Vector2) -> Vector2:
+	var map_rect := _minimap_rect()
+	var padding := 8.0
+	var usable_size := minimap_size - padding * 2.0
+	var scale := usable_size / float(WORLD_SIZE - 1)
+
+	return (
+		map_rect.position
+		+ Vector2(padding, padding)
+		+ world_point * scale
+	)
+#end world to minimap
 
 
 #ui helpers
-# Show where the player is in the four-part trip.
-func _update_map_label() -> void:
-	var map_name := str(current_map.get("name", "MAP"))
-	var speed_limit := int(current_map.get("speed_limit", 25))
+# Label the environment of the road Darren is currently travelling.
+func _update_region_label(
+	region_id: String,
+	speed_limit: int
+) -> void:
+	var region := WORLD_CONFIG.get_region(region_id)
+	var region_name := str(region.get("name", region_id.to_upper()))
 
-	map_label.text = "%d/4  %s  •  %d MPH" % [
-		current_map_index + 1,
-		map_name,
+	map_label.text = "%s  •  %d MPH" % [
+		region_name,
 		speed_limit,
 	]
-#end update map label
+#end update region label
 
 
-# Keep missed-turn feedback readable without adding more controls.
+# Keep rerouting feedback readable without another gameplay mechanic.
 func _update_status_label() -> void:
 	if current_segment_wrong_way:
 		status_label.text = "WRONG WAY  •  TICKET"
@@ -926,39 +1266,24 @@ func _update_status_label() -> void:
 
 
 #helper functions
-# Return the generated physical length of one road segment in road-units.
-func _segment_length_units(
-	from_intersection: Vector2i,
-	to_intersection: Vector2i
-) -> float:
-	if from_intersection.y == to_intersection.y:
-		var column := mini(from_intersection.x, to_intersection.x)
+# Give each road environment a readable gameplay speed.
+# MPH remains thematic UI information; these values are tuned for reaction time.
+func _movement_speed_for_road(road) -> float:
+	if road == null:
+		return 0.48
 
-		if column >= 0 and column < column_lengths.size():
-			return column_lengths[column]
-
-	if from_intersection.x == to_intersection.x:
-		var row := mini(from_intersection.y, to_intersection.y)
-
-		if row >= 0 and row < row_lengths.size():
-			return row_lengths[row]
-
-	return 1.0
-#end segment length
-
-
-# Return the current road's speed limit.
-func _segment_speed_limit(
-	from_intersection: Vector2i,
-	to_intersection: Vector2i
-) -> int:
-	var road = _get_road_between(from_intersection, to_intersection)
-
-	if road != null:
-		return int(road.get("speed_limit", 25))
-
-	return int(current_map.get("speed_limit", 25))
-#end segment speed limit
+	match str(road.get("road_type", "neighborhood")):
+		"highway":
+			return 0.72
+		"ramp", "arterial":
+			return 0.58
+		"city":
+			return 0.52
+		"parking":
+			return 0.36
+		_:
+			return 0.48
+#end movement speed for road
 
 
 # Return the starting intersection stored inside a road.
@@ -973,14 +1298,18 @@ func _road_end(road) -> Vector2i:
 #end road end
 
 
-# Find the actual road object connecting two intersections.
-# Blocked roads are still returned here so other systems can inspect them.
+# Find the actual road connecting two intersections.
+# This ignores legal direction on purpose so the player can physically make
+# a wrong-way choice and receive feedback for it.
 func _get_road_between(a: Vector2i, b: Vector2i):
 	for road in roads:
 		var road_a: Vector2i = _road_start(road)
 		var road_b: Vector2i = _road_end(road)
 
-		if (road_a == a and road_b == b) or (road_a == b and road_b == a):
+		if (
+			(road_a == a and road_b == b)
+			or (road_a == b and road_b == a)
+		):
 			return road
 
 	return null
@@ -988,7 +1317,6 @@ func _get_road_between(a: Vector2i, b: Vector2i):
 
 
 # Check whether Darren is travelling against a one-way road.
-# Legal one-way travel is always road["from"] -> road["to"].
 func _is_wrong_way(
 	road,
 	travel_from: Vector2i,
@@ -997,20 +1325,22 @@ func _is_wrong_way(
 	if not bool(road.get("one_way", false)):
 		return false
 
-	var legal_from: Vector2i = _road_start(road)
-	var legal_to: Vector2i = _road_end(road)
-
-	return travel_from != legal_from or travel_to != legal_to
+	return (
+		travel_from != _road_start(road)
+		or travel_to != _road_end(road)
+	)
 #end is wrong way
 
 
-# Convert a logical heading into the rotation needed to keep that direction
-# visually pointing toward the top of the screen.
+# Convert logical heading into the world rotation that keeps Darren visually
+# facing toward the top of the screen.
 func _rotation_for_heading(direction: Vector2i) -> float:
 	if direction == Vector2i.RIGHT:
 		return -PI / 2.0
+
 	if direction == Vector2i.DOWN:
 		return PI
+
 	if direction == Vector2i.LEFT:
 		return PI / 2.0
 
