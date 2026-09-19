@@ -7,6 +7,7 @@ const MAP_SIZE: Vector2 = WORLD_CONFIG.MAP_SIZE
 const NEIGHBORHOOD_ROADS_TO_REMOVE := 8
 const CITY_ONE_WAY_COUNT := 12
 const DRIVE_SPEED := 1.05
+const HIGHWAY_SPEED := 1.65
 
 @export var block_size: float = 110.0
 @export var road_width: float = 56.0
@@ -45,6 +46,8 @@ var drive_time: float = 0.0
 
 var current_segment_off_route: bool = false
 var current_segment_wrong_way: bool = false
+
+var stop_sign_intersections: Array[Vector2i] = []
 
 @onready var left_button: Button = $"../TouchControls/LeftButton"
 @onready var forward_button: Button = $"../TouchControls/ForwardButton"
@@ -86,6 +89,7 @@ func _build_world() -> void:
 	_add_city_one_ways(CITY_ONE_WAY_COUNT)
 	_collect_intersections_from_roads()
 	_assign_intersection_positions()
+	_build_stop_signs()
 
 
 func _build_neighborhood() -> void:
@@ -116,10 +120,6 @@ func _build_highway() -> void:
 	_add_road(Vector2i(6, 10), Vector2i(7, 10), "highway", 65, "highway")
 	_add_road(Vector2i(7, 10), Vector2i(8, 10), "highway", 65, "highway")
 	_add_road(Vector2i(8, 10), Vector2i(9, 10), "highway", 65, "highway")
-
-	_add_road(Vector2i(7, 10), Vector2i(7, 9), "ramp", 45, "highway")
-	_add_road(Vector2i(7, 9), Vector2i(8, 9), "ramp", 45, "highway")
-	_add_road(Vector2i(8, 9), Vector2i(8, 10), "ramp", 45, "highway")
 
 
 func _build_city() -> void:
@@ -501,9 +501,14 @@ func _process(delta: float) -> void:
 			target_intersection
 		)
 
+		var current_road = _get_road_between(
+			current_intersection,
+			target_intersection
+		)
+
 		camera_world_position = camera_world_position.move_toward(
 			target_position,
-			DRIVE_SPEED * delta
+			_drive_speed_for_road(current_road) * delta
 		)
 
 		if camera_world_position.is_equal_approx(target_position):
@@ -695,6 +700,7 @@ func _draw() -> void:
 	_draw_main_ground()
 	_draw_region_surfaces()
 	_draw_world_roads()
+	_draw_stop_signs()
 	_draw_parking_spaces()
 	_draw_minimap()
 
@@ -798,30 +804,70 @@ func _draw_world_roads() -> void:
 			true
 		)
 
-		if road_type == "highway":
-			draw_dashed_line(
-				road_start,
-				road_end,
-				Color(0.88, 0.88, 0.82),
-				2.0,
-				14.0,
-				true
-			)
-		elif road_type != "parking":
-			draw_dashed_line(
-				road_start,
-				road_end,
-				Color(0.78, 0.67, 0.24),
-				2.0,
-				12.0,
-				true
-			)
-
 		if bool(road.get("one_way", false)):
 			_draw_one_way_arrow(road_start, road_end)
 
 		if bool(road.get("blocked", false)):
 			_draw_blocked_gate(road_start, road_end)
+
+
+
+func _build_stop_signs() -> void:
+	stop_sign_intersections.clear()
+
+	var region := WORLD_CONFIG.get_region("neighborhood")
+	var origin: Vector2i = region["origin"]
+	var region_size: Vector2i = region["size"]
+
+	for point in _region_nodes(origin, region_size):
+		if point == start_intersection:
+			continue
+
+		if _intersection_degree(point) >= 3:
+			stop_sign_intersections.append(point)
+
+
+func _intersection_degree(point: Vector2i) -> int:
+	var degree := 0
+
+	for road in roads:
+		if _road_start(road) == point or _road_end(road) == point:
+			degree += 1
+
+	return degree
+
+
+func _draw_stop_signs() -> void:
+	for intersection in stop_sign_intersections:
+		_draw_stop_sign(intersection)
+
+
+func _draw_stop_sign(intersection: Vector2i) -> void:
+	var world_position := _intersection_world_position(intersection)
+	var center := _world_to_main(
+		world_position + Vector2(0.22, 0.22)
+	)
+	var radius := 7.0
+	var points := PackedVector2Array()
+
+	for index in range(8):
+		var angle := PI / 8.0 + TAU * float(index) / 8.0
+		points.append(
+			center + Vector2(cos(angle), sin(angle)) * radius
+		)
+
+	draw_colored_polygon(points, Color(0.80, 0.08, 0.07))
+
+	var outline := points.duplicate()
+	outline.append(points[0])
+	draw_polyline(outline, Color.WHITE, 1.5, true)
+
+
+func _drive_speed_for_road(road) -> float:
+	if road != null and str(road.get("road_type", "")) == "highway":
+		return HIGHWAY_SPEED
+
+	return DRIVE_SPEED
 
 
 func _draw_one_way_arrow(
