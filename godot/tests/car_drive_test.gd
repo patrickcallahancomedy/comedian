@@ -50,6 +50,7 @@ func _run() -> void:
 		var open_slots = city_map.get("open_parking_slots")
 		var destination = city_map.get("destination_intersection")
 		var minimap_world_size: Vector2 = city_map.get("minimap_world_size")
+		var stop_signs = city_map.get("stop_sign_intersections")
 
 		_check(
 			int(city_map.get("world_size")) == 20,
@@ -87,6 +88,10 @@ func _run() -> void:
 			open_slots.has(destination),
 			"GPS destination is not an open parking space"
 		)
+		_check(
+			stop_signs is Array and not stop_signs.is_empty(),
+			"Neighborhood generated no stop signs"
+		)
 
 		var neighborhood_distance := _distance_between(
 			positions,
@@ -116,6 +121,7 @@ func _run() -> void:
 		var road_regions: Dictionary = {}
 		var neighborhood_road_count := 0
 		var city_one_way_count := 0
+		var has_highway_side_loop := false
 
 		for road in roads:
 			var region_id := str(road.get("region", ""))
@@ -131,6 +137,14 @@ func _run() -> void:
 			):
 				city_one_way_count += 1
 
+			if (
+				road.get("from") == Vector2i(7, 9)
+				or road.get("to") == Vector2i(7, 9)
+				or road.get("from") == Vector2i(8, 9)
+				or road.get("to") == Vector2i(8, 9)
+			):
+				has_highway_side_loop = true
+
 		for region_id in ["neighborhood", "highway", "city", "parking"]:
 			_check(
 				road_regions.has(region_id),
@@ -144,6 +158,25 @@ func _run() -> void:
 		_check(
 			city_one_way_count > 0,
 			"City generated no one-way streets"
+		)
+		_check(
+			not has_highway_side_loop,
+			"Highway still contains the random side loop"
+		)
+
+		var normal_speed := float(
+			city_map.call("_drive_speed_for_road", {
+				"road_type": "neighborhood"
+			})
+		)
+		var highway_speed := float(
+			city_map.call("_drive_speed_for_road", {
+				"road_type": "highway"
+			})
+		)
+		_check(
+			highway_speed > normal_speed,
+			"Highway is not faster than normal roads"
 		)
 
 		if route is Array and not route.is_empty():
