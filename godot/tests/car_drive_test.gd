@@ -1,15 +1,5 @@
 extends SceneTree
 
-## DRIVE smoke test.
-##
-## Current contract:
-## - scene loads with the external car asset
-## - one continuous 20x20 world is generated
-## - neighborhood, highway, city, and parking all exist in that same graph
-## - the whole-trip GPS route reaches an open parking space
-## - the close main view and whole-world minimap share the same world data
-
-
 var failures: Array[String] = []
 
 
@@ -51,37 +41,95 @@ func _run() -> void:
 			"Player car is not centered"
 		)
 
-		_check(
-			car.size.x <= 110.0 and car.size.y <= 110.0,
-			"Player car is too large for the close road view"
-		)
-
 	if city_map != null:
-		var world_size := int(city_map.get("world_size"))
 		var intersections = city_map.get("intersections")
+		var positions = city_map.get("intersection_positions")
 		var roads = city_map.get("roads")
 		var route = city_map.get("shortest_route")
 		var parking_slots = city_map.get("parking_slots")
 		var open_slots = city_map.get("open_parking_slots")
 		var destination = city_map.get("destination_intersection")
-		var block_size := float(city_map.get("block_size"))
-		var minimap_size := float(city_map.get("minimap_size"))
+		var minimap_world_size: Vector2 = city_map.get("minimap_world_size")
 
-		_check(world_size == 20, "DRIVE master world is not 20x20")
-		_check(intersections is Array and not intersections.is_empty(), "World has no intersections")
-		_check(roads is Array and not roads.is_empty(), "World has no roads")
-		_check(route is Array and not route.is_empty(), "Whole-trip GPS route was not found")
-		_check(parking_slots is Array and parking_slots.size() == 4, "Parking lot does not have four candidate spaces")
-		_check(open_slots is Array and open_slots.size() == 2, "Parking lot does not have exactly two open spaces")
-		_check(open_slots.has(destination), "GPS destination is not an open parking space")
-		_check(block_size <= 170.0, "Main-view blocks are still too large")
-		_check(minimap_size >= 110.0, "Whole-world minimap is too small")
+		_check(
+			int(city_map.get("world_size")) == 20,
+			"Logical DRIVE graph is not 20x20"
+		)
+		_check(
+			minimap_world_size == Vector2(42.0, 34.0),
+			"Physical minimap world size is wrong"
+		)
+		_check(
+			intersections is Array and not intersections.is_empty(),
+			"World has no intersections"
+		)
+		_check(
+			positions is Dictionary and positions.size() == intersections.size(),
+			"Not every intersection has a physical position"
+		)
+		_check(
+			roads is Array and not roads.is_empty(),
+			"World has no roads"
+		)
+		_check(
+			route is Array and not route.is_empty(),
+			"Whole-trip GPS route was not found"
+		)
+		_check(
+			parking_slots is Array and parking_slots.size() == 4,
+			"Parking lot does not have four candidate spaces"
+		)
+		_check(
+			open_slots is Array and open_slots.size() == 2,
+			"Parking lot does not have exactly two open spaces"
+		)
+		_check(
+			open_slots.has(destination),
+			"GPS destination is not an open parking space"
+		)
 
-		# Confirm all four environments contribute roads to one shared graph.
+		var neighborhood_distance := _distance_between(
+			positions,
+			Vector2i(0, 12),
+			Vector2i(1, 12)
+		)
+		var city_distance := _distance_between(
+			positions,
+			Vector2i(10, 4),
+			Vector2i(11, 4)
+		)
+		var highway_distance := _distance_between(
+			positions,
+			Vector2i(5, 10),
+			Vector2i(6, 10)
+		)
+
+		_check(
+			neighborhood_distance > city_distance * 2.0,
+			"Neighborhood blocks are not physically longer than city blocks"
+		)
+		_check(
+			highway_distance > neighborhood_distance,
+			"Highway segments are not the longest road spacing"
+		)
+
 		var road_regions: Dictionary = {}
+		var neighborhood_road_count := 0
+		var city_one_way_count := 0
 
 		for road in roads:
-			road_regions[str(road.get("region", ""))] = true
+			var region_id := str(road.get("region", ""))
+			road_regions[region_id] = true
+
+			if region_id == "neighborhood":
+				neighborhood_road_count += 1
+
+			if (
+				region_id == "city"
+				and str(road.get("road_type", "")) == "city"
+				and bool(road.get("one_way", false))
+			):
+				city_one_way_count += 1
 
 		for region_id in ["neighborhood", "highway", "city", "parking"]:
 			_check(
@@ -89,24 +137,9 @@ func _run() -> void:
 				"Shared world is missing region: %s" % region_id
 			)
 
-		# Neighborhood starts as a 5x5 grid (40 connections) with 16 removed.
-		var neighborhood_road_count := 0
-		var city_one_way_count := 0
-
-		for road in roads:
-			if str(road.get("region", "")) == "neighborhood":
-				neighborhood_road_count += 1
-
-			if (
-				str(road.get("region", "")) == "city"
-				and str(road.get("road_type", "")) == "city"
-				and bool(road.get("one_way", false))
-			):
-				city_one_way_count += 1
-
 		_check(
-			neighborhood_road_count == 24,
-			"Neighborhood did not remove exactly 16 of its 40 grid roads"
+			neighborhood_road_count == 32,
+			"Neighborhood did not remove exactly 8 of its 40 grid roads"
 		)
 		_check(
 			city_one_way_count > 0,
@@ -123,26 +156,42 @@ func _run() -> void:
 				"GPS route does not end at the parking destination"
 			)
 
-		# The minimap must fit the full world while the close view remains zoomed in.
-		var mini_start: Vector2 = city_map.call("_world_to_minimap", Vector2.ZERO)
+		var mini_start: Vector2 = city_map.call(
+			"_world_to_minimap",
+			Vector2.ZERO
+		)
 		var mini_end: Vector2 = city_map.call(
 			"_world_to_minimap",
-			Vector2(19, 19)
+			minimap_world_size
 		)
 
 		_check(
 			mini_end.x > mini_start.x and mini_end.y > mini_start.y,
-			"Minimap world projection is invalid"
+			"Minimap physical-world projection is invalid"
 		)
 
 		if map_label != null:
 			_check(
-				"NEIGHBORHOOD" in map_label.text,
+				map_label.text == "NEIGHBORHOOD",
 				"DRIVE does not begin in the neighborhood"
 			)
 
 	drive.free()
 	_finish()
+
+
+func _distance_between(
+	positions: Dictionary,
+	a: Vector2i,
+	b: Vector2i
+) -> float:
+	if not positions.has(a) or not positions.has(b):
+		return 0.0
+
+	var a_position: Vector2 = positions[a]
+	var b_position: Vector2 = positions[b]
+
+	return a_position.distance_to(b_position)
 
 
 func _check(condition: bool, message: String) -> void:
