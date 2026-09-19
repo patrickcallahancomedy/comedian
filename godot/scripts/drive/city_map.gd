@@ -113,18 +113,12 @@ func _build_roads() -> void:
 			if y < grid_size - 1:
 				roads.append({
 					"from": Vector2i(x, y),
-					"to": Vector2i(x + 1, y),
+					"to": Vector2i(x, y + 1),
 					"length": rng.randi_range(2, 5),
 					"road_type": "neighborhood",
 					"speed_limit": 25,
 					"one_way": false
 				})
-				
-	# TEMP TEST LEFT IN CURRENT BUILD:
-	# Force one road to be one-way so the data structure can be tested later.
-	# This is not yet connected to tickets or driving restrictions.
-	if roads.size() > 0:
-		roads[0]["one_way"] = true
 #end of build roads
 # Build the physical spacing between columns and rows.
 # Each value represents how long that stretch of road should feel.
@@ -166,9 +160,18 @@ func _process(delta: float) -> void:
 		var target_position := Vector2(target_intersection)
 
 		# Smoothly move the city until Darren reaches the next intersection.
+		# Longer generated blocks contain more physical road, so Darren must move
+		# through fewer grid-units per second to keep the road passing the car at
+		# a consistent visual speed.
+		var segment_length := _segment_length_units(
+			current_intersection,
+			target_intersection
+		)
+		var grid_speed := drive_speed / maxf(segment_length, 0.001)
+
 		camera_position = camera_position.move_toward(
 			target_position,
-			drive_speed * delta
+			grid_speed * delta
 		)
 
 		# Darren has reached the intersection.
@@ -592,6 +595,33 @@ func _unhandled_key_input(event: InputEvent) -> void:
 #end unhandled key input
 
 #helper functions
+# These helpers keep the rest of the script from caring how a road is stored.
+
+# Return the generated physical length of one road segment in road-units.
+# Horizontal roads use the shared column length and vertical roads use the
+# shared row length. This keeps connected intersections physically aligned.
+func _segment_length_units(
+	from_intersection: Vector2i,
+	to_intersection: Vector2i
+) -> float:
+	# Horizontal road.
+	if from_intersection.y == to_intersection.y:
+		var column := mini(from_intersection.x, to_intersection.x)
+
+		if column >= 0 and column < column_lengths.size():
+			return column_lengths[column]
+
+	# Vertical road.
+	if from_intersection.x == to_intersection.x:
+		var row := mini(from_intersection.y, to_intersection.y)
+
+		if row >= 0 and row < row_lengths.size():
+			return row_lengths[row]
+
+	# Safety fallback. A normal generated road should never need this.
+	return 1.0
+#end segment length
+
 # These helpers keep the rest of the script from caring how a road is stored.
 # That lets us upgrade road data later without hunting through every function.
 
