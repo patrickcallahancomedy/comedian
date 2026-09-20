@@ -815,14 +815,11 @@ func _draw() -> void:
 
 
 func _draw_turn_scene() -> void:
-	var ground_color := Color(0.42, 0.50, 0.39)
-
-	if active_stage_id == "downtown":
-		ground_color = Color(0.43, 0.44, 0.43)
-	elif active_stage_id == "parking":
-		ground_color = Color(0.25, 0.26, 0.26)
-
-	draw_rect(Rect2(Vector2.ZERO, size), ground_color, true)
+	draw_rect(
+		Rect2(Vector2.ZERO, size),
+		Color(0.12, 0.12, 0.12),
+		true
+	)
 
 	for road in turn_roads:
 		var a := _world_to_main(
@@ -995,12 +992,11 @@ func _draw_lane_scene() -> void:
 		_draw_city_approach()
 		return
 
-	var ground_color := Color(0.41, 0.49, 0.38)
-
-	if active_stage_id == "highway":
-		ground_color = Color(0.37, 0.45, 0.35)
-
-	draw_rect(Rect2(Vector2.ZERO, size), ground_color, true)
+	draw_rect(
+		Rect2(Vector2.ZERO, size),
+		Color(0.12, 0.12, 0.12),
+		true
+	)
 
 	var road_left := size.x * 0.5 - road_width * 0.5
 
