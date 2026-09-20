@@ -47,6 +47,7 @@ theme_override_font_sizes/font_size = 17
 text = "NEIGHBORHOOD"
 
 [node name="StatusLabel" type="Label" parent="." unique_id=683560994]
+z_index = 4
 layout_mode = 0
 offset_left = 72.0
 offset_top = 24.0
@@ -73,6 +74,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="TouchControls" type="HBoxContainer" parent="." unique_id=162859420]
+z_index = 4
 layout_mode = 0
 offset_left = 18.0
 offset_top = 684.0
@@ -103,6 +105,7 @@ text = ">"
 
 [node name="Arrival" type="PanelContainer" parent="."]
 visible = false
+z_index = 5
 layout_mode = 0
 offset_left = 25.0
 offset_top = 230.0
