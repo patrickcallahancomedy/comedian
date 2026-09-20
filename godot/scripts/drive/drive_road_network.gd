@@ -25,7 +25,7 @@ const HIGHWAY_START_Y := 600.0
 const HIGHWAY_FORK_Y := -4200.0
 const HIGHWAY_END_Y := -8600.0
 
-const CONNECTOR_OUT_START := Vector2(0.0, 2100.0)
+const CONNECTOR_OUT_START := Vector2(700.0, 2100.0)
 const CONNECTOR_OUT_END := Vector2(0.0, HIGHWAY_START_Y)
 
 const EXIT_START := Vector2(117.0, HIGHWAY_FORK_Y)
@@ -59,7 +59,7 @@ static func neighborhood_edges() -> Array:
 		["n3", "n6"],
 		["n4", "n5"],
 		["n5", "n6"],
-		["n5", "n7"],
+		["n6", "n7"],
 	]
 
 
