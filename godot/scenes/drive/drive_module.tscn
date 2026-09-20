@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://toj3nfh0umto"]
 
-[ext_resource type="Script" uid="uid://dw6eqdga7khfh" path="res://scripts/drive/city_map.gd" id="1_boj34"]
+[ext_resource type="Script" path="res://scripts/drive/connected_drive.gd" id="1_boj34"]
 [ext_resource type="Texture2D" uid="uid://dkqq7eu8lpill" path="res://assets/car/player_car_top.png" id="1_car"]
 
 [ext_resource type="Script" path="res://scripts/drive/drive_session.gd" id="3_session"]
@@ -23,7 +23,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.42, 0.48, 0.39, 1)
+color = Color(0.11, 0.11, 0.11, 1)
 
 [node name="CityMap" type="Control" parent="." unique_id=1442815347]
 layout_mode = 1
