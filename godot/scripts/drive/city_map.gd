@@ -225,7 +225,10 @@ func _add_turn_road(
 
 
 func _add_turn_one_ways() -> void:
-	var target_count := mini(7, turn_roads.size() / 3)
+	var target_count := mini(
+		7,
+		int(turn_roads.size() / 3)
+	)
 	var added := 0
 	var attempts := 0
 
@@ -736,9 +739,9 @@ func _draw_neighborhood_houses() -> void:
 			var road_point := a.lerp(b, t)
 
 			for side_sign in [-1.0, 1.0]:
-				var center := (
+				var center: Vector2 = (
 					road_point
-					+ side * side_sign * (road_width * 0.5 + 88.0)
+					+ side * float(side_sign) * (road_width * 0.5 + 88.0)
 				)
 
 				_draw_world_box(
