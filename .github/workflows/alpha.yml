@@ -44,7 +44,7 @@ jobs:
             drive-playtest-v0.13 \
             drive-playtest-v0.14
           do
-            if git ls-remote --exit-code --heads origin "$old_branch" >/dev/null 2>&1; then
+            if git ls-remote --exit-code --heads origin "refs/heads/$old_branch" >/dev/null 2>&1; then
               git push origin --delete "$old_branch"
             fi
           done
