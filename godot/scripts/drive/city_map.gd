@@ -1,5 +1,15 @@
 extends Control
 
+## DRIVE v0.7: preserve the authored scene and five existing road profiles.
+## Movement/rendering remain here; state handoff lives in drive_session.gd.
+signal trip_finished(result: Dictionary)
+
+@export var world_seed: int = 0 # Zero varies the city; set a seed to reproduce a trip.
+var bumps := 0
+var bump_cooldown := 0.0
+var fatigue_strength := 0.0
+var steering_rate := 420.0
+
 const DRIVE_PROFILES = preload("res://scripts/drive/drive_profiles.gd")
 
 @export var minimap_size := 142.0
@@ -62,7 +72,12 @@ var car_base_position := Vector2.ZERO
 
 
 func _ready() -> void:
-	rng.randomize()
+	if world_seed == 0:
+		rng.randomize()
+	else:
+		rng.seed = world_seed
+	fatigue_strength = clampf(float(50 - GameState.energy) / 50.0, 0.0, 1.0)
+	steering_rate = lerpf(420.0, 250.0, fatigue_strength)
 
 	left_button.pressed.connect(_turn_left)
 	forward_button.pressed.connect(_move_forward)
@@ -82,6 +97,7 @@ func apply_drive_profile(profile: Dictionary) -> void:
 	drive_speed = (
 		DRIVE_PROFILES.BASE_SPEED
 		* float(profile.get("speed_scale", 1.0))
+		* lerpf(0.85, 1.0, clampf(GameState.car_condition / 100.0, 0.0, 1.0))
 	)
 	lane_width = (
 		DRIVE_PROFILES.BASE_LANE_WIDTH
@@ -112,6 +128,9 @@ func _load_stage(index: int, auto_start: bool) -> void:
 		DRIVE_PROFILES.get_profile(active_stage_id)
 	)
 
+	current_lane = 0
+	target_lane = 0
+	lane_visual_offset = 0.0
 	section_started = false
 	is_driving = false
 	auto_stop_remaining = 0.0
@@ -127,7 +146,7 @@ func _load_stage(index: int, auto_start: bool) -> void:
 	if auto_start:
 		_start_current_stage()
 	else:
-		status_label.text = "PRESS GO"
+		status_label.text = "GO to start • A/D or ←/→ steer"
 
 	queue_redraw()
 
@@ -269,7 +288,9 @@ func _process(delta: float) -> void:
 	if drive_complete:
 		return
 
-	drive_time += delta
+	if section_started:
+		drive_time += delta
+	bump_cooldown = maxf(0.0, bump_cooldown - delta)
 
 	if steering_mode == "turn":
 		_process_turn_mode(delta)
@@ -366,7 +387,7 @@ func _commit_turn_segment(next_intersection: Vector2i) -> bool:
 
 	if shortest_route.size() >= 2:
 		current_segment_off_route = (
-			next_intersection != shortest_route[1]
+			_find_turn_route(next_intersection, exit_intersection).size() >= shortest_route.size()
 		)
 
 	if current_segment_wrong_way:
@@ -440,8 +461,8 @@ func _build_lane_traffic() -> void:
 func _process_lane_mode(delta: float) -> void:
 	lane_visual_offset = move_toward(
 		lane_visual_offset,
-		_lane_center_offset(target_lane),
-		delta * 420.0
+		_lane_center_offset(target_lane) + sin(drive_time * 1.9) * fatigue_strength * lane_width * 0.12,
+		delta * steering_rate
 	)
 
 	player_car.position = (
@@ -449,6 +470,8 @@ func _process_lane_mode(delta: float) -> void:
 		+ Vector2(lane_visual_offset, 0.0)
 	)
 
+	# Occupancy follows the visible car, not the requested lane.
+	current_lane = clampi(roundi(lane_visual_offset / lane_width + float(lane_count - 1) * 0.5), 0, lane_count - 1)
 	if not section_started:
 		return
 
@@ -467,6 +490,14 @@ func _process_lane_mode(delta: float) -> void:
 		)
 
 		var gap := float(traffic["distance"]) - lane_distance
+		# Contact is measured in the same projection used to draw traffic.
+		var lateral_gap := absf(lane_visual_offset - _lane_center_offset(int(traffic["lane"])))
+		if absf(gap) < 155.0 and lateral_gap < lane_width * 0.48 and bump_cooldown <= 0.0:
+			bumps += 1
+			bump_cooldown = 1.0
+			traffic["distance"] = lane_distance + 450.0
+			status_label.text = "WATCH IT"
+			effective_speed *= 0.5
 
 		if (
 			int(traffic.get("lane", -1)) == current_lane
@@ -502,7 +533,7 @@ func _process_lane_mode(delta: float) -> void:
 
 	var exit_lane := int(active_profile.get("exit_lane", -1))
 
-	if exit_lane < 0 or current_lane == exit_lane:
+	if exit_lane < 0 or (current_lane == exit_lane and absf(lane_visual_offset - _lane_center_offset(exit_lane)) < lane_width * 0.20):
 		_advance_stage()
 		return
 
@@ -545,7 +576,6 @@ func _turn_left() -> void:
 
 	if steering_mode == "lane":
 		target_lane = maxi(0, target_lane - 1)
-		current_lane = target_lane
 		return
 
 	heading = Vector2i(heading.y, -heading.x)
@@ -558,7 +588,6 @@ func _turn_right() -> void:
 
 	if steering_mode == "lane":
 		target_lane = mini(lane_count - 1, target_lane + 1)
-		current_lane = target_lane
 		return
 
 	heading = Vector2i(-heading.y, heading.x)
@@ -573,11 +602,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 
 	match event.keycode:
-		KEY_A:
+		KEY_A, KEY_LEFT:
 			_turn_left()
-		KEY_D:
+		KEY_D, KEY_RIGHT:
 			_turn_right()
-		KEY_W:
+		KEY_W, KEY_UP, KEY_SPACE:
 			_move_forward()
 
 
@@ -879,6 +908,12 @@ func _draw_lane_scene() -> void:
 		true
 	)
 
+	# Lane markings expose the actual steering choices before traffic arrives.
+	for lane in range(1, lane_count):
+		var x := road_left + lane_width * lane
+		for marker in range(-1, 14):
+			var y := marker * 64.0 + fmod(lane_distance * 0.36, 64.0)
+			draw_line(Vector2(x, y), Vector2(x, y + 28.0), Color(0.83, 0.81, 0.66), 2.0)
 	_draw_lane_scenery()
 
 	if active_stage_id == "highway":
@@ -896,7 +931,7 @@ func _draw_lane_scenery() -> void:
 	for index in range(marker_count):
 		var y := (
 			float(index) * 230.0
-			- visual_scroll
+			+ visual_scroll
 			- 100.0
 		)
 
@@ -969,32 +1004,15 @@ func _draw_lane_traffic() -> void:
 		player_car.position.y
 		+ player_car.size.y * 0.5
 	)
-	var traffic_width := lane_width * 0.58
-	var traffic_height := traffic_width * 1.55
-
+	# Reuse the existing external PNG, at the player's current section scale.
+	var traffic_size := player_car.size * car_scale
 	for traffic in lane_traffic:
 		var gap := float(traffic.get("distance", 0.0)) - lane_distance
 		var y := player_center_y - gap * 0.36
-
 		if y < -120.0 or y > size.y + 120.0:
 			continue
-
-		var x := (
-			size.x * 0.5
-			+ _lane_center_offset(int(traffic.get("lane", 0)))
-		)
-
-		draw_rect(
-			Rect2(
-				Vector2(
-					x - traffic_width * 0.5,
-					y - traffic_height * 0.5
-				),
-				Vector2(traffic_width, traffic_height)
-			),
-			Color(0.32, 0.35, 0.38),
-			true
-		)
+		var x := size.x * 0.5 + _lane_center_offset(int(traffic.get("lane", 0)))
+		draw_texture_rect(player_car.texture, Rect2(Vector2(x, y) - traffic_size * 0.5, traffic_size), false, Color(0.80, 0.88, 1.0))
 
 
 func _draw_minimap() -> void:
@@ -1061,7 +1079,7 @@ func _draw_turn_minimap(map_rect: Rect2) -> void:
 				_turn_world_position(target_intersection),
 				map_rect
 			),
-			Color(0.98, 0.78, 0.06),
+			Color(0.12, 0.48, 1.0),
 			3.0,
 			true
 		)
@@ -1076,7 +1094,7 @@ func _draw_turn_minimap(map_rect: Rect2) -> void:
 				_turn_world_position(shortest_route[index + 1]),
 				map_rect
 			),
-			Color(0.98, 0.78, 0.06),
+			Color(0.12, 0.48, 1.0),
 			2.5,
 			true
 		)
@@ -1133,7 +1151,7 @@ func _draw_lane_minimap(map_rect: Rect2) -> void:
 		draw_line(
 			Vector2(center_x, top_y + 15.0),
 			route_end,
-			Color(0.98, 0.78, 0.06),
+			Color(0.12, 0.48, 1.0),
 			2.5,
 			true
 		)
@@ -1141,7 +1159,7 @@ func _draw_lane_minimap(map_rect: Rect2) -> void:
 	draw_line(
 		Vector2(center_x, player_y),
 		Vector2(center_x, top_y + 15.0),
-		Color(0.98, 0.78, 0.06),
+		Color(0.12, 0.48, 1.0),
 		2.5,
 		true
 	)
@@ -1236,6 +1254,8 @@ func _rotation_for_heading(direction: Vector2i) -> float:
 
 
 func _finish_drive() -> void:
+	if drive_complete:
+		return
 	drive_complete = true
 	is_driving = false
 	section_started = false
@@ -1245,7 +1265,13 @@ func _finish_drive() -> void:
 	right_button.disabled = true
 
 	map_label.text = "PARKED"
-	status_label.text = "%.1f SEC  •  %d WRONG TURNS" % [
-		drive_time,
-		wrong_turns,
-	]
+	status_label.text = "Engine off. Head inside."
+
+	trip_finished.emit({
+		"status": "drive_complete",
+		"real_drive_seconds": snappedf(drive_time, 0.1),
+		"missed_turns": wrong_turns,
+		"wrong_way_tickets": wrong_way_tickets,
+		"bumps": bumps,
+		"seed": rng.seed,
+	})

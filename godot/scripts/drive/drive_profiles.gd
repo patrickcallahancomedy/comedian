@@ -9,7 +9,7 @@ const ORDER := [
 	"parking",
 ]
 
-const BASE_SPEED := 520.0
+const BASE_SPEED := 680.0
 const BASE_LANE_WIDTH := 110.0
 const BASE_BLOCK_SPACING := 1900.0
 

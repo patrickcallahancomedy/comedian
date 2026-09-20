@@ -3,6 +3,10 @@
 [ext_resource type="Script" uid="uid://dw6eqdga7khfh" path="res://scripts/drive/city_map.gd" id="1_boj34"]
 [ext_resource type="Texture2D" uid="uid://dkqq7eu8lpill" path="res://assets/car/player_car_top.png" id="1_car"]
 
+[ext_resource type="Script" path="res://scripts/drive/drive_session.gd" id="3_session"]
+
+[ext_resource type="Script" path="res://scripts/drive/drive_effects.gd" id="4_effects"]
+
 [node name="DriveModule" type="Control" unique_id=1084516026]
 layout_mode = 3
 anchors_preset = 15
@@ -10,6 +14,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("3_session")
 metadata/_edit_vertical_guides_ = [215.0]
 metadata/_edit_horizontal_guides_ = [382.0]
 
@@ -85,3 +90,42 @@ custom_minimum_size = Vector2(123, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "RIGHT"
+
+[node name="Effects" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("4_effects")
+
+[node name="Arrival" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 25.0
+offset_top = 230.0
+offset_right = 405.0
+offset_bottom = 515.0
+
+[node name="Layout" type="VBoxContainer" parent="Arrival"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="ArrivalText" type="Label" parent="Arrival/Layout"]
+custom_minimum_size = Vector2(360, 130)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "PARKED"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="Replay" type="Button" parent="Arrival/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "DRIVE AGAIN"
+
+[node name="Continue" type="Button" parent="Arrival/Layout"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "HEAD INSIDE"

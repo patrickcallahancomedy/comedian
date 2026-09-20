@@ -141,6 +141,7 @@ func _run() -> void:
 
 	city_map.set("current_lane", 2)
 	city_map.set("target_lane", 2)
+	city_map.set("lane_visual_offset", city_map.call("_lane_center_offset", 2))
 	city_map.set(
 		"lane_distance",
 		float(city_map.get("lane_gate_distance"))
