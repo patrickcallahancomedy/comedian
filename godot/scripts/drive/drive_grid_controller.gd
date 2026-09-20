@@ -12,8 +12,8 @@ signal trip_finished(result: Dictionary)
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
 const STEP_SECONDS := 1.0
-const WORLD_ZOOM := 1.6
-const CAR_REFERENCE_SCALE := 0.34
+const WORLD_ZOOM := 3.0
+const CAR_REFERENCE_SCALE := 1.0
 
 const NEIGHBORHOOD_COLOR := Color(0.34, 0.57, 0.31)
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
@@ -179,7 +179,6 @@ func _begin_neighborhood_step() -> void:
 		status_label.text = "CONNECTOR"
 		return
 
-	# The perimeter is closed everywhere except the outside gate.
 	move_to = move_from
 	scale_to = scale_from
 	blocked_this_step = true
@@ -202,7 +201,6 @@ func _begin_highway_step() -> void:
 			status_label.text = "CONNECTOR"
 			return
 
-		# Missing the exit never traps the player. Start the highway again.
 		missed_turns += 1
 		highway_column = 0
 		highway_lane = queued_highway_lane
@@ -348,7 +346,6 @@ func _draw_neighborhood_border_with_gate() -> void:
 	_draw_world_line(Vector2(rect.position.x, rect.end.y), rect.end, BORDER_COLOR, 4.0)
 	_draw_world_line(rect.position, Vector2(rect.position.x, rect.end.y), BORDER_COLOR, 4.0)
 
-	# Right wall is split around the one legal outside gate.
 	_draw_world_line(
 		Vector2(rect.end.x, rect.position.y),
 		Vector2(rect.end.x, gate_top),
@@ -386,7 +383,6 @@ func _draw_highway() -> void:
 
 	_draw_world_rect_outline(MAP.HIGHWAY_RECT, BORDER_COLOR, 3.0)
 
-	# The only successful exit is the final cell in lane 4.
 	var exit_rect := Rect2(
 		Vector2(
 			MAP.HIGHWAY_RECT.end.x - MAP.HIGHWAY_CELL,
