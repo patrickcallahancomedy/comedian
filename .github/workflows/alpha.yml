@@ -31,6 +31,8 @@ jobs:
 
       - name: Remove obsolete drive experiment branches
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           for old_branch in \
@@ -44,8 +46,17 @@ jobs:
             drive-playtest-v0.13 \
             drive-playtest-v0.14
           do
-            if git ls-remote --exit-code --heads origin "refs/heads/$old_branch" >/dev/null 2>&1; then
-              git push origin --delete "$old_branch"
+            echo "Deleting $old_branch if it exists"
+            status=$(curl -sS -o /tmp/delete-ref.txt -w "%{http_code}" \
+              -X DELETE \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs/heads/$old_branch")
+            if [ "$status" = "204" ] || [ "$status" = "422" ]; then
+              echo "$old_branch: $status"
+            else
+              cat /tmp/delete-ref.txt
+              exit 1
             fi
           done
 
