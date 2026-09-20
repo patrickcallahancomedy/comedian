@@ -5,8 +5,6 @@
 
 [ext_resource type="Script" path="res://scripts/drive/drive_session.gd" id="3_session"]
 
-[ext_resource type="Script" path="res://scripts/drive/drive_effects.gd" id="4_effects"]
-
 [node name="DriveModule" type="Control" unique_id=1084516026]
 layout_mode = 3
 anchors_preset = 15
@@ -25,7 +23,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.69, 0.72, 0.62, 1)
+color = Color(0.42, 0.48, 0.39, 1)
 
 [node name="CityMap" type="Control" parent="." unique_id=1442815347]
 layout_mode = 1
@@ -37,6 +35,7 @@ grow_vertical = 2
 script = ExtResource("1_boj34")
 
 [node name="MapLabel" type="Label" parent="." unique_id=636909609]
+visible = false
 layout_mode = 0
 offset_left = 12.0
 offset_top = 14.0
@@ -47,12 +46,17 @@ text = "NEIGHBORHOOD"
 
 [node name="StatusLabel" type="Label" parent="." unique_id=683560994]
 layout_mode = 0
-offset_left = 12.0
-offset_top = 42.0
-offset_right = 278.0
-offset_bottom = 66.0
-theme_override_font_sizes/font_size = 14
-text = "PRESS GO"
+offset_left = 72.0
+offset_top = 24.0
+offset_right = 358.0
+offset_bottom = 58.0
+theme_override_colors/font_color = Color(0.96, 0.95, 0.90, 1)
+theme_override_colors/font_shadow_color = Color(0.05, 0.06, 0.05, 0.75)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 18
+text = "TAP START"
+horizontal_alignment = 1
 
 [node name="PlayerCar" type="TextureRect" parent="." unique_id=1726496357]
 layout_mode = 0
@@ -67,37 +71,32 @@ stretch_mode = 5
 
 [node name="TouchControls" type="HBoxContainer" parent="." unique_id=162859420]
 layout_mode = 0
-offset_left = 20.0
-offset_top = 686.0
-offset_right = 410.0
-offset_bottom = 746.0
-theme_override_constants/separation = 10
+offset_left = 18.0
+offset_top = 684.0
+offset_right = 412.0
+offset_bottom = 748.0
+theme_override_constants/separation = 12
 
 [node name="LeftButton" type="Button" parent="TouchControls" unique_id=1378762602]
-custom_minimum_size = Vector2(123, 60)
+custom_minimum_size = Vector2(118, 64)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "LEFT"
+theme_override_font_sizes/font_size = 28
+text = "←"
 
 [node name="ForwardButton" type="Button" parent="TouchControls" unique_id=2034903650]
-custom_minimum_size = Vector2(123, 60)
+custom_minimum_size = Vector2(118, 64)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "GO"
+theme_override_font_sizes/font_size = 17
+text = "START"
 
 [node name="RightButton" type="Button" parent="TouchControls" unique_id=727376704]
-custom_minimum_size = Vector2(123, 60)
+custom_minimum_size = Vector2(118, 64)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "RIGHT"
-
-[node name="Effects" type="Control" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-script = ExtResource("4_effects")
+theme_override_font_sizes/font_size = 28
+text = "→"
 
 [node name="Arrival" type="PanelContainer" parent="."]
 visible = false
