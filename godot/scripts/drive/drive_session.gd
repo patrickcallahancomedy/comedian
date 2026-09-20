@@ -1,6 +1,6 @@
 extends GameModule
 
-## DRIVE v0.7 — owns arrival and replay, without rebuilding Patrick's scene.
+## DRIVE v0.8 — owns arrival and replay; driving presentation stays isolated in CityMap.
 ## Consequences apply once, only on CONTINUE. Replay is a free practice run.
 @export var departure_clock_minutes := 19 * 60 + 16
 @export var signup_close_clock_minutes := 19 * 60 + 45
