@@ -67,6 +67,16 @@ func _ready() -> void:
 	_enter_neighborhood()
 	_update_car_visual()
 	status_label.text = "TAP START"
+	call_deferred("_refresh_mobile_layout")
+
+
+func _refresh_mobile_layout() -> void:
+	# Web/mobile Control layout can settle one frame after _ready(). Keep the
+	# procedural road camera aligned to the actual canvas and car at that point.
+	player_screen_center = size * 0.5
+	car_base_position = player_screen_center - player_car.size * 0.5
+	player_car.position = car_base_position
+	queue_redraw()
 
 
 func _process(delta: float) -> void:
