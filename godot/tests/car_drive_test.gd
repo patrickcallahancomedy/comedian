@@ -36,7 +36,7 @@ func _run() -> void:
 
 	_check(city.active_stage_id == "neighborhood", "Trip does not start in neighborhood")
 	_check(city.steering_mode == "turn", "Neighborhood should use turn steering")
-	_check(city.drive_speed < city.DRIVE_PROFILES.BASE_SPEED, "Neighborhood was not slowed down")
+	_check(city.drive_speed < 680.0, "Neighborhood was not slowed down")
 	_check(city.intersection_spacing >= 1800.0, "Neighborhood blocks unexpectedly shortened")
 	_check_no_dead_ends(city, "Neighborhood")
 
