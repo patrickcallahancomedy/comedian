@@ -74,7 +74,7 @@ func follow_gps_turn(drive) -> void:
 		(drive.street_nodes[desired_id] as Vector2)
 		- (drive.street_nodes[drive.street_current] as Vector2)
 	).normalized()
-	var cross := drive.street_heading.cross(desired)
+	var cross: float = drive.street_heading.cross(desired)
 
 	if cross < -0.25:
 		drive._turn_left()
