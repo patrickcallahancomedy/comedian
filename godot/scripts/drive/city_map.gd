@@ -613,7 +613,7 @@ func _process_lane_mode(delta: float) -> void:
 	if active_stage_id == "highway":
 		var exit_remaining := lane_gate_distance - lane_distance
 		if exit_remaining > 0.0 and exit_remaining < 1500.0:
-			status_label.text = "EXIT  →"
+			status_label.text = "EXIT  >"
 		elif status_label.text == "EXIT  →":
 			status_label.text = ""
 
