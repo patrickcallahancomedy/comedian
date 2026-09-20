@@ -1,7 +1,8 @@
 extends Control
 
-## DRIVE v0.8: same proven driving core, intentionally simpler presentation.
-## Three visible phases, steering as the primary verb, and a quieter mobile HUD.
+## DRIVE v0.9: one continuous drive with invisible gates between road types.
+## Neighborhood and highway keep their proven controls; connector roads animate
+## scale/road changes, then the final city approach drives straight to the venue.
 signal trip_finished(result: Dictionary)
 
 @export var world_seed: int = 0 # Zero varies the city; set a seed to reproduce a trip.
@@ -60,6 +61,19 @@ var target_lane := 0
 var lane_visual_offset := 0.0
 var lane_traffic: Array = []
 
+# Connector animation state. These are presentation transitions, not new levels.
+var transition_active := false
+var transition_elapsed := 0.0
+var transition_duration := 1.35
+var transition_target_index := -1
+var transition_from_road_width := 0.0
+var transition_to_road_width := 0.0
+var transition_from_car_scale := 1.0
+var transition_to_car_scale := 1.0
+var transition_from_lane_count := 1
+var transition_to_lane_count := 1
+var transition_scroll := 0.0
+
 var rng := RandomNumberGenerator.new()
 var car_base_position := Vector2.ZERO
 
@@ -76,7 +90,7 @@ func _ready() -> void:
 		rng.randomize()
 	else:
 		rng.seed = world_seed
-	# v0.8 parks fatigue/distraction difficulty until the base drive is proven fun.
+	# Fatigue/distraction remain parked while the core driving feel is tuned.
 	fatigue_strength = 0.0
 	steering_rate = 420.0
 
@@ -144,6 +158,15 @@ func _load_stage(index: int, auto_start: bool) -> void:
 	else:
 		_build_lane_stage()
 
+	# The final venue approach is intentionally automatic; highway/neighborhood
+	# retain the same two-button steering language.
+	if steering_mode == "approach":
+		left_button.hide()
+		right_button.hide()
+	else:
+		left_button.show()
+		right_button.show()
+
 	if auto_start:
 		_start_current_stage()
 	else:
@@ -153,7 +176,64 @@ func _load_stage(index: int, auto_start: bool) -> void:
 
 
 func _advance_stage() -> void:
-	_load_stage(stage_index + 1, true)
+	var next_index := stage_index + 1
+	if next_index >= DRIVE_PROFILES.ORDER.size():
+		_finish_drive()
+		return
+	_begin_connector(next_index)
+
+
+func _begin_connector(next_index: int) -> void:
+	if transition_active or drive_complete:
+		return
+
+	var next_profile: Dictionary = DRIVE_PROFILES.get_profile(
+		DRIVE_PROFILES.ORDER[next_index]
+	)
+
+	transition_active = true
+	transition_elapsed = 0.0
+	transition_target_index = next_index
+	transition_scroll = 0.0
+	transition_from_road_width = road_width
+	transition_to_road_width = (
+		DRIVE_PROFILES.BASE_LANE_WIDTH
+		* float(next_profile.get("road_scale", 1.0))
+		* int(next_profile.get("lane_count", 1))
+	)
+	transition_from_car_scale = car_scale
+	transition_to_car_scale = float(next_profile.get("car_scale", 1.0))
+	transition_from_lane_count = lane_count
+	transition_to_lane_count = int(next_profile.get("lane_count", 1))
+
+	is_driving = false
+	lane_traffic.clear()
+	status_label.text = ""
+	left_button.hide()
+	right_button.hide()
+	forward_button.hide()
+	player_car.position = car_base_position
+	queue_redraw()
+
+
+func _process_connector(delta: float) -> void:
+	transition_elapsed += delta
+	transition_scroll += DRIVE_PROFILES.BASE_SPEED * delta
+	var progress := clampf(transition_elapsed / transition_duration, 0.0, 1.0)
+	var eased := smoothstep(0.0, 1.0, progress)
+
+	player_car.scale = Vector2.ONE * lerpf(
+		transition_from_car_scale,
+		transition_to_car_scale,
+		eased
+	)
+	player_car.position = car_base_position
+
+	if progress >= 1.0:
+		transition_active = false
+		var next_index := transition_target_index
+		transition_target_index = -1
+		_load_stage(next_index, true)
 
 
 func _start_current_stage() -> void:
@@ -294,6 +374,11 @@ func _process(delta: float) -> void:
 	if section_started:
 		drive_time += delta
 	bump_cooldown = maxf(0.0, bump_cooldown - delta)
+
+	if transition_active:
+		_process_connector(delta)
+		queue_redraw()
+		return
 
 	if steering_mode == "turn":
 		_process_turn_mode(delta)
@@ -556,7 +641,7 @@ func _lane_center_offset(lane: int) -> float:
 
 
 func _move_forward() -> void:
-	if drive_complete:
+	if drive_complete or transition_active:
 		return
 
 	if not section_started:
@@ -575,7 +660,7 @@ func _move_forward() -> void:
 
 
 func _turn_left() -> void:
-	if drive_complete:
+	if drive_complete or transition_active:
 		return
 
 	if steering_mode == "lane":
@@ -588,7 +673,7 @@ func _turn_left() -> void:
 
 
 func _turn_right() -> void:
-	if drive_complete:
+	if drive_complete or transition_active:
 		return
 
 	if steering_mode == "lane":
@@ -713,6 +798,10 @@ func _turn_is_wrong_way(
 
 
 func _draw() -> void:
+	if transition_active:
+		_draw_connector_scene()
+		return
+
 	if steering_mode == "turn":
 		_draw_turn_scene()
 	else:
