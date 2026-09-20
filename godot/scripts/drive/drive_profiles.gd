@@ -1,0 +1,111 @@
+class_name DriveProfiles
+extends RefCounted
+
+const ORDER := [
+	"neighborhood",
+	"main_road",
+	"highway",
+	"downtown",
+	"parking",
+]
+
+const BASE_SPEED := 520.0
+const BASE_LANE_WIDTH := 110.0
+const BASE_BLOCK_SPACING := 1900.0
+
+const PROFILES := {
+	"neighborhood": {
+		"name": "NEIGHBORHOOD",
+		"mode": "turn",
+		"lane_count": 1,
+		"car_scale": 1.0,
+		"speed_scale": 1.0,
+		"road_scale": 1.0,
+		"block_scale": 1.0,
+		"stop_signs": true,
+		"auto_stop_time": 0.45,
+		"one_way": false,
+		"grid_size": Vector2i(4, 4),
+		"entry": Vector2i(0, 3),
+		"exit": Vector2i(3, 0),
+		"traffic_count": 0,
+		"section_length": 0.0,
+		"exit_lane": -1,
+	},
+	"main_road": {
+		"name": "MAIN ROAD",
+		"mode": "lane",
+		"lane_count": 2,
+		"car_scale": 0.75,
+		"speed_scale": 1.45,
+		"road_scale": 0.85,
+		"block_scale": 0.0,
+		"stop_signs": false,
+		"auto_stop_time": 0.0,
+		"one_way": false,
+		"grid_size": Vector2i.ZERO,
+		"entry": Vector2i.ZERO,
+		"exit": Vector2i.ZERO,
+		"traffic_count": 4,
+		"section_length": 6200.0,
+		"exit_lane": -1,
+	},
+	"highway": {
+		"name": "HIGHWAY",
+		"mode": "lane",
+		"lane_count": 3,
+		"car_scale": 0.5,
+		"speed_scale": 2.15,
+		"road_scale": 0.70,
+		"block_scale": 0.0,
+		"stop_signs": false,
+		"auto_stop_time": 0.0,
+		"one_way": false,
+		"grid_size": Vector2i.ZERO,
+		"entry": Vector2i.ZERO,
+		"exit": Vector2i.ZERO,
+		"traffic_count": 7,
+		"section_length": 9000.0,
+		"exit_lane": 2,
+	},
+	"downtown": {
+		"name": "DOWNTOWN",
+		"mode": "turn",
+		"lane_count": 1,
+		"car_scale": 1.25,
+		"speed_scale": 0.90,
+		"road_scale": 1.10,
+		"block_scale": 0.50,
+		"stop_signs": true,
+		"auto_stop_time": 0.35,
+		"one_way": true,
+		"grid_size": Vector2i(4, 4),
+		"entry": Vector2i(0, 3),
+		"exit": Vector2i(3, 0),
+		"traffic_count": 0,
+		"section_length": 0.0,
+		"exit_lane": -1,
+	},
+	"parking": {
+		"name": "PARKING LOT",
+		"mode": "turn",
+		"lane_count": 1,
+		"car_scale": 1.10,
+		"speed_scale": 0.55,
+		"road_scale": 0.90,
+		"block_scale": 0.22,
+		"stop_signs": false,
+		"auto_stop_time": 0.0,
+		"one_way": false,
+		"grid_size": Vector2i(3, 3),
+		"entry": Vector2i(0, 2),
+		"exit": Vector2i(2, 0),
+		"traffic_count": 0,
+		"section_length": 0.0,
+		"exit_lane": -1,
+	},
+}
+
+
+static func get_profile(profile_id: String) -> Dictionary:
+	return PROFILES.get(profile_id, {})
