@@ -994,6 +994,10 @@ func _draw_one_way_arrow(
 
 
 func _draw_lane_scene() -> void:
+	if active_stage_id == "downtown":
+		_draw_city_approach()
+		return
+
 	var ground_color := Color(0.41, 0.49, 0.38)
 
 	if active_stage_id == "highway":
@@ -1028,9 +1032,8 @@ func _draw_lane_scene() -> void:
 			draw_line(Vector2(x, y), Vector2(x, y + 30.0), Color(0.82, 0.80, 0.70), 3.0)
 	_draw_lane_scenery()
 
-	if active_stage_id == "highway":
-		_draw_highway_exit()
-
+	# The highway exit is the right-most lane crossing an invisible gate.
+	# No separate ramp shape is drawn.
 	_draw_lane_traffic()
 
 
@@ -1079,6 +1082,207 @@ func _draw_lane_scenery() -> void:
 					Vector2(10.0, 88.0)
 				),
 				Color(0.70, 0.70, 0.66),
+				true
+			)
+
+
+func _draw_city_approach() -> void:
+	var ground := Color(0.34, 0.35, 0.35)
+	draw_rect(Rect2(Vector2.ZERO, size), ground, true)
+
+	var road_left := size.x * 0.5 - road_width * 0.5
+	draw_rect(
+		Rect2(
+			Vector2(road_left - 10.0, -40.0),
+			Vector2(road_width + 20.0, size.y + 80.0)
+		),
+		Color(0.55, 0.53, 0.48),
+		true
+	)
+	draw_rect(
+		Rect2(
+			Vector2(road_left, -40.0),
+			Vector2(road_width, size.y + 80.0)
+		),
+		Color(0.13, 0.14, 0.14),
+		true
+	)
+
+	# Narrow edge bands read as sidewalk/buildings while the road dominates
+	# the frame. This is a structural art pass, not final environment art.
+	var edge := maxf(0.0, road_left)
+	draw_rect(
+		Rect2(Vector2.ZERO, Vector2(edge, size.y)),
+		Color(0.43, 0.42, 0.40),
+		true
+	)
+	draw_rect(
+		Rect2(Vector2(size.x - edge, 0.0), Vector2(edge, size.y)),
+		Color(0.43, 0.42, 0.40),
+		true
+	)
+
+	var remaining := lane_gate_distance - lane_distance
+	var player_center_y := (
+		player_car.position.y
+		+ player_car.size.y * car_scale * 0.5
+	)
+	var destination_y := player_center_y - remaining * 0.22
+
+	if destination_y > -260.0:
+		var facade_y := destination_y - 170.0
+
+		draw_rect(
+			Rect2(
+				Vector2(road_left + 12.0, facade_y),
+				Vector2(road_width - 24.0, 105.0)
+			),
+			Color(0.24, 0.23, 0.22),
+			true
+		)
+		draw_rect(
+			Rect2(
+				Vector2(size.x * 0.5 - 28.0, facade_y + 28.0),
+				Vector2(56.0, 77.0)
+			),
+			Color(0.08, 0.085, 0.085),
+			true
+		)
+
+		# One curbside space directly in front of the venue.
+		var spot_size := Vector2(
+			minf(150.0, road_width * 0.44),
+			165.0
+		)
+		var spot := Rect2(
+			Vector2(
+				size.x * 0.5 - spot_size.x * 0.5,
+				destination_y - spot_size.y * 0.5
+			),
+			spot_size
+		)
+		draw_rect(
+			spot,
+			Color(0.83, 0.81, 0.72),
+			false,
+			4.0
+		)
+
+
+func _draw_connector_scene() -> void:
+	var progress := clampf(
+		transition_elapsed / transition_duration,
+		0.0,
+		1.0
+	)
+	var eased := smoothstep(0.0, 1.0, progress)
+	var next_id := DRIVE_PROFILES.ORDER[transition_target_index]
+	var to_highway := next_id == "highway"
+
+	var ground_from := Color(0.42, 0.50, 0.39)
+	var ground_to := (
+		Color(0.37, 0.45, 0.35)
+		if to_highway
+		else Color(0.34, 0.35, 0.35)
+	)
+	if active_stage_id == "highway":
+		ground_from = Color(0.37, 0.45, 0.35)
+
+	draw_rect(
+		Rect2(Vector2.ZERO, size),
+		ground_from.lerp(ground_to, eased),
+		true
+	)
+
+	var width := lerpf(
+		transition_from_road_width,
+		transition_to_road_width,
+		eased
+	)
+	var road_left := size.x * 0.5 - width * 0.5
+
+	draw_rect(
+		Rect2(
+			Vector2(road_left - 8.0, -40.0),
+			Vector2(width + 16.0, size.y + 80.0)
+		),
+		Color(0.50, 0.49, 0.45),
+		true
+	)
+	draw_rect(
+		Rect2(
+			Vector2(road_left, -40.0),
+			Vector2(width, size.y + 80.0)
+		),
+		Color(0.14, 0.15, 0.15),
+		true
+	)
+
+	# Lane lines fade in while zooming out to highway and disappear while
+	# zooming into the single broad venue approach.
+	var visual_lanes := (
+		transition_to_lane_count
+		if to_highway
+		else transition_from_lane_count
+	)
+	var line_alpha := eased if to_highway else 1.0 - eased
+
+	if visual_lanes > 1 and line_alpha > 0.01:
+		var visual_lane_width := width / float(visual_lanes)
+		for lane in range(1, visual_lanes):
+			var x := road_left + visual_lane_width * lane
+			for marker_index in range(-1, 14):
+				var y := (
+					marker_index * 66.0
+					+ fmod(transition_scroll * 0.42, 66.0)
+				)
+				draw_line(
+					Vector2(x, y),
+					Vector2(x, y + 31.0),
+					Color(0.82, 0.80, 0.70, line_alpha),
+					3.0
+				)
+
+	# Edge shapes dissolve from neighborhood to open highway, then from highway
+	# into a denser city edge.
+	for index in range(4):
+		var y := (
+			fmod(
+				float(index) * 220.0
+				+ transition_scroll * 0.22,
+				size.y + 180.0
+			)
+			- 90.0
+		)
+
+		if to_highway:
+			var fade := 1.0 - eased
+			draw_rect(
+				Rect2(Vector2(18.0, y), Vector2(54.0, 70.0)),
+				Color(0.58, 0.45, 0.35, fade),
+				true
+			)
+			draw_rect(
+				Rect2(
+					Vector2(size.x - 72.0, y + 70.0),
+					Vector2(54.0, 70.0)
+				),
+				Color(0.58, 0.45, 0.35, fade),
+				true
+			)
+		else:
+			var fade := eased
+			draw_rect(
+				Rect2(Vector2(0.0, y), Vector2(46.0, 135.0)),
+				Color(0.28, 0.29, 0.29, fade),
+				true
+			)
+			draw_rect(
+				Rect2(
+					Vector2(size.x - 46.0, y + 55.0),
+					Vector2(46.0, 135.0)
+				),
+				Color(0.28, 0.29, 0.29, fade),
 				true
 			)
 
