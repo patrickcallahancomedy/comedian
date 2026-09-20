@@ -577,6 +577,13 @@ func _draw() -> void:
 		NETWORK.neighborhood_edges(),
 		NETWORK.STREET_WIDTH
 	)
+
+	# Render-isolation check: while physically in the neighborhood, stop here.
+	# This keeps connector/highway/city drawing from poisoning the startup frame.
+	if current_road_kind == "neighborhood":
+		_draw_minimap()
+		return
+
 	_draw_connector_out()
 	_draw_highway()
 	_draw_exit_connector()
