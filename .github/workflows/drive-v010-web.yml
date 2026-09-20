@@ -1,0 +1,88 @@
+name: DRIVE v0.10 Road-Only Playtest
+
+on:
+  push:
+    branches:
+      - drive-playtest-v0.10
+    paths:
+      - "godot/**"
+      - ".github/workflows/drive-v010-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comedian-drive-v010
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  test-and-export:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout v0.10
+        uses: actions/checkout@v4
+
+      - name: Import Godot project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path godot --quit
+
+      - name: Structural drive test
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --script res://tests/car_drive_test.gd
+
+      - name: 100-trip drive playtest
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --script res://tests/drive_playtest.gd
+
+      - name: Drive regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --script res://tests/drive_regression.gd
+
+      - name: Prepare export templates
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/"
+
+      - name: Export web build
+        shell: bash
+        working-directory: godot
+        run: |
+          set -euo pipefail
+          rm -rf build/drive-v010
+          mkdir -p build/drive-v010
+          godot --headless --path . --export-release "Web" build/drive-v010/index.html
+          touch build/drive-v010/.nojekyll
+
+          BUILD_NAME="drive-v010-${GITHUB_SHA:0:8}"
+          mv build/drive-v010/index.js "build/drive-v010/${BUILD_NAME}.js"
+          mv build/drive-v010/index.wasm "build/drive-v010/${BUILD_NAME}.wasm"
+          mv build/drive-v010/index.pck "build/drive-v010/${BUILD_NAME}.pck"
+
+          sed -i "s#src=\"index.js\"#src=\"${BUILD_NAME}.js\"#" build/drive-v010/index.html
+          sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/drive-v010/index.html
+          sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/drive-v010/index.html
+          sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/drive-v010/index.html
+
+      - name: Publish v0.10 road-only playtest
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: godot/build/drive-v010
+          target-folder: drive-v0.10
+          clean: false
