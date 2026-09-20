@@ -56,7 +56,7 @@ func _run() -> void:
 	_check(city.lane_traffic.size() > 0, "Highway has no traffic")
 	_check(int(city.active_profile.get("exit_lane", -1)) == 2, "Highway exit lane changed")
 
-	var old_gate := city.lane_gate_distance
+	var old_gate: float = city.lane_gate_distance
 	city.section_started = true
 	city.current_lane = 0
 	city.target_lane = 0
@@ -81,7 +81,7 @@ func _run() -> void:
 	city.section_started = true
 	city.is_driving = false
 	city.auto_stop_remaining = 0.0
-	var before := city.current_intersection
+	var before: Vector2i = city.current_intersection
 	for neighbor in city._legal_turn_neighbors(before):
 		var desired: Vector2i = neighbor - before
 		if desired != city.heading:
