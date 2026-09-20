@@ -1016,8 +1016,8 @@ func _draw_one_way_arrow(
 
 
 func _draw_lane_scene() -> void:
-	if active_stage_id == "downtown":
-		_draw_city_approach()
+	if steering_mode == "connector":
+		_draw_connector_road()
 		return
 
 	draw_rect(
@@ -1026,7 +1026,8 @@ func _draw_lane_scene() -> void:
 		true
 	)
 
-	var road_left := size.x * 0.5 - road_width * 0.5
+	var road_center_x := size.x * 0.5 + road_center_offset
+	var road_left := road_center_x - road_width * 0.5
 
 	draw_rect(
 		Rect2(
@@ -1045,76 +1046,41 @@ func _draw_lane_scene() -> void:
 		true
 	)
 
-	# Lane markings expose the actual steering choices before traffic arrives.
 	for lane in range(1, lane_count):
 		var x := road_left + lane_width * lane
 		for marker in range(-1, 14):
 			var y := marker * 64.0 + fmod(lane_distance * 0.36, 64.0)
-			draw_line(Vector2(x, y), Vector2(x, y + 30.0), Color(0.82, 0.80, 0.70), 3.0)
-	# Road-only prototype: no roadside scenery.
+			draw_line(
+				Vector2(x, y),
+				Vector2(x, y + 30.0),
+				Color(0.82, 0.80, 0.70),
+				3.0
+			)
+
+	if active_stage_id == "highway":
+		_draw_highway_exit()
+	elif active_stage_id == "parking_street":
+		_draw_parking_lane_target()
+
 	_draw_lane_traffic()
 
 
-func _draw_lane_scenery() -> void:
-	var visual_scroll := fmod(lane_distance * 0.36, 230.0)
-	var marker_count := int(size.y / 230.0) + 4
-	var road_left := size.x * 0.5 - road_width * 0.5
-	var road_right := size.x * 0.5 + road_width * 0.5
+func _draw_connector_road() -> void:
+	draw_rect(
+		Rect2(Vector2.ZERO, size),
+		Color(0.12, 0.12, 0.12),
+		true
+	)
 
-	for index in range(marker_count):
-		var y := (
-			float(index) * 230.0
-			+ visual_scroll
-			- 100.0
-		)
+	var road_center_x := size.x * 0.5 + road_center_offset
+	var road_left := road_center_x - road_width * 0.5
 
-		if active_stage_id == "main_road":
-			draw_rect(
-				Rect2(
-					Vector2(road_left - 78.0, y),
-					Vector2(52.0, 74.0)
-				),
-				Color(0.52, 0.44, 0.35),
-				true
-			)
-			draw_rect(
-				Rect2(
-					Vector2(road_right + 26.0, y + 70.0),
-					Vector2(58.0, 64.0)
-				),
-				Color(0.47, 0.49, 0.44),
-				true
-			)
-		else:
-			draw_rect(
-				Rect2(
-					Vector2(road_left - 28.0, y),
-					Vector2(10.0, 88.0)
-				),
-				Color(0.70, 0.70, 0.66),
-				true
-			)
-			draw_rect(
-				Rect2(
-					Vector2(road_right + 18.0, y),
-					Vector2(10.0, 88.0)
-				),
-				Color(0.70, 0.70, 0.66),
-				true
-			)
-
-
-func _draw_city_approach() -> void:
-	# Final road is intentionally just a road plus the destination space.
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.12, 0.12, 0.12), true)
-
-	var road_left := size.x * 0.5 - road_width * 0.5
 	draw_rect(
 		Rect2(
 			Vector2(road_left - 8.0, -40.0),
 			Vector2(road_width + 16.0, size.y + 80.0)
 		),
-		Color(0.47, 0.46, 0.43),
+		Color(0.49, 0.48, 0.43),
 		true
 	)
 	draw_rect(
@@ -1122,122 +1088,130 @@ func _draw_city_approach() -> void:
 			Vector2(road_left, -40.0),
 			Vector2(road_width, size.y + 80.0)
 		),
-		Color(0.14, 0.15, 0.15),
+		Color(0.15, 0.16, 0.16),
 		true
 	)
 
-	var remaining := lane_gate_distance - lane_distance
-	var player_center_y := (
-		player_car.position.y
-		+ player_car.size.y * car_scale * 0.5
+	var target_lanes := maxi(
+		1,
+		int(active_profile.get("to_lane_count", 1))
 	)
-	var destination_y := player_center_y - remaining * 0.22
+	if target_lanes <= 1:
+		return
 
-	if destination_y > -220.0:
-		var spot_size := Vector2(
-			minf(150.0, road_width * 0.44),
-			165.0
-		)
-		var spot := Rect2(
-			Vector2(
-				size.x * 0.5 - spot_size.x * 0.5,
-				destination_y - spot_size.y * 0.5
-			),
-			spot_size
-		)
-		draw_rect(
-			spot,
-			Color(0.83, 0.81, 0.72),
-			false,
-			4.0
-		)
-
-
-func _draw_connector_scene() -> void:
 	var progress := clampf(
-		transition_elapsed / transition_duration,
+		lane_distance / maxf(lane_gate_distance, 1.0),
 		0.0,
 		1.0
 	)
-	var eased := smoothstep(0.0, 1.0, progress)
-	var next_id: String = str(DRIVE_PROFILES.ORDER[transition_target_index])
-	var to_highway: bool = next_id == "highway"
+	var visual_lane_width := road_width / float(target_lanes)
 
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.12, 0.12, 0.12), true)
-
-	var width: float = lerpf(
-		transition_from_road_width,
-		transition_to_road_width,
-		eased
-	)
-	var road_left := size.x * 0.5 - width * 0.5
-
-	draw_rect(
-		Rect2(
-			Vector2(road_left - 8.0, -40.0),
-			Vector2(width + 16.0, size.y + 80.0)
-		),
-		Color(0.47, 0.46, 0.43),
-		true
-	)
-	draw_rect(
-		Rect2(
-			Vector2(road_left, -40.0),
-			Vector2(width, size.y + 80.0)
-		),
-		Color(0.14, 0.15, 0.15),
-		true
-	)
-
-	var visual_lanes: int = (
-		transition_to_lane_count
-		if to_highway
-		else transition_from_lane_count
-	)
-	var line_alpha: float = eased if to_highway else 1.0 - eased
-
-	if visual_lanes > 1 and line_alpha > 0.01:
-		var visual_lane_width := width / float(visual_lanes)
-		for lane in range(1, visual_lanes):
-			var x := road_left + visual_lane_width * lane
-			for marker_index in range(-1, 14):
-				var y := (
-					marker_index * 66.0
-					+ fmod(transition_scroll * 0.42, 66.0)
-				)
-				draw_line(
-					Vector2(x, y),
-					Vector2(x, y + 31.0),
-					Color(0.82, 0.80, 0.70, line_alpha),
-					3.0
-				)
+	for lane in range(1, target_lanes):
+		var x := road_left + visual_lane_width * lane
+		for marker in range(-1, 14):
+			var y := marker * 64.0 + fmod(lane_distance * 0.36, 64.0)
+			draw_line(
+				Vector2(x, y),
+				Vector2(x, y + 30.0),
+				Color(0.82, 0.80, 0.70, progress),
+				3.0
+			)
 
 
 func _draw_highway_exit() -> void:
 	var remaining := lane_gate_distance - lane_distance
-
-	if remaining < 0.0 or remaining > 1500.0:
+	if remaining < 0.0 or remaining > 1700.0:
 		return
 
-	var branch_y := (
+	var player_center_y := (
 		player_car.position.y
-		+ player_car.size.y * 0.5
-		- remaining * 0.36
+		+ player_car.size.y * car_scale * 0.5
+	)
+	var fork_y := player_center_y - remaining * 0.36
+
+	if fork_y < -180.0 or fork_y > size.y + 160.0:
+		return
+
+	var road_center_x := size.x * 0.5 + road_center_offset
+	var road_left := road_center_x - road_width * 0.5
+	var right_lane_center := road_left + lane_width * 3.5
+	var three_lane_right_edge := road_left + lane_width * 3.0
+	var background := Color(0.12, 0.12, 0.12)
+
+	# Above the fork the main highway is only three lanes. The fourth lane is
+	# physically peeled away into the connector.
+	if fork_y > -40.0:
+		draw_rect(
+			Rect2(
+				Vector2(three_lane_right_edge, -40.0),
+				Vector2(
+					size.x - three_lane_right_edge + 40.0,
+					maxf(0.0, fork_y + 40.0)
+				)
+			),
+			background,
+			true
+		)
+		draw_line(
+			Vector2(three_lane_right_edge, -40.0),
+			Vector2(three_lane_right_edge, fork_y),
+			Color(0.49, 0.48, 0.43),
+			8.0
+		)
+
+	var branch_end_x := minf(
+		size.x - lane_width * 0.55,
+		right_lane_center + lane_width * 0.72
+	)
+	var branch_points := PackedVector2Array([
+		Vector2(right_lane_center, fork_y + 150.0),
+		Vector2(right_lane_center + lane_width * 0.08, fork_y + 60.0),
+		Vector2(right_lane_center + lane_width * 0.34, fork_y - 70.0),
+		Vector2(branch_end_x, fork_y - 260.0),
+	])
+
+	draw_polyline(
+		branch_points,
+		Color(0.49, 0.48, 0.43),
+		lane_width + 16.0,
+		true
+	)
+	draw_polyline(
+		branch_points,
+		Color(0.15, 0.16, 0.16),
+		lane_width,
+		true
 	)
 
-	if branch_y < -120.0 or branch_y > size.y + 120.0:
+
+func _draw_parking_lane_target() -> void:
+	var remaining := lane_gate_distance - lane_distance
+	if remaining < 0.0 or remaining > 1150.0:
 		return
 
-	var road_right := size.x * 0.5 + road_width * 0.5
+	var player_center_y := (
+		player_car.position.y
+		+ player_car.size.y * car_scale * 0.5
+	)
+	var target_y := player_center_y - remaining * 0.36
+	var road_center_x := size.x * 0.5 + road_center_offset
+	var parking_lane := int(active_profile.get("parking_lane", 1))
+	var target_x := road_center_x + _lane_center_offset(parking_lane)
 
-	draw_colored_polygon(
-		PackedVector2Array([
-			Vector2(road_right - 8.0, branch_y - 42.0),
-			Vector2(size.x + 30.0, branch_y - 95.0),
-			Vector2(size.x + 30.0, branch_y + 95.0),
-			Vector2(road_right - 8.0, branch_y + 42.0),
-		]),
-		Color(0.19, 0.20, 0.20)
+	var spot_size := Vector2(lane_width * 0.78, 150.0)
+	var spot := Rect2(
+		Vector2(
+			target_x - spot_size.x * 0.5,
+			target_y - spot_size.y * 0.5
+		),
+		spot_size
+	)
+
+	draw_rect(
+		spot,
+		Color(0.84, 0.82, 0.74),
+		false,
+		4.0
 	)
 
 
@@ -1253,7 +1227,11 @@ func _draw_lane_traffic() -> void:
 		var y := player_center_y - gap * 0.36
 		if y < -120.0 or y > size.y + 120.0:
 			continue
-		var x := size.x * 0.5 + _lane_center_offset(int(traffic.get("lane", 0)))
+		var x := (
+			size.x * 0.5
+			+ road_center_offset
+			+ _lane_center_offset(int(traffic.get("lane", 0)))
+		)
 		draw_texture_rect(player_car.texture, Rect2(Vector2(x, y) - traffic_size * 0.5, traffic_size), false, Color(0.80, 0.88, 1.0))
 
 
