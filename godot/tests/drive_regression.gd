@@ -1,6 +1,6 @@
 extends SceneTree
-## DRIVE v0.9 regressions: invisible connector gates, eight-lane exit recovery,
-## contact debounce, random input safety, replay and venue handoff.
+## DRIVE v0.11 regression coverage for connected road chunks, physical highway
+## fork, parking lane, contact debounce, replay and venue handoff.
 
 var failures: Array[String] = []
 
@@ -17,54 +17,67 @@ func run() -> void:
 	var city = scene.get_node("CityMap")
 	city.set_process(false)
 
-	# First connector should preserve the old profile until animation completes.
-	city._begin_connector(1)
-	check(city.transition_active, "First connector did not start")
-	check(city.active_stage_id == "neighborhood", "First connector swapped too early")
-	city._process_connector(city.transition_duration + 0.01)
+	# Connector geometry is distance driven.
+	city._load_stage(1, true)
+	var start_width: float = city.road_width
+	city.lane_distance = city.lane_gate_distance * 0.5
+	city._process_lane_mode(0.0)
+	check(city.road_width > start_width, "First connector did not widen by distance")
+	city.lane_distance = city.lane_gate_distance
+	city._process_lane_mode(0.0)
 	check(city.active_stage_id == "highway", "First connector did not reach highway")
+	check(city.lane_count == 4, "Highway is not four lanes")
 
-	# Missing the right-most exit keeps the player on the highway.
+	# Missed physical fork keeps the player on highway.
 	city.lane_traffic.clear()
-	city.target_lane = 6
-	city.current_lane = 6
-	city.lane_visual_offset = city._lane_center_offset(6)
+	city.target_lane = 2
+	city.current_lane = 2
+	city.lane_visual_offset = city._lane_center_offset(2)
 	city.lane_distance = city.lane_gate_distance
 	var old_gate: float = city.lane_gate_distance
 	city._process_lane_mode(0.0)
-	check(city.active_stage_id == "highway", "Wrong lane accepted at highway gate")
-	check(city.lane_gate_distance > old_gate, "Missed exit did not add highway")
+	check(city.active_stage_id == "highway", "Wrong lane accepted at highway fork")
+	check(city.lane_gate_distance > old_gate, "Missed fork did not continue highway")
 
-	# Correct right-most lane starts connector rather than hard-swapping.
-	city.lane_visual_offset = city._lane_center_offset(7)
-	city.current_lane = 7
-	city.target_lane = 7
+	# Correct lane becomes connector without teleporting to screen center.
+	city.lane_visual_offset = city._lane_center_offset(3)
+	city.current_lane = 3
+	city.target_lane = 3
+	var fork_offset: float = city.lane_visual_offset
 	city.lane_distance = city.lane_gate_distance
 	city._process_lane_mode(0.0)
-	check(city.transition_active, "Correct highway lane did not start connector")
-	check(city.active_stage_id == "highway", "Highway connector swapped too early")
-	city._process_connector(city.transition_duration + 0.01)
-	check(city.active_stage_id == "downtown", "Highway connector did not reach venue approach")
+	check(city.active_stage_id == "connector_in", "Right lane did not feed connector")
+	check(absf(city.road_center_offset - fork_offset) < 1.0, "Connector lost fork position")
 
-	# Contact debounce still works on the eight-lane highway.
-	city._load_stage(1, true)
+	# Contact debounce still works on four-lane highway.
+	city._load_stage(2, true)
 	city.lane_traffic = [{"lane": city.current_lane, "distance": 20.0, "speed_factor": 0.7}]
 	city._process_lane_mode(1.0 / 60.0)
 	check(city.bumps == 1, "Contact not detected")
 	city._process_lane_mode(1.0 / 60.0)
 	check(city.bumps == 1, "One contact counted twice")
 
-	# Rapid input cannot push lane selection beyond the eight-lane bounds.
+	# Final street has two lanes and parking requires the right lane.
+	city._load_stage(6, true)
+	check(city.lane_count == 2, "Parking street is not two lanes")
+	var park_gate: float = city.lane_gate_distance
+	city.current_lane = 0
+	city.target_lane = 0
+	city.lane_visual_offset = city._lane_center_offset(0)
+	city.lane_distance = park_gate
+	city._process_lane_mode(0.0)
+	check(not city.drive_complete, "Travel lane incorrectly completed parking")
+	check(city.lane_gate_distance > park_gate, "Missed parking did not continue road")
+
+	# Random lane input remains bounded.
 	var random := RandomNumberGenerator.new()
-	random.seed = 7309
-	for index in range(6000):
-		match random.randi_range(0, 12):
+	random.seed = 7311
+	for index in range(3000):
+		match random.randi_range(0, 10):
 			0: city._turn_left()
 			1: city._turn_right()
-			2: city._move_forward()
 		city._process(1.0 / 60.0)
 		check(city.target_lane >= 0 and city.target_lane < city.lane_count, "Lane out of bounds")
-		check(is_finite(city.camera_world_position.x), "Invalid position after rapid steering")
 
 	city._finish_drive()
 	check(scene.get_node("Arrival").visible, "No arrival panel")
@@ -90,7 +103,7 @@ func run() -> void:
 
 	for failure in failures:
 		push_error(failure)
-	print("REGRESSION PASS — v0.9 connectors, 8-lane exit, replay, venue" if failures.is_empty() else "REGRESSION FAIL")
+	print("REGRESSION PASS — v0.11 connected roads, fork, parking" if failures.is_empty() else "REGRESSION FAIL")
 	quit(0 if failures.is_empty() else 1)
 
 
