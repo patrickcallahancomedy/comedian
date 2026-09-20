@@ -31,6 +31,7 @@ const PROFILES := {
 		"traffic_count": 0,
 		"section_length": 0.0,
 		"exit_lane": -1,
+		"start_lane": 0,
 	},
 	"main_road": {
 		"name": "MAIN ROAD",
@@ -49,6 +50,7 @@ const PROFILES := {
 		"traffic_count": 4,
 		"section_length": 6200.0,
 		"exit_lane": -1,
+		"start_lane": 1,
 	},
 	"highway": {
 		"name": "HIGHWAY",
@@ -67,6 +69,7 @@ const PROFILES := {
 		"traffic_count": 7,
 		"section_length": 9000.0,
 		"exit_lane": 2,
+		"start_lane": 1,
 	},
 	"downtown": {
 		"name": "DOWNTOWN",
@@ -85,6 +88,7 @@ const PROFILES := {
 		"traffic_count": 0,
 		"section_length": 0.0,
 		"exit_lane": -1,
+		"start_lane": 0,
 	},
 	"parking": {
 		"name": "PARKING LOT",
@@ -103,6 +107,7 @@ const PROFILES := {
 		"traffic_count": 0,
 		"section_length": 0.0,
 		"exit_lane": -1,
+		"start_lane": 0,
 	},
 }
 
