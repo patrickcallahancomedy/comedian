@@ -452,16 +452,28 @@ func _build_lane_stage() -> void:
 	lane_gate_distance = float(
 		active_profile.get("section_length", 6000.0)
 	)
-	current_lane = clampi(
-		int(active_profile.get("start_lane", lane_count - 1)),
-		0,
-		lane_count - 1
-	)
-	target_lane = current_lane
-	lane_visual_offset = _lane_center_offset(current_lane)
+
+	if steering_mode == "connector":
+		connector_origin_offset = pending_connector_offset
+		pending_connector_offset = 0.0
+		road_center_offset = connector_origin_offset
+		current_lane = 0
+		target_lane = 0
+		lane_visual_offset = 0.0
+	else:
+		connector_origin_offset = 0.0
+		road_center_offset = 0.0
+		current_lane = clampi(
+			int(active_profile.get("start_lane", lane_count - 1)),
+			0,
+			lane_count - 1
+		)
+		target_lane = current_lane
+		lane_visual_offset = _lane_center_offset(current_lane)
+
 	player_car.position = (
 		car_base_position
-		+ Vector2(lane_visual_offset, 0.0)
+		+ Vector2(road_center_offset + lane_visual_offset, 0.0)
 	)
 
 	view_rotation = 0.0
@@ -493,19 +505,31 @@ func _build_lane_traffic() -> void:
 
 
 func _process_lane_mode(delta: float) -> void:
-	lane_visual_offset = move_toward(
-		lane_visual_offset,
-		_lane_center_offset(target_lane),
-		delta * steering_rate
-	)
+	if steering_mode == "connector":
+		_update_connector_geometry()
+		lane_visual_offset = 0.0
+		current_lane = 0
+		target_lane = 0
+	else:
+		lane_visual_offset = move_toward(
+			lane_visual_offset,
+			_lane_center_offset(target_lane),
+			delta * steering_rate
+		)
+		current_lane = clampi(
+			roundi(
+				lane_visual_offset / lane_width
+				+ float(lane_count - 1) * 0.5
+			),
+			0,
+			lane_count - 1
+		)
 
 	player_car.position = (
 		car_base_position
-		+ Vector2(lane_visual_offset, 0.0)
+		+ Vector2(road_center_offset + lane_visual_offset, 0.0)
 	)
 
-	# Occupancy follows the visible car, not the requested lane.
-	current_lane = clampi(roundi(lane_visual_offset / lane_width + float(lane_count - 1) * 0.5), 0, lane_count - 1)
 	if not section_started:
 		return
 
@@ -524,9 +548,16 @@ func _process_lane_mode(delta: float) -> void:
 		)
 
 		var gap := float(traffic["distance"]) - lane_distance
-		# Contact is measured in the same projection used to draw traffic.
-		var lateral_gap := absf(lane_visual_offset - _lane_center_offset(int(traffic["lane"])))
-		if absf(gap) < 155.0 and lateral_gap < lane_width * 0.48 and bump_cooldown <= 0.0:
+		var lateral_gap := absf(
+			lane_visual_offset
+			- _lane_center_offset(int(traffic["lane"]))
+		)
+
+		if (
+			absf(gap) < 155.0
+			and lateral_gap < lane_width * 0.48
+			and bump_cooldown <= 0.0
+		):
 			bumps += 1
 			bump_cooldown = 1.0
 			traffic["distance"] = lane_distance + 450.0
@@ -537,46 +568,101 @@ func _process_lane_mode(delta: float) -> void:
 			and gap > 0.0
 			and gap < 430.0
 		):
-			effective_speed = minf(
-				effective_speed,
-				traffic_speed
-			)
+			effective_speed = minf(effective_speed, traffic_speed)
 
 		if float(traffic["distance"]) < lane_distance - 900.0:
 			traffic["distance"] = (
 				lane_distance
 				+ rng.randf_range(1800.0, 3600.0)
 			)
-			traffic["lane"] = rng.randi_range(
-				0,
-				lane_count - 1
-			)
+			traffic["lane"] = rng.randi_range(0, lane_count - 1)
 
 		lane_traffic[index] = traffic
 
 	lane_distance += effective_speed * delta
 
+	if steering_mode == "connector":
+		_update_connector_geometry()
+
 	if active_stage_id == "highway":
 		var exit_remaining := lane_gate_distance - lane_distance
-		if exit_remaining > 0.0 and exit_remaining < 1500.0:
+		if exit_remaining > 0.0 and exit_remaining < 1650.0:
 			status_label.text = "EXIT  >"
-		elif status_label.text == "EXIT  →":
+		elif status_label.text == "EXIT  >":
+			status_label.text = ""
+
+	if active_stage_id == "parking_street":
+		var park_remaining := lane_gate_distance - lane_distance
+		if park_remaining > 0.0 and park_remaining < 1050.0:
+			status_label.text = "PARK  >"
+		elif status_label.text == "PARK  >":
 			status_label.text = ""
 
 	if lane_distance < lane_gate_distance:
 		return
 
 	var exit_lane := int(active_profile.get("exit_lane", -1))
+	var centered_in_exit := (
+		exit_lane < 0
+		or (
+			current_lane == exit_lane
+			and absf(
+				lane_visual_offset
+				- _lane_center_offset(exit_lane)
+			) < lane_width * 0.24
+		)
+	)
 
-	if exit_lane < 0 or (current_lane == exit_lane and absf(lane_visual_offset - _lane_center_offset(exit_lane)) < lane_width * 0.20):
+	if centered_in_exit:
 		_advance_stage()
 		return
 
 	wrong_turns += 1
-	status_label.text = "REROUTING"
+	status_label.text = "MISSED EXIT" if active_stage_id == "highway" else "KEEP GOING"
 	lane_gate_distance += float(
 		active_profile.get("section_length", 6000.0)
 	)
+
+
+func _update_connector_geometry() -> void:
+	if steering_mode != "connector":
+		return
+
+	var progress := clampf(
+		lane_distance / maxf(lane_gate_distance, 1.0),
+		0.0,
+		1.0
+	)
+	var eased := smoothstep(0.0, 1.0, progress)
+	var start_lane_count := maxi(1, int(active_profile.get("lane_count", 1)))
+	var end_lane_count := maxi(
+		1,
+		int(active_profile.get("to_lane_count", start_lane_count))
+	)
+	var start_road_scale := float(active_profile.get("road_scale", 1.0))
+	var end_road_scale := float(
+		active_profile.get("to_road_scale", start_road_scale)
+	)
+	var start_width := (
+		DRIVE_PROFILES.BASE_LANE_WIDTH
+		* start_road_scale
+		* float(start_lane_count)
+	)
+	var end_width := (
+		DRIVE_PROFILES.BASE_LANE_WIDTH
+		* end_road_scale
+		* float(end_lane_count)
+	)
+
+	road_width = lerpf(start_width, end_width, eased)
+	lane_width = road_width / float(end_lane_count)
+	road_center_offset = lerpf(connector_origin_offset, 0.0, eased)
+	car_scale = lerpf(
+		float(active_profile.get("car_scale", 1.0)),
+		float(active_profile.get("to_car_scale", car_scale)),
+		eased
+	)
+	player_car.scale = Vector2.ONE * car_scale
 
 
 func _lane_center_offset(lane: int) -> float:
