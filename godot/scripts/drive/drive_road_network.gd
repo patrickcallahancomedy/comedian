@@ -26,7 +26,9 @@ const HIGHWAY_FORK_Y := -4200.0
 const HIGHWAY_END_Y := -8600.0
 
 const CONNECTOR_OUT_START := Vector2(700.0, 2100.0)
-const CONNECTOR_OUT_END := Vector2(0.0, HIGHWAY_START_Y)
+const CONNECTOR_OUT_CONTROL := Vector2(610.0, 1250.0)
+const CONNECTOR_OUT_END := Vector2(-39.0, HIGHWAY_START_Y)
+const CONNECTOR_OUT_LENGTH := 1700.0
 
 const EXIT_START := Vector2(117.0, HIGHWAY_FORK_Y)
 const EXIT_CONTROL := Vector2(610.0, -4470.0)
@@ -110,6 +112,21 @@ static func highway_lane_center(lane: int, lane_count: int = 4) -> float:
 		+ (float(lane) - float(lane_count - 1) * 0.5)
 		* HIGHWAY_LANE_WIDTH
 	)
+
+
+static func connector_out_curve(t: float) -> Vector2:
+	var clamped := clampf(t, 0.0, 1.0)
+	var a := CONNECTOR_OUT_START.lerp(CONNECTOR_OUT_CONTROL, clamped)
+	var b := CONNECTOR_OUT_CONTROL.lerp(CONNECTOR_OUT_END, clamped)
+	return a.lerp(b, clamped)
+
+
+static func connector_out_tangent(t: float) -> Vector2:
+	var clamped := clampf(t, 0.0, 1.0)
+	return (
+		2.0 * (1.0 - clamped) * (CONNECTOR_OUT_CONTROL - CONNECTOR_OUT_START)
+		+ 2.0 * clamped * (CONNECTOR_OUT_END - CONNECTOR_OUT_CONTROL)
+	).normalized()
 
 
 static func exit_curve(t: float) -> Vector2:
