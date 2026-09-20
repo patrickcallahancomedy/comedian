@@ -1,54 +1,59 @@
 extends Control
 
-const WORLD_CONFIG = preload("res://scripts/drive/drive_world_config.gd")
+const DRIVE_PROFILES = preload("res://scripts/drive/drive_profiles.gd")
 
-const WORLD_SIZE: int = WORLD_CONFIG.WORLD_SIZE
-const MAP_SIZE: Vector2 = WORLD_CONFIG.MAP_SIZE
-const NEIGHBORHOOD_ROADS_TO_REMOVE := 8
-const CITY_ONE_WAY_COUNT := 12
-const DRIVE_SPEED := 1.05
-const HIGHWAY_SPEED := 1.65
+@export var minimap_size := 142.0
 
-@export var block_size: float = 110.0
-@export var road_width: float = 56.0
-@export var minimap_size: float = 142.0
+var active_stage_id := ""
+var active_profile: Dictionary = {}
+var stage_index := 0
 
-var world_size: int = WORLD_SIZE
-var minimap_world_size: Vector2 = MAP_SIZE
-var intersections: Array[Vector2i] = []
-var intersection_positions: Dictionary = {}
-var roads: Array = []
-var rng := RandomNumberGenerator.new()
+var steering_mode := "turn"
+var lane_count := 1
+var car_scale := 1.0
+var drive_speed := DRIVE_PROFILES.BASE_SPEED
+var lane_width := DRIVE_PROFILES.BASE_LANE_WIDTH
+var road_width := DRIVE_PROFILES.BASE_LANE_WIDTH
+var intersection_spacing := DRIVE_PROFILES.BASE_BLOCK_SPACING
+var stop_signs_enabled := false
+var auto_stop_time := 0.0
+var one_way_enabled := false
 
-var region_ids: Array[String] = WORLD_CONFIG.get_region_ids()
+var section_started := false
+var drive_complete := false
+var drive_time := 0.0
+var wrong_turns := 0
+var wrong_way_tickets := 0
 
-var parking_slots: Array[Vector2i] = []
-var open_parking_slots: Array[Vector2i] = []
-var blocked_parking_slots: Array[Vector2i] = []
-
-var start_intersection: Vector2i = WORLD_CONFIG.START
-var destination_intersection := Vector2i.ZERO
-var shortest_route: Array[Vector2i] = []
-
-var current_intersection: Vector2i = WORLD_CONFIG.START
-var target_intersection: Vector2i = WORLD_CONFIG.START
-var camera_world_position := Vector2.ZERO
-var is_driving: bool = false
-var drive_complete: bool = false
-
-var heading := Vector2i.UP
-var view_rotation: float = 0.0
-var target_view_rotation: float = 0.0
-
-var wrong_turns: int = 0
-var wrong_way_tickets: int = 0
-var drive_time: float = 0.0
-
-var current_segment_off_route: bool = false
-var current_segment_wrong_way: bool = false
-
+var turn_intersections: Array[Vector2i] = []
+var turn_positions: Dictionary = {}
+var turn_roads: Array = []
 var stop_sign_intersections: Array[Vector2i] = []
+var entry_intersection := Vector2i.ZERO
+var exit_intersection := Vector2i.ZERO
+var current_intersection := Vector2i.ZERO
+var target_intersection := Vector2i.ZERO
+var camera_world_position := Vector2.ZERO
+var shortest_route: Array[Vector2i] = []
+var heading := Vector2i.UP
+var view_rotation := 0.0
+var target_view_rotation := 0.0
+var is_driving := false
+var auto_stop_remaining := 0.0
+var current_segment_off_route := false
+var current_segment_wrong_way := false
 
+var lane_distance := 0.0
+var lane_gate_distance := 0.0
+var current_lane := 0
+var target_lane := 0
+var lane_visual_offset := 0.0
+var lane_traffic: Array = []
+
+var rng := RandomNumberGenerator.new()
+var car_base_position := Vector2.ZERO
+
+@onready var player_car: TextureRect = $"../PlayerCar"
 @onready var left_button: Button = $"../TouchControls/LeftButton"
 @onready var forward_button: Button = $"../TouchControls/ForwardButton"
 @onready var right_button: Button = $"../TouchControls/RightButton"
@@ -63,409 +68,139 @@ func _ready() -> void:
 	forward_button.pressed.connect(_move_forward)
 	right_button.pressed.connect(_turn_right)
 
-	_build_world()
-	_reset_drive_position()
+	car_base_position = player_car.position
+	player_car.pivot_offset = player_car.size * 0.5
 
-	print("DRIVE intersections: ", intersections.size())
-	print("DRIVE roads: ", roads.size())
-	print("Whole trip route found: ", not shortest_route.is_empty())
+	_load_stage(0, false)
 
 
-func _build_world() -> void:
-	intersections.clear()
-	intersection_positions.clear()
-	roads.clear()
-	parking_slots.clear()
-	open_parking_slots.clear()
-	blocked_parking_slots.clear()
+func apply_drive_profile(profile: Dictionary) -> void:
+	active_profile = profile
+	steering_mode = str(profile.get("mode", "turn"))
+	lane_count = int(profile.get("lane_count", 1))
+	car_scale = float(profile.get("car_scale", 1.0))
+	drive_speed = (
+		DRIVE_PROFILES.BASE_SPEED
+		* float(profile.get("speed_scale", 1.0))
+	)
+	lane_width = (
+		DRIVE_PROFILES.BASE_LANE_WIDTH
+		* float(profile.get("road_scale", 1.0))
+	)
+	road_width = lane_width * lane_count
+	intersection_spacing = (
+		DRIVE_PROFILES.BASE_BLOCK_SPACING
+		* float(profile.get("block_scale", 1.0))
+	)
+	stop_signs_enabled = bool(profile.get("stop_signs", false))
+	auto_stop_time = float(profile.get("auto_stop_time", 0.0))
+	one_way_enabled = bool(profile.get("one_way", false))
 
-	_build_neighborhood()
-	_build_highway()
-	_build_city()
-	_build_parking_lot()
-	_build_region_connectors()
-
-	_collect_intersections_from_roads()
-	_add_city_one_ways(CITY_ONE_WAY_COUNT)
-	_collect_intersections_from_roads()
-	_assign_intersection_positions()
-	_build_stop_signs()
+	player_car.scale = Vector2.ONE * car_scale
+	player_car.position = car_base_position
+	map_label.text = str(profile.get("name", active_stage_id.to_upper()))
 
 
-func _build_neighborhood() -> void:
-	var region := WORLD_CONFIG.get_region("neighborhood")
-	var origin: Vector2i = region["origin"]
-	var region_size: Vector2i = region["size"]
+func _load_stage(index: int, auto_start: bool) -> void:
+	if index >= DRIVE_PROFILES.ORDER.size():
+		_finish_drive()
+		return
 
-	_add_region_grid(
-		"neighborhood",
-		origin,
-		region_size,
-		"neighborhood",
-		25
+	stage_index = index
+	active_stage_id = DRIVE_PROFILES.ORDER[stage_index]
+	apply_drive_profile(
+		DRIVE_PROFILES.get_profile(active_stage_id)
 	)
 
-	_remove_region_roads(
-		"neighborhood",
-		NEIGHBORHOOD_ROADS_TO_REMOVE,
-		_region_nodes(origin, region_size)
-	)
-
-
-func _build_highway() -> void:
-	_add_road(Vector2i(5, 12), Vector2i(5, 11), "ramp", 40, "highway")
-	_add_road(Vector2i(5, 11), Vector2i(5, 10), "ramp", 40, "highway")
-
-	_add_road(Vector2i(5, 10), Vector2i(6, 10), "highway", 65, "highway")
-	_add_road(Vector2i(6, 10), Vector2i(7, 10), "highway", 65, "highway")
-	_add_road(Vector2i(7, 10), Vector2i(8, 10), "highway", 65, "highway")
-	_add_road(Vector2i(8, 10), Vector2i(9, 10), "highway", 65, "highway")
-
-
-func _build_city() -> void:
-	var region := WORLD_CONFIG.get_region("city")
-
-	_add_region_grid(
-		"city",
-		region["origin"],
-		region["size"],
-		"city",
-		30
-	)
-
-
-func _build_parking_lot() -> void:
-	_add_road(Vector2i(15, 4), Vector2i(16, 4), "parking", 10, "parking")
-	_add_road(Vector2i(16, 4), Vector2i(17, 4), "parking", 10, "parking")
-
-	_add_road(Vector2i(17, 4), Vector2i(17, 5), "parking", 10, "parking")
-	_add_road(Vector2i(17, 5), Vector2i(17, 6), "parking", 10, "parking")
-	_add_road(Vector2i(17, 6), Vector2i(17, 7), "parking", 10, "parking")
-	_add_road(Vector2i(17, 7), Vector2i(17, 8), "parking", 10, "parking")
-
-	_add_road(Vector2i(15, 5), Vector2i(16, 5), "parking", 10, "parking")
-	_add_road(Vector2i(16, 5), Vector2i(17, 5), "parking", 10, "parking")
-	_add_road(Vector2i(17, 5), Vector2i(18, 5), "parking", 10, "parking")
-	_add_road(Vector2i(18, 5), Vector2i(19, 5), "parking", 10, "parking")
-
-	_add_road(Vector2i(15, 7), Vector2i(16, 7), "parking", 10, "parking")
-	_add_road(Vector2i(16, 7), Vector2i(17, 7), "parking", 10, "parking")
-	_add_road(Vector2i(17, 7), Vector2i(18, 7), "parking", 10, "parking")
-	_add_road(Vector2i(18, 7), Vector2i(19, 7), "parking", 10, "parking")
-
-	parking_slots = [
-		Vector2i(15, 5),
-		Vector2i(19, 5),
-		Vector2i(15, 7),
-		Vector2i(19, 7),
-	]
-
-	var first_open_index := rng.randi_range(0, parking_slots.size() - 1)
-	var second_open_index := first_open_index
-
-	while second_open_index == first_open_index:
-		second_open_index = rng.randi_range(0, parking_slots.size() - 1)
-
-	open_parking_slots = [
-		parking_slots[first_open_index],
-		parking_slots[second_open_index],
-	]
-
-	destination_intersection = open_parking_slots[0]
-
-	for slot in parking_slots:
-		if open_parking_slots.has(slot):
-			continue
-
-		blocked_parking_slots.append(slot)
-
-		var aisle_neighbor := Vector2i(16, slot.y)
-
-		if slot.x == 19:
-			aisle_neighbor = Vector2i(18, slot.y)
-
-		var blocked_road = _get_road_between(slot, aisle_neighbor)
-
-		if blocked_road != null:
-			blocked_road["blocked"] = true
-
-
-func _build_region_connectors() -> void:
-	_add_road(Vector2i(4, 12), Vector2i(5, 12), "ramp", 35, "highway")
-
-	_add_road(Vector2i(9, 10), Vector2i(10, 10), "arterial", 40, "city")
-	_add_road(Vector2i(10, 10), Vector2i(10, 9), "arterial", 40, "city")
-	_add_road(Vector2i(10, 9), Vector2i(10, 8), "arterial", 40, "city")
-
-	_add_road(Vector2i(14, 4), Vector2i(15, 4), "parking", 10, "parking")
-
-
-func _add_region_grid(
-	region_id: String,
-	origin: Vector2i,
-	region_size: Vector2i,
-	road_type: String,
-	speed_limit: int
-) -> void:
-	for local_y in range(region_size.y):
-		for local_x in range(region_size.x):
-			var point := origin + Vector2i(local_x, local_y)
-
-			if local_x < region_size.x - 1:
-				_add_road(
-					point,
-					point + Vector2i.RIGHT,
-					road_type,
-					speed_limit,
-					region_id
-				)
-
-			if local_y < region_size.y - 1:
-				_add_road(
-					point,
-					point + Vector2i.DOWN,
-					road_type,
-					speed_limit,
-					region_id
-				)
-
-
-func _add_road(
-	from_intersection: Vector2i,
-	to_intersection: Vector2i,
-	road_type: String,
-	speed_limit: int,
-	region_id: String,
-	one_way: bool = false,
-	blocked: bool = false
-) -> void:
-	roads.append({
-		"from": from_intersection,
-		"to": to_intersection,
-		"road_type": road_type,
-		"speed_limit": speed_limit,
-		"region": region_id,
-		"one_way": one_way,
-		"blocked": blocked,
-	})
-
-
-func _region_nodes(
-	origin: Vector2i,
-	region_size: Vector2i
-) -> Array[Vector2i]:
-	var nodes: Array[Vector2i] = []
-
-	for y in range(region_size.y):
-		for x in range(region_size.x):
-			nodes.append(origin + Vector2i(x, y))
-
-	return nodes
-
-
-func _remove_region_roads(
-	region_id: String,
-	target_count: int,
-	region_nodes: Array[Vector2i]
-) -> void:
-	var removed_count := 0
-	var attempts := 0
-
-	while removed_count < target_count and attempts < 3000:
-		attempts += 1
-
-		var candidate_indices: Array[int] = []
-
-		for index in range(roads.size()):
-			if str(roads[index].get("region", "")) == region_id:
-				candidate_indices.append(index)
-
-		if candidate_indices.is_empty():
-			break
-
-		var road_index := candidate_indices[
-			rng.randi_range(0, candidate_indices.size() - 1)
-		]
-		var removed_road = roads[road_index]
-
-		roads.remove_at(road_index)
-
-		if _region_is_connected(region_id, region_nodes):
-			removed_count += 1
-		else:
-			roads.insert(road_index, removed_road)
-
-
-func _region_is_connected(
-	region_id: String,
-	region_nodes: Array[Vector2i]
-) -> bool:
-	if region_nodes.is_empty():
-		return true
-
-	var visited: Dictionary = {}
-	var queue: Array[Vector2i] = [region_nodes[0]]
-	visited[region_nodes[0]] = true
-
-	while not queue.is_empty():
-		var current: Vector2i = queue.pop_front()
-
-		for road in roads:
-			if str(road.get("region", "")) != region_id:
-				continue
-
-			var a: Vector2i = _road_start(road)
-			var b: Vector2i = _road_end(road)
-			var neighbor := Vector2i.ZERO
-			var found_neighbor := false
-
-			if a == current:
-				neighbor = b
-				found_neighbor = true
-			elif b == current:
-				neighbor = a
-				found_neighbor = true
-
-			if (
-				found_neighbor
-				and region_nodes.has(neighbor)
-				and not visited.has(neighbor)
-			):
-				visited[neighbor] = true
-				queue.append(neighbor)
-
-	return visited.size() == region_nodes.size()
-
-
-func _collect_intersections_from_roads() -> void:
-	intersections.clear()
-	var seen: Dictionary = {}
-
-	for road in roads:
-		seen[_road_start(road)] = true
-		seen[_road_end(road)] = true
-
-	for intersection in seen.keys():
-		intersections.append(intersection)
-
-
-func _assign_intersection_positions() -> void:
-	intersection_positions.clear()
-
-	for intersection in intersections:
-		var assigned := false
-
-		for region_id in region_ids:
-			var region := WORLD_CONFIG.get_region(region_id)
-
-			if _point_is_in_region(intersection, region):
-				var origin: Vector2i = region["origin"]
-				var physical_origin: Vector2 = region["physical_origin"]
-				var spacing: float = region["spacing"]
-				var local := Vector2(intersection - origin)
-
-				intersection_positions[intersection] = (
-					physical_origin + local * spacing
-				)
-				assigned = true
-				break
-
-		if assigned:
-			continue
-
-		if intersection == Vector2i(10, 10):
-			intersection_positions[intersection] = Vector2(31.4, 14.2)
-		elif intersection == Vector2i(10, 9):
-			intersection_positions[intersection] = Vector2(31.4, 13.2)
-		else:
-			intersection_positions[intersection] = Vector2(intersection)
-
-
-func _point_is_in_region(
-	point: Vector2i,
-	region: Dictionary
-) -> bool:
-	var origin: Vector2i = region["origin"]
-	var region_size: Vector2i = region["size"]
-
-	return (
-		point.x >= origin.x
-		and point.y >= origin.y
-		and point.x < origin.x + region_size.x
-		and point.y < origin.y + region_size.y
-	)
-
-
-func _intersection_world_position(intersection: Vector2i) -> Vector2:
-	return intersection_positions.get(
-		intersection,
-		Vector2(intersection)
-	)
-
-
-func _add_city_one_ways(target_count: int) -> void:
-	var added := 0
-	var attempts := 0
-
-	while added < target_count and attempts < 500:
-		attempts += 1
-
-		var city_indices: Array[int] = []
-
-		for index in range(roads.size()):
-			var road = roads[index]
-
-			if (
-				str(road.get("region", "")) == "city"
-				and str(road.get("road_type", "")) == "city"
-				and not bool(road.get("one_way", false))
-			):
-				city_indices.append(index)
-
-		if city_indices.is_empty():
-			break
-
-		var road_index := city_indices[
-			rng.randi_range(0, city_indices.size() - 1)
-		]
-		var road: Dictionary = roads[road_index]
-
-		var original_from: Vector2i = _road_start(road)
-		var original_to: Vector2i = _road_end(road)
-
-		if rng.randi_range(0, 1) == 1:
-			road["from"] = original_to
-			road["to"] = original_from
-
-		road["one_way"] = true
-
-		if _find_shortest_route(
-			start_intersection,
-			destination_intersection
-		).is_empty():
-			road["from"] = original_from
-			road["to"] = original_to
-			road["one_way"] = false
-		else:
-			added += 1
-
-
-func _reset_drive_position() -> void:
-	current_intersection = start_intersection
-	target_intersection = start_intersection
-	camera_world_position = _intersection_world_position(start_intersection)
-
+	section_started = false
 	is_driving = false
-	drive_complete = false
-	wrong_turns = 0
-	wrong_way_tickets = 0
-	drive_time = 0.0
+	auto_stop_remaining = 0.0
 	current_segment_off_route = false
 	current_segment_wrong_way = false
+	status_label.text = ""
 
-	shortest_route = _find_shortest_route(
+	if steering_mode == "turn":
+		_build_turn_stage()
+	else:
+		_build_lane_stage()
+
+	if auto_start:
+		_start_current_stage()
+	else:
+		status_label.text = "PRESS GO"
+
+	queue_redraw()
+
+
+func _advance_stage() -> void:
+	_load_stage(stage_index + 1, true)
+
+
+func _start_current_stage() -> void:
+	if drive_complete or section_started:
+		return
+
+	section_started = true
+	status_label.text = ""
+
+	if steering_mode == "turn":
+		var next_intersection := current_intersection + heading
+
+		if _commit_turn_segment(next_intersection):
+			is_driving = true
+		else:
+			status_label.text = "TURN"
+
+
+func _build_turn_stage() -> void:
+	turn_intersections.clear()
+	turn_positions.clear()
+	turn_roads.clear()
+	stop_sign_intersections.clear()
+
+	var grid_size: Vector2i = active_profile.get(
+		"grid_size",
+		Vector2i(4, 4)
+	)
+
+	for y in range(grid_size.y):
+		for x in range(grid_size.x):
+			var point := Vector2i(x, y)
+			turn_intersections.append(point)
+			turn_positions[point] = Vector2(
+				float(x) * intersection_spacing,
+				float(y) * intersection_spacing
+			)
+
+			if x < grid_size.x - 1:
+				_add_turn_road(point, point + Vector2i.RIGHT)
+
+			if y < grid_size.y - 1:
+				_add_turn_road(point, point + Vector2i.DOWN)
+
+	entry_intersection = active_profile.get(
+		"entry",
+		Vector2i(0, grid_size.y - 1)
+	)
+	exit_intersection = active_profile.get(
+		"exit",
+		Vector2i(grid_size.x - 1, 0)
+	)
+
+	if one_way_enabled:
+		_add_turn_one_ways()
+
+	if stop_signs_enabled:
+		for point in turn_intersections:
+			if point != entry_intersection and point != exit_intersection:
+				stop_sign_intersections.append(point)
+
+	current_intersection = entry_intersection
+	target_intersection = entry_intersection
+	camera_world_position = _turn_world_position(entry_intersection)
+	shortest_route = _find_turn_route(
 		current_intersection,
-		destination_intersection
+		exit_intersection
 	)
 
 	if shortest_route.size() >= 2:
@@ -475,90 +210,161 @@ func _reset_drive_position() -> void:
 
 	view_rotation = _rotation_for_heading(heading)
 	target_view_rotation = view_rotation
+	player_car.position = car_base_position
 
-	_update_region_label("neighborhood")
-	status_label.text = "PRESS GO"
 
-	forward_button.disabled = false
-	left_button.disabled = false
-	right_button.disabled = false
+func _add_turn_road(
+	from_intersection: Vector2i,
+	to_intersection: Vector2i
+) -> void:
+	turn_roads.append({
+		"from": from_intersection,
+		"to": to_intersection,
+		"one_way": false,
+	})
+
+
+func _add_turn_one_ways() -> void:
+	var target_count := mini(7, turn_roads.size() / 3)
+	var added := 0
+	var attempts := 0
+
+	while added < target_count and attempts < 300:
+		attempts += 1
+		var index := rng.randi_range(0, turn_roads.size() - 1)
+		var road: Dictionary = turn_roads[index]
+
+		if bool(road.get("one_way", false)):
+			continue
+
+		var original_from: Vector2i = road["from"]
+		var original_to: Vector2i = road["to"]
+
+		if rng.randi_range(0, 1) == 1:
+			road["from"] = original_to
+			road["to"] = original_from
+
+		road["one_way"] = true
+
+		if not _all_turn_nodes_reach_exit():
+			road["from"] = original_from
+			road["to"] = original_to
+			road["one_way"] = false
+		else:
+			added += 1
+
+
+func _all_turn_nodes_reach_exit() -> bool:
+	for point in turn_intersections:
+		if _find_turn_route(point, exit_intersection).is_empty():
+			return false
+
+	return true
+
+
+func _process(delta: float) -> void:
+	if drive_complete:
+		return
+
+	drive_time += delta
+
+	if steering_mode == "turn":
+		_process_turn_mode(delta)
+	else:
+		_process_lane_mode(delta)
 
 	queue_redraw()
 
 
-func _process(delta: float) -> void:
+func _process_turn_mode(delta: float) -> void:
 	if not is_equal_approx(view_rotation, target_view_rotation):
 		view_rotation = lerp_angle(
 			view_rotation,
 			target_view_rotation,
-			minf(1.0, delta * 10.0)
+			minf(1.0, delta * 9.0)
 		)
 
-	if is_driving:
-		drive_time += delta
+	if not section_started:
+		return
 
-		var target_position := _intersection_world_position(
-			target_intersection
+	if auto_stop_remaining > 0.0:
+		auto_stop_remaining = maxf(
+			0.0,
+			auto_stop_remaining - delta
 		)
 
-		var current_road = _get_road_between(
-			current_intersection,
-			target_intersection
-		)
-
-		camera_world_position = camera_world_position.move_toward(
-			target_position,
-			_drive_speed_for_road(current_road) * delta
-		)
-
-		if camera_world_position.is_equal_approx(target_position):
-			camera_world_position = target_position
-			current_intersection = target_intersection
-
-			if open_parking_slots.has(current_intersection):
-				_finish_drive()
-				queue_redraw()
-				return
-
-			shortest_route = _find_shortest_route(
-				current_intersection,
-				destination_intersection
-			)
-
+		if auto_stop_remaining <= 0.0:
+			status_label.text = ""
 			var next_intersection := current_intersection + heading
 
-			if not _commit_to_segment(next_intersection):
-				is_driving = false
-				current_segment_off_route = false
-				current_segment_wrong_way = false
-				status_label.text = "NO ROAD - TURN AND GO"
+			if _commit_turn_segment(next_intersection):
+				is_driving = true
+			else:
+				status_label.text = "TURN"
 
-	queue_redraw()
+		return
+
+	if not is_driving:
+		return
+
+	var target_position := _turn_world_position(target_intersection)
+
+	camera_world_position = camera_world_position.move_toward(
+		target_position,
+		drive_speed * delta
+	)
+
+	if not camera_world_position.is_equal_approx(target_position):
+		return
+
+	camera_world_position = target_position
+	current_intersection = target_intersection
+
+	if current_intersection == exit_intersection:
+		_advance_stage()
+		return
+
+	shortest_route = _find_turn_route(
+		current_intersection,
+		exit_intersection
+	)
+
+	if stop_signs_enabled:
+		is_driving = false
+		auto_stop_remaining = auto_stop_time
+		status_label.text = "STOP"
+		return
+
+	var next_intersection := current_intersection + heading
+
+	if not _commit_turn_segment(next_intersection):
+		is_driving = false
+		status_label.text = "TURN"
 
 
-func _commit_to_segment(next_intersection: Vector2i) -> bool:
-	if not intersections.has(next_intersection):
+func _commit_turn_segment(next_intersection: Vector2i) -> bool:
+	if not turn_intersections.has(next_intersection):
 		return false
 
-	var road = _get_road_between(current_intersection, next_intersection)
-
-	if road == null:
-		return false
-
-	if bool(road.get("blocked", false)):
-		status_label.text = "BLOCKED SPACE"
-		return false
-
-	current_segment_wrong_way = _is_wrong_way(
-		road,
+	var road = _get_turn_road_between(
 		current_intersection,
 		next_intersection
 	)
 
+	if road == null:
+		return false
+
+	current_segment_wrong_way = _turn_is_wrong_way(
+		road,
+		current_intersection,
+		next_intersection
+	)
 	current_segment_off_route = false
 
 	if shortest_route.size() >= 2:
-		current_segment_off_route = next_intersection != shortest_route[1]
+		current_segment_off_route = (
+			next_intersection != shortest_route[1]
+		)
 
 	if current_segment_wrong_way:
 		current_segment_off_route = true
@@ -568,47 +374,175 @@ func _commit_to_segment(next_intersection: Vector2i) -> bool:
 		wrong_turns += 1
 
 	target_intersection = next_intersection
-
-	shortest_route = _find_shortest_route(
+	shortest_route = _find_turn_route(
 		target_intersection,
-		destination_intersection
+		exit_intersection
 	)
 
-	_update_region_label(str(road.get("region", "neighborhood")))
-	_update_status_label()
+	if current_segment_wrong_way:
+		status_label.text = "WRONG WAY"
+	elif current_segment_off_route:
+		status_label.text = "REROUTING"
+	else:
+		status_label.text = ""
 
 	return true
 
 
-func _finish_drive() -> void:
-	is_driving = false
-	drive_complete = true
-	current_segment_off_route = false
-	current_segment_wrong_way = false
+func _build_lane_stage() -> void:
+	lane_distance = 0.0
+	lane_gate_distance = float(
+		active_profile.get("section_length", 6000.0)
+	)
+	current_lane = clampi(
+		int(active_profile.get("start_lane", lane_count - 1)),
+		0,
+		lane_count - 1
+	)
+	target_lane = current_lane
+	lane_visual_offset = _lane_center_offset(current_lane)
+	player_car.position = (
+		car_base_position
+		+ Vector2(lane_visual_offset, 0.0)
+	)
 
-	forward_button.disabled = true
-	left_button.disabled = true
-	right_button.disabled = true
+	view_rotation = 0.0
+	target_view_rotation = 0.0
+	_build_lane_traffic()
 
-	map_label.text = "PARKED"
-	status_label.text = "%.1f SEC  •  %d WRONG TURNS" % [
-		drive_time,
-		wrong_turns,
-	]
+
+func _build_lane_traffic() -> void:
+	lane_traffic.clear()
+
+	var count := int(active_profile.get("traffic_count", 0))
+	var section_length := float(
+		active_profile.get("section_length", 6000.0)
+	)
+
+	for index in range(count):
+		var lane := index % lane_count
+		var distance := (
+			900.0
+			+ float(index) * section_length / float(maxi(1, count))
+			+ rng.randf_range(-180.0, 180.0)
+		)
+
+		lane_traffic.append({
+			"lane": lane,
+			"distance": distance,
+			"speed_factor": rng.randf_range(0.58, 0.80),
+		})
+
+
+func _process_lane_mode(delta: float) -> void:
+	lane_visual_offset = move_toward(
+		lane_visual_offset,
+		_lane_center_offset(target_lane),
+		delta * 420.0
+	)
+
+	player_car.position = (
+		car_base_position
+		+ Vector2(lane_visual_offset, 0.0)
+	)
+
+	if not section_started:
+		return
+
+	var effective_speed := drive_speed
+
+	for index in range(lane_traffic.size()):
+		var traffic: Dictionary = lane_traffic[index]
+		var traffic_speed := (
+			drive_speed
+			* float(traffic.get("speed_factor", 0.70))
+		)
+
+		traffic["distance"] = (
+			float(traffic.get("distance", 0.0))
+			+ traffic_speed * delta
+		)
+
+		var gap := float(traffic["distance"]) - lane_distance
+
+		if (
+			int(traffic.get("lane", -1)) == current_lane
+			and gap > 0.0
+			and gap < 430.0
+		):
+			effective_speed = minf(
+				effective_speed,
+				traffic_speed
+			)
+
+		if float(traffic["distance"]) < lane_distance - 900.0:
+			traffic["distance"] = (
+				lane_distance
+				+ rng.randf_range(1800.0, 3600.0)
+			)
+			traffic["lane"] = rng.randi_range(
+				0,
+				lane_count - 1
+			)
+
+		lane_traffic[index] = traffic
+
+	lane_distance += effective_speed * delta
+
+	if effective_speed < drive_speed * 0.92:
+		status_label.text = "SLOW CAR"
+	elif status_label.text == "SLOW CAR":
+		status_label.text = ""
+
+	if lane_distance < lane_gate_distance:
+		return
+
+	var exit_lane := int(active_profile.get("exit_lane", -1))
+
+	if exit_lane < 0 or current_lane == exit_lane:
+		_advance_stage()
+		return
+
+	wrong_turns += 1
+	status_label.text = "MISSED EXIT"
+	lane_gate_distance += float(
+		active_profile.get("section_length", 6000.0)
+	)
+
+
+func _lane_center_offset(lane: int) -> float:
+	return (
+		(float(lane) - float(lane_count - 1) * 0.5)
+		* lane_width
+	)
 
 
 func _move_forward() -> void:
-	if drive_complete or is_driving:
+	if drive_complete:
 		return
 
-	var next_intersection := current_intersection + heading
+	if not section_started:
+		_start_current_stage()
+		return
 
-	if _commit_to_segment(next_intersection):
-		is_driving = true
+	if (
+		steering_mode == "turn"
+		and not is_driving
+		and auto_stop_remaining <= 0.0
+	):
+		var next_intersection := current_intersection + heading
+
+		if _commit_turn_segment(next_intersection):
+			is_driving = true
 
 
 func _turn_left() -> void:
 	if drive_complete:
+		return
+
+	if steering_mode == "lane":
+		target_lane = maxi(0, target_lane - 1)
+		current_lane = target_lane
 		return
 
 	heading = Vector2i(heading.y, -heading.x)
@@ -617,6 +551,11 @@ func _turn_left() -> void:
 
 func _turn_right() -> void:
 	if drive_complete:
+		return
+
+	if steering_mode == "lane":
+		target_lane = mini(lane_count - 1, target_lane + 1)
+		current_lane = target_lane
 		return
 
 	heading = Vector2i(-heading.y, heading.x)
@@ -639,13 +578,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_move_forward()
 
 
-func _find_shortest_route(
+func _find_turn_route(
 	start_node: Vector2i,
 	end_node: Vector2i
 ) -> Array[Vector2i]:
 	var queue: Array[Vector2i] = [start_node]
 	var came_from: Dictionary = {}
-
 	came_from[start_node] = start_node
 
 	while not queue.is_empty():
@@ -654,7 +592,7 @@ func _find_shortest_route(
 		if current == end_node:
 			break
 
-		for neighbor in _legal_neighbors_from(current):
+		for neighbor in _legal_turn_neighbors(current):
 			if not came_from.has(neighbor):
 				came_from[neighbor] = current
 				queue.append(neighbor)
@@ -674,15 +612,14 @@ func _find_shortest_route(
 	return route
 
 
-func _legal_neighbors_from(current: Vector2i) -> Array[Vector2i]:
+func _legal_turn_neighbors(
+	current: Vector2i
+) -> Array[Vector2i]:
 	var neighbors: Array[Vector2i] = []
 
-	for road in roads:
-		if bool(road.get("blocked", false)):
-			continue
-
-		var a: Vector2i = _road_start(road)
-		var b: Vector2i = _road_end(road)
+	for road in turn_roads:
+		var a: Vector2i = road["from"]
+		var b: Vector2i = road["to"]
 
 		if bool(road.get("one_way", false)):
 			if a == current:
@@ -696,495 +633,13 @@ func _legal_neighbors_from(current: Vector2i) -> Array[Vector2i]:
 	return neighbors
 
 
-func _draw() -> void:
-	_draw_main_ground()
-	_draw_region_surfaces()
-	_draw_world_roads()
-	_draw_stop_signs()
-	_draw_parking_spaces()
-	_draw_minimap()
-
-
-func _draw_main_ground() -> void:
-	draw_rect(
-		Rect2(Vector2.ZERO, size),
-		Color(0.67, 0.72, 0.58)
-	)
-
-
-func _draw_region_surfaces() -> void:
-	for region_id in ["neighborhood", "city", "parking"]:
-		var region := WORLD_CONFIG.get_region(region_id)
-		var origin: Vector2i = region["origin"]
-		var region_size: Vector2i = region["size"]
-
-		for y in range(region_size.y - 1):
-			for x in range(region_size.x - 1):
-				var cell := origin + Vector2i(x, y)
-				var top_left := _intersection_world_position(cell)
-				var bottom_right := _intersection_world_position(
-					cell + Vector2i.ONE
-				)
-
-				_draw_region_cell(
-					region_id,
-					Rect2(top_left, bottom_right - top_left)
-				)
-
-
-func _draw_region_cell(
-	region_id: String,
-	world_rect: Rect2
-) -> void:
-	var fill_color := Color(0.68, 0.74, 0.60)
-
-	if region_id == "city":
-		fill_color = Color(0.58, 0.59, 0.58)
-	elif region_id == "parking":
-		fill_color = Color(0.25, 0.26, 0.26)
-
-	_draw_world_rect(world_rect, fill_color)
-
-	var p := world_rect.position
-	var s := world_rect.size
-
-	if region_id == "neighborhood":
-		_draw_world_rect(
-			Rect2(
-				p + Vector2(s.x * 0.22, s.y * 0.20),
-				Vector2(s.x * 0.52, s.y * 0.36)
-			),
-			Color(0.66, 0.50, 0.38)
-		)
-
-		_draw_world_rect(
-			Rect2(
-				p + Vector2(s.x * 0.45, s.y * 0.56),
-				Vector2(s.x * 0.10, s.y * 0.34)
-			),
-			Color(0.55, 0.55, 0.51)
-		)
-
-	elif region_id == "city":
-		_draw_world_rect(
-			Rect2(
-				p + Vector2(s.x * 0.14, s.y * 0.14),
-				Vector2(s.x * 0.72, s.y * 0.72)
-			),
-			Color(0.38, 0.40, 0.42)
-		)
-
-	elif region_id == "parking":
-		for line_index in range(1, 4):
-			var line_x := float(line_index) * 0.25
-
-			_draw_world_line(
-				p + Vector2(s.x * line_x, s.y * 0.12),
-				p + Vector2(s.x * line_x, s.y * 0.88),
-				Color(0.55, 0.55, 0.50),
-				1.5
-			)
-
-
-func _draw_world_roads() -> void:
-	for road in roads:
-		var road_start := _world_to_main(
-			_intersection_world_position(_road_start(road))
-		)
-		var road_end := _world_to_main(
-			_intersection_world_position(_road_end(road))
-		)
-		var road_type := str(road.get("road_type", "neighborhood"))
-
-		draw_line(
-			road_start,
-			road_end,
-			Color(0.20, 0.21, 0.21),
-			road_width,
-			true
-		)
-
-		if bool(road.get("one_way", false)):
-			_draw_one_way_arrow(road_start, road_end)
-
-		if bool(road.get("blocked", false)):
-			_draw_blocked_gate(road_start, road_end)
-
-
-
-func _build_stop_signs() -> void:
-	stop_sign_intersections.clear()
-
-	var region := WORLD_CONFIG.get_region("neighborhood")
-	var origin: Vector2i = region["origin"]
-	var region_size: Vector2i = region["size"]
-
-	for point in _region_nodes(origin, region_size):
-		if point == start_intersection:
-			continue
-
-		if _intersection_degree(point) >= 3:
-			stop_sign_intersections.append(point)
-
-
-func _intersection_degree(point: Vector2i) -> int:
-	var degree := 0
-
-	for road in roads:
-		if _road_start(road) == point or _road_end(road) == point:
-			degree += 1
-
-	return degree
-
-
-func _draw_stop_signs() -> void:
-	for intersection in stop_sign_intersections:
-		_draw_stop_sign(intersection)
-
-
-func _draw_stop_sign(intersection: Vector2i) -> void:
-	var world_position := _intersection_world_position(intersection)
-	var center := _world_to_main(
-		world_position + Vector2(0.22, 0.22)
-	)
-	var radius := 7.0
-	var points := PackedVector2Array()
-
-	for index in range(8):
-		var angle := PI / 8.0 + TAU * float(index) / 8.0
-		points.append(
-			center + Vector2(cos(angle), sin(angle)) * radius
-		)
-
-	draw_colored_polygon(points, Color(0.80, 0.08, 0.07))
-
-	var outline := points.duplicate()
-	outline.append(points[0])
-	draw_polyline(outline, Color.WHITE, 1.5, true)
-
-
-func _drive_speed_for_road(road) -> float:
-	if road != null and str(road.get("road_type", "")) == "highway":
-		return HIGHWAY_SPEED
-
-	return DRIVE_SPEED
-
-
-func _draw_one_way_arrow(
-	road_start: Vector2,
-	road_end: Vector2
-) -> void:
-	var direction := (road_end - road_start).normalized()
-	var side := Vector2(-direction.y, direction.x)
-	var midpoint := road_start.lerp(road_end, 0.5)
-	var tip := midpoint + direction * 9.0
-
-	draw_colored_polygon(
-		PackedVector2Array([
-			tip,
-			midpoint - direction * 7.0 + side * 6.0,
-			midpoint - direction * 7.0 - side * 6.0,
-		]),
-		Color(0.92, 0.92, 0.88)
-	)
-
-
-func _draw_blocked_gate(
-	road_start: Vector2,
-	road_end: Vector2
-) -> void:
-	var direction := (road_end - road_start).normalized()
-	var side := Vector2(-direction.y, direction.x)
-	var gate_center := road_start.lerp(road_end, 0.22)
-
-	draw_line(
-		gate_center - side * 18.0,
-		gate_center + side * 18.0,
-		Color(0.78, 0.10, 0.08),
-		5.0,
-		true
-	)
-
-
-func _draw_parking_spaces() -> void:
-	for slot in parking_slots:
-		var slot_point := _world_to_main(
-			_intersection_world_position(slot)
-		)
-		var slot_color := Color(0.74, 0.74, 0.68)
-
-		if blocked_parking_slots.has(slot):
-			slot_color = Color(0.58, 0.18, 0.16)
-		elif slot == destination_intersection:
-			slot_color = Color(0.15, 0.42, 0.90)
-		elif open_parking_slots.has(slot):
-			slot_color = Color(0.22, 0.60, 0.30)
-
-		draw_rect(
-			Rect2(
-				slot_point - Vector2(18, 28),
-				Vector2(36, 56)
-			),
-			slot_color,
-			false,
-			4.0
-		)
-
-
-func _draw_minimap() -> void:
-	var map_rect := _minimap_rect()
-
-	draw_rect(
-		map_rect,
-		Color(0.76, 0.80, 0.66, 0.96),
-		true
-	)
-
-	_draw_minimap_geography()
-
-	for road in roads:
-		var line_color := Color(0.31, 0.32, 0.31)
-
-		if bool(road.get("blocked", false)):
-			line_color = Color(0.62, 0.18, 0.16)
-
-		draw_line(
-			_world_to_minimap(
-				_intersection_world_position(_road_start(road))
-			),
-			_world_to_minimap(
-				_intersection_world_position(_road_end(road))
-			),
-			line_color,
-			1.5,
-			true
-		)
-
-	if is_driving:
-		var current_color := Color(0.98, 0.78, 0.06)
-
-		if current_segment_off_route:
-			current_color = Color(0.98, 0.34, 0.05)
-
-		if current_segment_wrong_way:
-			current_color = Color(0.90, 0.06, 0.05)
-
-		draw_line(
-			_world_to_minimap(camera_world_position),
-			_world_to_minimap(
-				_intersection_world_position(target_intersection)
-			),
-			current_color,
-			3.0,
-			true
-		)
-
-	for index in range(shortest_route.size() - 1):
-		draw_line(
-			_world_to_minimap(
-				_intersection_world_position(shortest_route[index])
-			),
-			_world_to_minimap(
-				_intersection_world_position(shortest_route[index + 1])
-			),
-			Color(0.98, 0.78, 0.06),
-			2.5,
-			true
-		)
-
-	draw_circle(
-		_world_to_minimap(camera_world_position),
-		4.0,
-		Color(0.16, 0.88, 0.46)
-	)
-
-	draw_circle(
-		_world_to_minimap(
-			_intersection_world_position(destination_intersection)
-		),
-		4.0,
-		Color(0.16, 0.42, 0.98)
-	)
-
-	draw_rect(
-		map_rect,
-		Color(0.82, 0.82, 0.78),
-		false,
-		2.0
-	)
-
-
-func _draw_minimap_geography() -> void:
-	var lake := PackedVector2Array([
-		_world_to_minimap(Vector2(2.0, 3.0)),
-		_world_to_minimap(Vector2(8.0, 1.5)),
-		_world_to_minimap(Vector2(14.0, 4.0)),
-		_world_to_minimap(Vector2(13.0, 8.0)),
-		_world_to_minimap(Vector2(7.0, 9.0)),
-		_world_to_minimap(Vector2(2.5, 6.5)),
-	])
-	draw_colored_polygon(lake, Color(0.38, 0.63, 0.72))
-
-	var woods := PackedVector2Array([
-		_world_to_minimap(Vector2(16.0, 23.0)),
-		_world_to_minimap(Vector2(28.0, 21.5)),
-		_world_to_minimap(Vector2(31.0, 31.0)),
-		_world_to_minimap(Vector2(18.0, 33.0)),
-	])
-	draw_colored_polygon(woods, Color(0.49, 0.62, 0.39))
-
-	var fields := PackedVector2Array([
-		_world_to_minimap(Vector2(0.5, 11.0)),
-		_world_to_minimap(Vector2(12.5, 10.5)),
-		_world_to_minimap(Vector2(13.0, 18.0)),
-		_world_to_minimap(Vector2(1.0, 19.0)),
-	])
-	draw_colored_polygon(fields, Color(0.82, 0.78, 0.55))
-
-	_draw_minimap_region_patch("neighborhood", Color(0.67, 0.75, 0.58, 0.55))
-	_draw_minimap_region_patch("city", Color(0.55, 0.56, 0.57, 0.72))
-	_draw_minimap_region_patch("parking", Color(0.35, 0.36, 0.36, 0.78))
-
-	for tree in [
-		Vector2(18.0, 25.0),
-		Vector2(20.0, 29.0),
-		Vector2(23.0, 24.0),
-		Vector2(25.0, 28.0),
-		Vector2(28.0, 25.0),
-		Vector2(29.0, 30.0),
-	]:
-		draw_circle(
-			_world_to_minimap(tree),
-			1.4,
-			Color(0.26, 0.43, 0.25)
-		)
-
-
-func _draw_minimap_region_patch(
-	region_id: String,
-	color: Color
-) -> void:
-	var region := WORLD_CONFIG.get_region(region_id)
-	var origin: Vector2 = region["physical_origin"]
-	var region_size: Vector2i = region["size"]
-	var spacing: float = region["spacing"]
-	var end := origin + Vector2(
-		float(region_size.x - 1) * spacing,
-		float(region_size.y - 1) * spacing
-	)
-
-	var top_left := _world_to_minimap(origin)
-	var bottom_right := _world_to_minimap(end)
-
-	draw_rect(
-		Rect2(top_left, bottom_right - top_left),
-		color,
-		true
-	)
-
-
-func _world_to_main(world_point: Vector2) -> Vector2:
-	var world_offset := world_point - camera_world_position
-	var pixel_offset := world_offset * block_size
-	var rotated_offset := pixel_offset.rotated(view_rotation)
-
-	return size * 0.5 + rotated_offset
-
-
-func _draw_world_rect(
-	world_rect: Rect2,
-	color: Color
-) -> void:
-	var top_left := _world_to_main(world_rect.position)
-	var top_right := _world_to_main(
-		world_rect.position + Vector2(world_rect.size.x, 0.0)
-	)
-	var bottom_right := _world_to_main(
-		world_rect.position + world_rect.size
-	)
-	var bottom_left := _world_to_main(
-		world_rect.position + Vector2(0.0, world_rect.size.y)
-	)
-
-	draw_colored_polygon(
-		PackedVector2Array([
-			top_left,
-			top_right,
-			bottom_right,
-			bottom_left,
-		]),
-		color
-	)
-
-
-func _draw_world_line(
-	world_start: Vector2,
-	world_end: Vector2,
-	color: Color,
-	width: float
-) -> void:
-	draw_line(
-		_world_to_main(world_start),
-		_world_to_main(world_end),
-		color,
-		width,
-		true
-	)
-
-
-func _minimap_rect() -> Rect2:
-	return Rect2(
-		Vector2(size.x - minimap_size - 10.0, 10.0),
-		Vector2(minimap_size, minimap_size)
-	)
-
-
-func _world_to_minimap(world_point: Vector2) -> Vector2:
-	var map_rect := _minimap_rect()
-	var padding := 7.0
-	var usable := map_rect.size - Vector2.ONE * padding * 2.0
-	var scale := minf(
-		usable.x / MAP_SIZE.x,
-		usable.y / MAP_SIZE.y
-	)
-	var drawn_size := MAP_SIZE * scale
-	var map_origin := (
-		map_rect.position
-		+ (map_rect.size - drawn_size) * 0.5
-	)
-
-	return map_origin + world_point * scale
-
-
-func _update_region_label(region_id: String) -> void:
-	var region := WORLD_CONFIG.get_region(region_id)
-	map_label.text = str(region.get("name", region_id.to_upper()))
-
-
-func _update_status_label() -> void:
-	if current_segment_wrong_way:
-		status_label.text = "WRONG WAY  •  TICKET"
-	elif current_segment_off_route:
-		status_label.text = "MISSED TURN  •  REROUTING"
-	else:
-		status_label.text = ""
-
-
-func _road_start(road) -> Vector2i:
-	return road["from"]
-
-
-func _road_end(road) -> Vector2i:
-	return road["to"]
-
-
-func _get_road_between(
+func _get_turn_road_between(
 	a: Vector2i,
 	b: Vector2i
 ):
-	for road in roads:
-		var road_a: Vector2i = _road_start(road)
-		var road_b: Vector2i = _road_end(road)
+	for road in turn_roads:
+		var road_a: Vector2i = road["from"]
+		var road_b: Vector2i = road["to"]
 
 		if (
 			(road_a == a and road_b == b)
@@ -1195,7 +650,7 @@ func _get_road_between(
 	return null
 
 
-func _is_wrong_way(
+func _turn_is_wrong_way(
 	road,
 	travel_from: Vector2i,
 	travel_to: Vector2i
@@ -1204,8 +659,563 @@ func _is_wrong_way(
 		return false
 
 	return (
-		travel_from != _road_start(road)
-		or travel_to != _road_end(road)
+		travel_from != road["from"]
+		or travel_to != road["to"]
+	)
+
+
+func _draw() -> void:
+	if steering_mode == "turn":
+		_draw_turn_scene()
+	else:
+		_draw_lane_scene()
+
+	_draw_minimap()
+
+
+func _draw_turn_scene() -> void:
+	var ground_color := Color(0.66, 0.73, 0.57)
+
+	if active_stage_id == "downtown":
+		ground_color = Color(0.56, 0.57, 0.57)
+	elif active_stage_id == "parking":
+		ground_color = Color(0.25, 0.26, 0.26)
+
+	draw_rect(Rect2(Vector2.ZERO, size), ground_color, true)
+
+	if active_stage_id == "neighborhood":
+		_draw_neighborhood_houses()
+	elif active_stage_id == "downtown":
+		_draw_downtown_blocks()
+	elif active_stage_id == "parking":
+		_draw_parking_lot_texture()
+
+	for road in turn_roads:
+		var a := _world_to_main(
+			_turn_world_position(road["from"])
+		)
+		var b := _world_to_main(
+			_turn_world_position(road["to"])
+		)
+
+		draw_line(
+			a,
+			b,
+			Color(0.20, 0.21, 0.21),
+			road_width,
+			true
+		)
+
+		if bool(road.get("one_way", false)):
+			_draw_one_way_arrow(a, b)
+
+	if stop_signs_enabled:
+		for point in stop_sign_intersections:
+			_draw_stop_sign(point)
+
+	if active_stage_id == "parking":
+		_draw_parking_destination()
+
+
+func _draw_neighborhood_houses() -> void:
+	for road in turn_roads:
+		var a := _turn_world_position(road["from"])
+		var b := _turn_world_position(road["to"])
+		var midpoint := a.lerp(b, 0.5)
+
+		if midpoint.distance_to(camera_world_position) > 3200.0:
+			continue
+
+		var direction := (b - a).normalized()
+		var side := Vector2(-direction.y, direction.x)
+		var length := a.distance_to(b)
+		var house_count := maxi(1, int(length / 175.0))
+
+		for index in range(1, house_count):
+			var t := float(index) / float(house_count)
+			var road_point := a.lerp(b, t)
+
+			for side_sign in [-1.0, 1.0]:
+				var center := (
+					road_point
+					+ side * side_sign * (road_width * 0.5 + 88.0)
+				)
+
+				_draw_world_box(
+					center,
+					Vector2(105.0, 72.0),
+					Color(0.65, 0.49, 0.37)
+				)
+
+
+func _draw_downtown_blocks() -> void:
+	var grid_size: Vector2i = active_profile.get(
+		"grid_size",
+		Vector2i(4, 4)
+	)
+
+	for y in range(grid_size.y - 1):
+		for x in range(grid_size.x - 1):
+			var top_left := _turn_world_position(Vector2i(x, y))
+			var center := (
+				top_left
+				+ Vector2.ONE * intersection_spacing * 0.5
+			)
+
+			_draw_world_box(
+				center,
+				Vector2.ONE * intersection_spacing * 0.70,
+				Color(0.36, 0.38, 0.40)
+			)
+
+			_draw_world_box(
+				center + Vector2(
+					intersection_spacing * 0.16,
+					-intersection_spacing * 0.12
+				),
+				Vector2.ONE * intersection_spacing * 0.20,
+				Color(0.46, 0.48, 0.49)
+			)
+
+
+func _draw_parking_lot_texture() -> void:
+	var grid_size: Vector2i = active_profile.get(
+		"grid_size",
+		Vector2i(3, 3)
+	)
+
+	for y in range(grid_size.y):
+		for x in range(grid_size.x):
+			var point := _turn_world_position(Vector2i(x, y))
+			var screen_point := _world_to_main(point)
+
+			draw_rect(
+				Rect2(
+					screen_point - Vector2(35.0, 55.0),
+					Vector2(70.0, 110.0)
+				),
+				Color(0.66, 0.66, 0.60),
+				false,
+				2.0
+			)
+
+
+func _draw_parking_destination() -> void:
+	var destination := _world_to_main(
+		_turn_world_position(exit_intersection)
+	)
+
+	draw_rect(
+		Rect2(
+			destination - Vector2(31.0, 48.0),
+			Vector2(62.0, 96.0)
+		),
+		Color(0.18, 0.42, 0.92),
+		false,
+		5.0
+	)
+
+
+func _draw_stop_sign(intersection: Vector2i) -> void:
+	var world_position := (
+		_turn_world_position(intersection)
+		+ Vector2(road_width * 0.80, road_width * 0.80)
+	)
+	var center := _world_to_main(world_position)
+	var radius := 11.0
+	var points := PackedVector2Array()
+
+	for index in range(8):
+		var angle := PI / 8.0 + TAU * float(index) / 8.0
+		points.append(
+			center + Vector2(cos(angle), sin(angle)) * radius
+		)
+
+	draw_colored_polygon(points, Color(0.82, 0.07, 0.06))
+
+	var outline := points.duplicate()
+	outline.append(points[0])
+	draw_polyline(outline, Color.WHITE, 1.5, true)
+
+
+func _draw_one_way_arrow(
+	road_start: Vector2,
+	road_end: Vector2
+) -> void:
+	var direction := (road_end - road_start).normalized()
+	var side := Vector2(-direction.y, direction.x)
+	var midpoint := road_start.lerp(road_end, 0.5)
+	var tip := midpoint + direction * 10.0
+
+	draw_colored_polygon(
+		PackedVector2Array([
+			tip,
+			midpoint - direction * 8.0 + side * 6.0,
+			midpoint - direction * 8.0 - side * 6.0,
+		]),
+		Color(0.90, 0.90, 0.86)
+	)
+
+
+func _draw_lane_scene() -> void:
+	var ground_color := Color(0.52, 0.63, 0.45)
+
+	if active_stage_id == "highway":
+		ground_color = Color(0.46, 0.57, 0.40)
+
+	draw_rect(Rect2(Vector2.ZERO, size), ground_color, true)
+
+	var road_left := size.x * 0.5 - road_width * 0.5
+
+	draw_rect(
+		Rect2(
+			Vector2(road_left, -40.0),
+			Vector2(road_width, size.y + 80.0)
+		),
+		Color(0.19, 0.20, 0.20),
+		true
+	)
+
+	_draw_lane_scenery()
+
+	if active_stage_id == "highway":
+		_draw_highway_exit()
+
+	_draw_lane_traffic()
+
+
+func _draw_lane_scenery() -> void:
+	var visual_scroll := fmod(lane_distance * 0.36, 230.0)
+	var marker_count := int(size.y / 230.0) + 4
+	var road_left := size.x * 0.5 - road_width * 0.5
+	var road_right := size.x * 0.5 + road_width * 0.5
+
+	for index in range(marker_count):
+		var y := (
+			float(index) * 230.0
+			- visual_scroll
+			- 100.0
+		)
+
+		if active_stage_id == "main_road":
+			draw_rect(
+				Rect2(
+					Vector2(road_left - 78.0, y),
+					Vector2(52.0, 74.0)
+				),
+				Color(0.52, 0.44, 0.35),
+				true
+			)
+			draw_rect(
+				Rect2(
+					Vector2(road_right + 26.0, y + 70.0),
+					Vector2(58.0, 64.0)
+				),
+				Color(0.47, 0.49, 0.44),
+				true
+			)
+		else:
+			draw_rect(
+				Rect2(
+					Vector2(road_left - 28.0, y),
+					Vector2(10.0, 88.0)
+				),
+				Color(0.70, 0.70, 0.66),
+				true
+			)
+			draw_rect(
+				Rect2(
+					Vector2(road_right + 18.0, y),
+					Vector2(10.0, 88.0)
+				),
+				Color(0.70, 0.70, 0.66),
+				true
+			)
+
+
+func _draw_highway_exit() -> void:
+	var remaining := lane_gate_distance - lane_distance
+
+	if remaining < 0.0 or remaining > 1500.0:
+		return
+
+	var branch_y := (
+		player_car.position.y
+		+ player_car.size.y * 0.5
+		- remaining * 0.36
+	)
+
+	if branch_y < -120.0 or branch_y > size.y + 120.0:
+		return
+
+	var road_right := size.x * 0.5 + road_width * 0.5
+
+	draw_colored_polygon(
+		PackedVector2Array([
+			Vector2(road_right - 8.0, branch_y - 42.0),
+			Vector2(size.x + 30.0, branch_y - 95.0),
+			Vector2(size.x + 30.0, branch_y + 95.0),
+			Vector2(road_right - 8.0, branch_y + 42.0),
+		]),
+		Color(0.19, 0.20, 0.20)
+	)
+
+
+func _draw_lane_traffic() -> void:
+	var player_center_y := (
+		player_car.position.y
+		+ player_car.size.y * 0.5
+	)
+	var traffic_width := lane_width * 0.58
+	var traffic_height := traffic_width * 1.55
+
+	for traffic in lane_traffic:
+		var gap := float(traffic.get("distance", 0.0)) - lane_distance
+		var y := player_center_y - gap * 0.36
+
+		if y < -120.0 or y > size.y + 120.0:
+			continue
+
+		var x := (
+			size.x * 0.5
+			+ _lane_center_offset(int(traffic.get("lane", 0)))
+		)
+
+		draw_rect(
+			Rect2(
+				Vector2(
+					x - traffic_width * 0.5,
+					y - traffic_height * 0.5
+				),
+				Vector2(traffic_width, traffic_height)
+			),
+			Color(0.32, 0.35, 0.38),
+			true
+		)
+
+
+func _draw_minimap() -> void:
+	var map_rect := _minimap_rect()
+
+	draw_rect(
+		map_rect,
+		Color(0.75, 0.80, 0.66, 0.96),
+		true
+	)
+
+	if steering_mode == "turn":
+		_draw_turn_minimap(map_rect)
+	else:
+		_draw_lane_minimap(map_rect)
+
+	draw_rect(
+		map_rect,
+		Color(0.86, 0.86, 0.82),
+		false,
+		2.0
+	)
+
+
+func _draw_turn_minimap(map_rect: Rect2) -> void:
+	if active_stage_id == "downtown":
+		draw_rect(
+			map_rect.grow(-5.0),
+			Color(0.57, 0.58, 0.58),
+			true
+		)
+	elif active_stage_id == "parking":
+		draw_rect(
+			map_rect.grow(-5.0),
+			Color(0.33, 0.34, 0.34),
+			true
+		)
+	else:
+		draw_circle(
+			map_rect.position + Vector2(35.0, 36.0),
+			17.0,
+			Color(0.39, 0.63, 0.72)
+		)
+
+	for road in turn_roads:
+		draw_line(
+			_turn_to_minimap(
+				_turn_world_position(road["from"]),
+				map_rect
+			),
+			_turn_to_minimap(
+				_turn_world_position(road["to"]),
+				map_rect
+			),
+			Color(0.30, 0.31, 0.30),
+			2.0,
+			true
+		)
+
+	if is_driving:
+		draw_line(
+			_turn_to_minimap(camera_world_position, map_rect),
+			_turn_to_minimap(
+				_turn_world_position(target_intersection),
+				map_rect
+			),
+			Color(0.98, 0.78, 0.06),
+			3.0,
+			true
+		)
+
+	for index in range(shortest_route.size() - 1):
+		draw_line(
+			_turn_to_minimap(
+				_turn_world_position(shortest_route[index]),
+				map_rect
+			),
+			_turn_to_minimap(
+				_turn_world_position(shortest_route[index + 1]),
+				map_rect
+			),
+			Color(0.98, 0.78, 0.06),
+			2.5,
+			true
+		)
+
+	draw_circle(
+		_turn_to_minimap(camera_world_position, map_rect),
+		4.0,
+		Color(0.14, 0.86, 0.43)
+	)
+
+	draw_circle(
+		_turn_to_minimap(
+			_turn_world_position(exit_intersection),
+			map_rect
+		),
+		4.5,
+		Color(0.15, 0.42, 0.95)
+	)
+
+
+func _draw_lane_minimap(map_rect: Rect2) -> void:
+	var center_x := map_rect.position.x + map_rect.size.x * 0.5
+	var road_half_width := 15.0
+	var top_y := map_rect.position.y + 10.0
+	var bottom_y := map_rect.end.y - 10.0
+
+	draw_rect(
+		Rect2(
+			Vector2(center_x - road_half_width, top_y),
+			Vector2(road_half_width * 2.0, bottom_y - top_y)
+		),
+		Color(0.28, 0.29, 0.29),
+		true
+	)
+
+	var section_length := float(
+		active_profile.get("section_length", 6000.0)
+	)
+	var section_start := lane_gate_distance - section_length
+	var progress := clampf(
+		(lane_distance - section_start) / section_length,
+		0.0,
+		1.0
+	)
+	var player_y := lerpf(bottom_y, top_y, progress)
+	var route_end := Vector2(center_x, top_y)
+
+	if int(active_profile.get("exit_lane", -1)) >= 0:
+		route_end = Vector2(
+			map_rect.end.x - 10.0,
+			top_y + 7.0
+		)
+
+		draw_line(
+			Vector2(center_x, top_y + 15.0),
+			route_end,
+			Color(0.98, 0.78, 0.06),
+			2.5,
+			true
+		)
+
+	draw_line(
+		Vector2(center_x, player_y),
+		Vector2(center_x, top_y + 15.0),
+		Color(0.98, 0.78, 0.06),
+		2.5,
+		true
+	)
+
+	draw_circle(
+		Vector2(center_x, player_y),
+		4.0,
+		Color(0.14, 0.86, 0.43)
+	)
+
+	draw_circle(
+		route_end,
+		4.5,
+		Color(0.15, 0.42, 0.95)
+	)
+
+
+func _turn_world_position(
+	intersection: Vector2i
+) -> Vector2:
+	return turn_positions.get(intersection, Vector2(intersection))
+
+
+func _world_to_main(world_point: Vector2) -> Vector2:
+	var world_offset := world_point - camera_world_position
+	var rotated_offset := world_offset.rotated(view_rotation)
+
+	return size * 0.5 + rotated_offset
+
+
+func _draw_world_box(
+	center: Vector2,
+	box_size: Vector2,
+	color: Color
+) -> void:
+	var half := box_size * 0.5
+	var corners := PackedVector2Array([
+		_world_to_main(center + Vector2(-half.x, -half.y)),
+		_world_to_main(center + Vector2(half.x, -half.y)),
+		_world_to_main(center + Vector2(half.x, half.y)),
+		_world_to_main(center + Vector2(-half.x, half.y)),
+	])
+
+	draw_colored_polygon(corners, color)
+
+
+func _turn_to_minimap(
+	world_point: Vector2,
+	map_rect: Rect2
+) -> Vector2:
+	var grid_size: Vector2i = active_profile.get(
+		"grid_size",
+		Vector2i(4, 4)
+	)
+	var world_size := Vector2(
+		float(maxi(1, grid_size.x - 1)) * intersection_spacing,
+		float(maxi(1, grid_size.y - 1)) * intersection_spacing
+	)
+	var padding := 9.0
+	var usable := map_rect.size - Vector2.ONE * padding * 2.0
+	var scale := minf(
+		usable.x / maxf(world_size.x, 1.0),
+		usable.y / maxf(world_size.y, 1.0)
+	)
+	var drawn_size := world_size * scale
+	var origin := (
+		map_rect.position
+		+ (map_rect.size - drawn_size) * 0.5
+	)
+
+	return origin + world_point * scale
+
+
+func _minimap_rect() -> Rect2:
+	return Rect2(
+		Vector2(size.x - minimap_size - 10.0, 10.0),
+		Vector2(minimap_size, minimap_size)
 	)
 
 
@@ -1220,3 +1230,19 @@ func _rotation_for_heading(direction: Vector2i) -> float:
 		return PI / 2.0
 
 	return 0.0
+
+
+func _finish_drive() -> void:
+	drive_complete = true
+	is_driving = false
+	section_started = false
+
+	left_button.disabled = true
+	forward_button.disabled = true
+	right_button.disabled = true
+
+	map_label.text = "PARKED"
+	status_label.text = "%.1f SEC  •  %d WRONG TURNS" % [
+		drive_time,
+		wrong_turns,
+	]
