@@ -1,9 +1,8 @@
 [gd_scene format=3 uid="uid://toj3nfh0umto"]
 
-[ext_resource type="Script" path="res://scripts/drive/drive_grid_controller.gd" id="1_boj34"]
+[ext_resource type="Script" uid="uid://ddyjqns4g4t0g" path="res://scripts/drive/drive_grid_controller.gd" id="1_boj34"]
 [ext_resource type="Texture2D" uid="uid://dkqq7eu8lpill" path="res://assets/car/player_car_top.png" id="1_car"]
-
-[ext_resource type="Script" path="res://scripts/drive/drive_session.gd" id="3_session"]
+[ext_resource type="Script" uid="uid://dnqi0cw64kxjr" path="res://scripts/drive/drive_session.gd" id="3_session"]
 
 [node name="DriveModule" type="Control" unique_id=1084516026]
 layout_mode = 3
@@ -17,7 +16,6 @@ metadata/_edit_vertical_guides_ = [215.0]
 metadata/_edit_horizontal_guides_ = [382.0]
 
 [node name="GroundBackground" type="ColorRect" parent="." unique_id=1313100671]
-z_index = 0
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -53,7 +51,7 @@ offset_left = 72.0
 offset_top = 24.0
 offset_right = 358.0
 offset_bottom = 58.0
-theme_override_colors/font_color = Color(0.96, 0.95, 0.90, 1)
+theme_override_colors/font_color = Color(0.96, 0.95, 0.9, 1)
 theme_override_colors/font_shadow_color = Color(0.05, 0.06, 0.05, 0.75)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 2
@@ -103,7 +101,7 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 28
 text = ">"
 
-[node name="Arrival" type="PanelContainer" parent="."]
+[node name="Arrival" type="PanelContainer" parent="." unique_id=1109936761]
 visible = false
 z_index = 5
 layout_mode = 0
@@ -112,11 +110,11 @@ offset_top = 230.0
 offset_right = 405.0
 offset_bottom = 515.0
 
-[node name="Layout" type="VBoxContainer" parent="Arrival"]
+[node name="Layout" type="VBoxContainer" parent="Arrival" unique_id=1996403995]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="ArrivalText" type="Label" parent="Arrival/Layout"]
+[node name="ArrivalText" type="Label" parent="Arrival/Layout" unique_id=878007972]
 custom_minimum_size = Vector2(360, 130)
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
@@ -125,12 +123,12 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="Replay" type="Button" parent="Arrival/Layout"]
+[node name="Replay" type="Button" parent="Arrival/Layout" unique_id=1288466631]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 text = "DRIVE AGAIN"
 
-[node name="Continue" type="Button" parent="Arrival/Layout"]
+[node name="Continue" type="Button" parent="Arrival/Layout" unique_id=361681139]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 text = "HEAD INSIDE"
