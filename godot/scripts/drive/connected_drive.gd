@@ -605,16 +605,39 @@ func _draw_connector_out() -> void:
 		NETWORK.HIGHWAY_LANE_WIDTH * 4.0
 	)
 
-	# Highway lane separators are already visible inside the last half of the
-	# same physical connector.
+	# The four highway lanes grow out of this exact connector. Separator lines
+	# follow the connector's own angle instead of appearing as a separate road.
+	var connector_direction := (
+		NETWORK.CONNECTOR_OUT_END
+		- NETWORK.CONNECTOR_OUT_START
+	).normalized()
+	var connector_side := Vector2(
+		-connector_direction.y,
+		connector_direction.x
+	)
+
 	for lane in range(1, 4):
-		var x := (
+		var end_offset := (
 			-NETWORK.HIGHWAY_LANE_WIDTH * 2.0
 			+ NETWORK.HIGHWAY_LANE_WIDTH * lane
 		)
-		var a := Vector2(x * 0.45, 1350.0)
-		var b := Vector2(x, NETWORK.HIGHWAY_START_Y)
-		_draw_world_dashed_line(a, b, 3.0, Color(0.82, 0.80, 0.70))
+		var a := (
+			NETWORK.CONNECTOR_OUT_START.lerp(
+				NETWORK.CONNECTOR_OUT_END,
+				0.48
+			)
+			+ connector_side * end_offset * 0.18
+		)
+		var b := (
+			NETWORK.CONNECTOR_OUT_END
+			+ connector_side * end_offset
+		)
+		_draw_world_dashed_line(
+			a,
+			b,
+			3.0,
+			Color(0.82, 0.80, 0.70)
+		)
 
 
 func _draw_highway() -> void:
