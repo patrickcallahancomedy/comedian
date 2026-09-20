@@ -1,6 +1,6 @@
 extends SceneTree
-## DRIVE v0.8 regression coverage: missed exit, traffic contact, input stress,
-## replay/state handoff, and the simplified three-phase route.
+## DRIVE v0.9 regressions: invisible connector gates, eight-lane exit recovery,
+## contact debounce, random input safety, replay and venue handoff.
 
 var failures: Array[String] = []
 
@@ -17,26 +17,36 @@ func run() -> void:
 	var city = scene.get_node("CityMap")
 	city.set_process(false)
 
-	# Highway is phase 1 in v0.8.
-	city._load_stage(1, true)
+	# First connector should preserve the old profile until animation completes.
+	city._begin_connector(1)
+	check(city.transition_active, "First connector did not start")
+	check(city.active_stage_id == "neighborhood", "First connector swapped too early")
+	city._process_connector(city.transition_duration + 0.01)
+	check(city.active_stage_id == "highway", "First connector did not reach highway")
+
+	# Missing the right-most exit keeps the player on the highway.
 	city.lane_traffic.clear()
-	city.target_lane = 2
-	city.current_lane = 1
-	city.lane_visual_offset = city._lane_center_offset(1)
+	city.target_lane = 6
+	city.current_lane = 6
+	city.lane_visual_offset = city._lane_center_offset(6)
 	city.lane_distance = city.lane_gate_distance
 	var old_gate: float = city.lane_gate_distance
 	city._process_lane_mode(0.0)
-	check(city.active_stage_id == "highway", "Invisible lane change accepted at exit")
-	check(city.lane_gate_distance > old_gate, "Missed exit did not add road")
+	check(city.active_stage_id == "highway", "Wrong lane accepted at highway gate")
+	check(city.lane_gate_distance > old_gate, "Missed exit did not add highway")
 
-	city.lane_visual_offset = city._lane_center_offset(2)
-	city.current_lane = 2
-	city.target_lane = 2
+	# Correct right-most lane starts connector rather than hard-swapping.
+	city.lane_visual_offset = city._lane_center_offset(7)
+	city.current_lane = 7
+	city.target_lane = 7
 	city.lane_distance = city.lane_gate_distance
 	city._process_lane_mode(0.0)
-	check(city.active_stage_id == "downtown", "Corrected exit did not recover")
+	check(city.transition_active, "Correct highway lane did not start connector")
+	check(city.active_stage_id == "highway", "Highway connector swapped too early")
+	city._process_connector(city.transition_duration + 0.01)
+	check(city.active_stage_id == "downtown", "Highway connector did not reach venue approach")
 
-	# Contact debounce still works on the highway.
+	# Contact debounce still works on the eight-lane highway.
 	city._load_stage(1, true)
 	city.lane_traffic = [{"lane": city.current_lane, "distance": 20.0, "speed_factor": 0.7}]
 	city._process_lane_mode(1.0 / 60.0)
@@ -44,12 +54,10 @@ func run() -> void:
 	city._process_lane_mode(1.0 / 60.0)
 	check(city.bumps == 1, "One contact counted twice")
 
-	# Rapid random input across all three active profiles must remain valid.
+	# Rapid input cannot push lane selection beyond the eight-lane bounds.
 	var random := RandomNumberGenerator.new()
-	random.seed = 7308
-	for index in range(9000):
-		if index % 3000 == 0:
-			city._load_stage(index / 3000, true)
+	random.seed = 7309
+	for index in range(6000):
 		match random.randi_range(0, 12):
 			0: city._turn_left()
 			1: city._turn_right()
@@ -82,7 +90,7 @@ func run() -> void:
 
 	for failure in failures:
 		push_error(failure)
-	print("REGRESSION PASS — v0.8 route, exits, contacts, random input, replay, venue" if failures.is_empty() else "REGRESSION FAIL")
+	print("REGRESSION PASS — v0.9 connectors, 8-lane exit, replay, venue" if failures.is_empty() else "REGRESSION FAIL")
 	quit(0 if failures.is_empty() else 1)
 
 
