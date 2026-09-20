@@ -33,6 +33,7 @@ jobs:
         shell: bash
         run: |
           set -u
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           for old_branch in \
             drive-grid-v0.1 \
             drive-playtest-v0.7 \
