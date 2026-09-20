@@ -1,7 +1,7 @@
 extends Control
 
-## DRIVE v0.7: preserve the authored scene and five existing road profiles.
-## Movement/rendering remain here; state handoff lives in drive_session.gd.
+## DRIVE v0.8: same proven driving core, intentionally simpler presentation.
+## Three visible phases, steering as the primary verb, and a quieter mobile HUD.
 signal trip_finished(result: Dictionary)
 
 @export var world_seed: int = 0 # Zero varies the city; set a seed to reproduce a trip.
@@ -12,7 +12,7 @@ var steering_rate := 420.0
 
 const DRIVE_PROFILES = preload("res://scripts/drive/drive_profiles.gd")
 
-@export var minimap_size := 142.0
+@export var minimap_size := 112.0
 
 var active_stage_id := ""
 var active_profile: Dictionary = {}
@@ -76,8 +76,9 @@ func _ready() -> void:
 		rng.randomize()
 	else:
 		rng.seed = world_seed
-	fatigue_strength = clampf(float(50 - GameState.energy) / 50.0, 0.0, 1.0)
-	steering_rate = lerpf(420.0, 250.0, fatigue_strength)
+	# v0.8 parks fatigue/distraction difficulty until the base drive is proven fun.
+	fatigue_strength = 0.0
+	steering_rate = 420.0
 
 	left_button.pressed.connect(_turn_left)
 	forward_button.pressed.connect(_move_forward)
@@ -146,7 +147,7 @@ func _load_stage(index: int, auto_start: bool) -> void:
 	if auto_start:
 		_start_current_stage()
 	else:
-		status_label.text = "GO to start • A/D or ←/→ steer"
+		status_label.text = "TAP START"
 
 	queue_redraw()
 
@@ -161,6 +162,8 @@ func _start_current_stage() -> void:
 
 	section_started = true
 	status_label.text = ""
+	# START is a one-time action. After this, steering is the whole touch game.
+	forward_button.hide()
 
 	if steering_mode == "turn":
 		var next_intersection := current_intersection + heading
@@ -461,7 +464,7 @@ func _build_lane_traffic() -> void:
 func _process_lane_mode(delta: float) -> void:
 	lane_visual_offset = move_toward(
 		lane_visual_offset,
-		_lane_center_offset(target_lane) + sin(drive_time * 1.9) * fatigue_strength * lane_width * 0.12,
+		_lane_center_offset(target_lane),
 		delta * steering_rate
 	)
 
@@ -496,7 +499,6 @@ func _process_lane_mode(delta: float) -> void:
 			bumps += 1
 			bump_cooldown = 1.0
 			traffic["distance"] = lane_distance + 450.0
-			status_label.text = "WATCH IT"
 			effective_speed *= 0.5
 
 		if (
@@ -523,10 +525,12 @@ func _process_lane_mode(delta: float) -> void:
 
 	lane_distance += effective_speed * delta
 
-	if effective_speed < drive_speed * 0.92:
-		status_label.text = "SLOW CAR"
-	elif status_label.text == "SLOW CAR":
-		status_label.text = ""
+	if active_stage_id == "highway":
+		var exit_remaining := lane_gate_distance - lane_distance
+		if exit_remaining > 0.0 and exit_remaining < 1500.0:
+			status_label.text = "EXIT  →"
+		elif status_label.text == "EXIT  →":
+			status_label.text = ""
 
 	if lane_distance < lane_gate_distance:
 		return
@@ -538,7 +542,7 @@ func _process_lane_mode(delta: float) -> void:
 		return
 
 	wrong_turns += 1
-	status_label.text = "MISSED EXIT"
+	status_label.text = "REROUTING"
 	lane_gate_distance += float(
 		active_profile.get("section_length", 6000.0)
 	)
@@ -580,6 +584,7 @@ func _turn_left() -> void:
 
 	heading = Vector2i(heading.y, -heading.x)
 	target_view_rotation += PI / 2.0
+	_resume_turn_drive_if_ready()
 
 
 func _turn_right() -> void:
@@ -592,6 +597,17 @@ func _turn_right() -> void:
 
 	heading = Vector2i(-heading.y, heading.x)
 	target_view_rotation -= PI / 2.0
+	_resume_turn_drive_if_ready()
+
+
+func _resume_turn_drive_if_ready() -> void:
+	if steering_mode != "turn" or not section_started or is_driving:
+		return
+	if auto_stop_remaining > 0.0:
+		return
+	var next_intersection := current_intersection + heading
+	if _commit_turn_segment(next_intersection):
+		is_driving = true
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -706,10 +722,10 @@ func _draw() -> void:
 
 
 func _draw_turn_scene() -> void:
-	var ground_color := Color(0.66, 0.73, 0.57)
+	var ground_color := Color(0.42, 0.50, 0.39)
 
 	if active_stage_id == "downtown":
-		ground_color = Color(0.56, 0.57, 0.57)
+		ground_color = Color(0.43, 0.44, 0.43)
 	elif active_stage_id == "parking":
 		ground_color = Color(0.25, 0.26, 0.26)
 
@@ -730,13 +746,12 @@ func _draw_turn_scene() -> void:
 			_turn_world_position(road["to"])
 		)
 
-		draw_line(
-			a,
-			b,
-			Color(0.20, 0.21, 0.21),
-			road_width,
-			true
-		)
+		# Soft shoulder first, asphalt second. This keeps the procedural world
+		# editable but gives the roads a deliberate illustrated edge.
+		draw_line(a, b, Color(0.50, 0.49, 0.44), road_width + 16.0, true)
+		draw_line(a, b, Color(0.16, 0.17, 0.17), road_width, true)
+		if active_stage_id == "downtown":
+			draw_line(a, b, Color(0.72, 0.70, 0.59, 0.65), 2.0, true)
 
 		if bool(road.get("one_way", false)):
 			_draw_one_way_arrow(a, b)
@@ -776,7 +791,7 @@ func _draw_neighborhood_houses() -> void:
 				_draw_world_box(
 					center,
 					Vector2(105.0, 72.0),
-					Color(0.65, 0.49, 0.37)
+					Color(0.57 + 0.05 * float(index % 2), 0.44, 0.34)
 				)
 
 
@@ -797,7 +812,7 @@ func _draw_downtown_blocks() -> void:
 			_draw_world_box(
 				center,
 				Vector2.ONE * intersection_spacing * 0.70,
-				Color(0.36, 0.38, 0.40)
+				Color(0.31, 0.32, 0.33)
 			)
 
 			_draw_world_box(
@@ -806,7 +821,7 @@ func _draw_downtown_blocks() -> void:
 					-intersection_spacing * 0.12
 				),
 				Vector2.ONE * intersection_spacing * 0.20,
-				Color(0.46, 0.48, 0.49)
+				Color(0.41, 0.42, 0.41)
 			)
 
 
@@ -890,10 +905,10 @@ func _draw_one_way_arrow(
 
 
 func _draw_lane_scene() -> void:
-	var ground_color := Color(0.52, 0.63, 0.45)
+	var ground_color := Color(0.41, 0.49, 0.38)
 
 	if active_stage_id == "highway":
-		ground_color = Color(0.46, 0.57, 0.40)
+		ground_color = Color(0.37, 0.45, 0.35)
 
 	draw_rect(Rect2(Vector2.ZERO, size), ground_color, true)
 
@@ -901,10 +916,18 @@ func _draw_lane_scene() -> void:
 
 	draw_rect(
 		Rect2(
+			Vector2(road_left - 8.0, -40.0),
+			Vector2(road_width + 16.0, size.y + 80.0)
+		),
+		Color(0.49, 0.48, 0.43),
+		true
+	)
+	draw_rect(
+		Rect2(
 			Vector2(road_left, -40.0),
 			Vector2(road_width, size.y + 80.0)
 		),
-		Color(0.19, 0.20, 0.20),
+		Color(0.15, 0.16, 0.16),
 		true
 	)
 
@@ -913,7 +936,7 @@ func _draw_lane_scene() -> void:
 		var x := road_left + lane_width * lane
 		for marker in range(-1, 14):
 			var y := marker * 64.0 + fmod(lane_distance * 0.36, 64.0)
-			draw_line(Vector2(x, y), Vector2(x, y + 28.0), Color(0.83, 0.81, 0.66), 2.0)
+			draw_line(Vector2(x, y), Vector2(x, y + 30.0), Color(0.82, 0.80, 0.70), 3.0)
 	_draw_lane_scenery()
 
 	if active_stage_id == "highway":
@@ -1020,7 +1043,7 @@ func _draw_minimap() -> void:
 
 	draw_rect(
 		map_rect,
-		Color(0.75, 0.80, 0.66, 0.96),
+		Color(0.075, 0.085, 0.08, 0.90),
 		true
 	)
 
@@ -1031,9 +1054,9 @@ func _draw_minimap() -> void:
 
 	draw_rect(
 		map_rect,
-		Color(0.86, 0.86, 0.82),
+		Color(0.82, 0.81, 0.75, 0.72),
 		false,
-		2.0
+		1.5
 	)
 
 
@@ -1067,7 +1090,7 @@ func _draw_turn_minimap(map_rect: Rect2) -> void:
 				_turn_world_position(road["to"]),
 				map_rect
 			),
-			Color(0.30, 0.31, 0.30),
+			Color(0.56, 0.56, 0.52),
 			2.0,
 			true
 		)
@@ -1235,7 +1258,7 @@ func _turn_to_minimap(
 
 func _minimap_rect() -> Rect2:
 	return Rect2(
-		Vector2(size.x - minimap_size - 10.0, 10.0),
+		Vector2(size.x - minimap_size - 14.0, 14.0),
 		Vector2(minimap_size, minimap_size)
 	)
 
@@ -1264,8 +1287,8 @@ func _finish_drive() -> void:
 	forward_button.disabled = true
 	right_button.disabled = true
 
-	map_label.text = "PARKED"
-	status_label.text = "Engine off. Head inside."
+	map_label.text = ""
+	status_label.text = "ARRIVED"
 
 	trip_finished.emit({
 		"status": "drive_complete",
