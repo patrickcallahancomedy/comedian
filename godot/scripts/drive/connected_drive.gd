@@ -289,34 +289,24 @@ func _process_connector_out(delta: float) -> void:
 	if not started:
 		return
 
-	var length := NETWORK.CONNECTOR_OUT_START.distance_to(
-		NETWORK.CONNECTOR_OUT_END
-	)
 	connector_progress = minf(
-		length,
+		NETWORK.CONNECTOR_OUT_LENGTH,
 		connector_progress + NETWORK.CONNECTOR_SPEED * delta
 	)
-	var t := connector_progress / length
+	var t := connector_progress / NETWORK.CONNECTOR_OUT_LENGTH
 	var eased := smoothstep(0.0, 1.0, t)
 
-	# Geometry stays centered on the highway; the car settles naturally into
-	# lane 1 during the same physical connector.
-	var road_position := NETWORK.CONNECTOR_OUT_START.lerp(
-		NETWORK.CONNECTOR_OUT_END,
-		eased
-	)
-	var lane_one_x := NETWORK.highway_lane_center(1, 4)
-	player_world_position = Vector2(
-		lerpf(road_position.x, lane_one_x, eased),
-		road_position.y
-	)
+	# Micro-pass: the car simply follows one physical connector road.
+	player_world_position = NETWORK.connector_out_curve(t)
+
+	# Keep the existing zoom behavior untouched for this pass.
 	camera_zoom = lerpf(
 		NETWORK.NEIGHBORHOOD_ZOOM,
 		NETWORK.HIGHWAY_ZOOM,
 		eased
 	)
 
-	if connector_progress >= length:
+	if connector_progress >= NETWORK.CONNECTOR_OUT_LENGTH:
 		_enter_highway()
 
 
@@ -551,6 +541,10 @@ func _update_car_visual() -> void:
 	match current_road_kind:
 		"neighborhood", "city":
 			direction = street_heading
+		"connector_out":
+			direction = NETWORK.connector_out_tangent(
+				connector_progress / NETWORK.CONNECTOR_OUT_LENGTH
+			)
 		"exit_connector":
 			direction = NETWORK.exit_curve_tangent(
 				exit_progress / 1450.0
@@ -598,46 +592,17 @@ func _draw_street_graph(
 
 
 func _draw_connector_out() -> void:
-	_draw_tapered_road(
-		NETWORK.CONNECTOR_OUT_START,
-		NETWORK.CONNECTOR_OUT_END,
-		NETWORK.STREET_WIDTH,
-		NETWORK.HIGHWAY_LANE_WIDTH * 4.0
-	)
+	# Micro-pass: one plain road between the existing neighborhood and highway.
+	# No widening, lane-emergence polish, or additional transition behavior yet.
+	var points := PackedVector2Array()
+	for index in range(17):
+		var t := float(index) / 16.0
+		points.append(_world_to_screen(NETWORK.connector_out_curve(t)))
 
-	# The four highway lanes grow out of this exact connector. Separator lines
-	# follow the connector's own angle instead of appearing as a separate road.
-	var connector_direction := (
-		NETWORK.CONNECTOR_OUT_END
-		- NETWORK.CONNECTOR_OUT_START
-	).normalized()
-	var connector_side := Vector2(
-		-connector_direction.y,
-		connector_direction.x
+	_draw_screen_polyline_road(
+		points,
+		NETWORK.STREET_WIDTH * camera_zoom
 	)
-
-	for lane in range(1, 4):
-		var end_offset := (
-			-NETWORK.HIGHWAY_LANE_WIDTH * 2.0
-			+ NETWORK.HIGHWAY_LANE_WIDTH * lane
-		)
-		var a := (
-			NETWORK.CONNECTOR_OUT_START.lerp(
-				NETWORK.CONNECTOR_OUT_END,
-				0.48
-			)
-			+ connector_side * end_offset * 0.18
-		)
-		var b := (
-			NETWORK.CONNECTOR_OUT_END
-			+ connector_side * end_offset
-		)
-		_draw_world_dashed_line(
-			a,
-			b,
-			3.0,
-			Color(0.82, 0.80, 0.70)
-		)
 
 
 func _draw_highway() -> void:
