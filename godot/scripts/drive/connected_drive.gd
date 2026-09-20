@@ -517,7 +517,7 @@ func _find_route(start_node: String, end_node: String) -> Array[String]:
 	var came_from: Dictionary = {start_node: start_node}
 
 	while not queue.is_empty():
-		var current := queue.pop_front()
+		var current: String = queue.pop_front()
 		if current == end_node:
 			break
 
