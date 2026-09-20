@@ -82,7 +82,7 @@ custom_minimum_size = Vector2(118, 64)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 28
-text = "←"
+text = "<"
 
 [node name="ForwardButton" type="Button" parent="TouchControls" unique_id=2034903650]
 custom_minimum_size = Vector2(118, 64)
@@ -96,7 +96,7 @@ custom_minimum_size = Vector2(118, 64)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 28
-text = "→"
+text = ">"
 
 [node name="Arrival" type="PanelContainer" parent="."]
 visible = false
