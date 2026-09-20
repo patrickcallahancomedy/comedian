@@ -17,6 +17,7 @@ metadata/_edit_vertical_guides_ = [215.0]
 metadata/_edit_horizontal_guides_ = [382.0]
 
 [node name="GroundBackground" type="ColorRect" parent="." unique_id=1313100671]
+z_index = 0
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -26,6 +27,7 @@ grow_vertical = 2
 color = Color(0.11, 0.11, 0.11, 1)
 
 [node name="CityMap" type="Control" parent="." unique_id=1442815347]
+z_index = 1
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -59,6 +61,7 @@ text = "TAP START"
 horizontal_alignment = 1
 
 [node name="PlayerCar" type="TextureRect" parent="." unique_id=1726496357]
+z_index = 2
 layout_mode = 0
 offset_left = 166.0
 offset_top = 333.0
