@@ -84,5 +84,5 @@ jobs:
         with:
           branch: gh-pages
           folder: godot/build/drive-v010
-          target-folder: drive-v0.10
+          target-folder: drive-road-only
           clean: false
