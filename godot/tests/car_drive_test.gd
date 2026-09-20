@@ -50,6 +50,8 @@ func _run() -> void:
 	drive._process_connector_out(1.5)
 	_check(drive.current_road_kind == "connector_out", "Connector instantly swapped road type")
 	_check(drive.player_world_position.distance_to(start_pos) > 100.0, "Car did not physically travel connector")
+	var connector_t: float = drive.connector_progress / NETWORK.CONNECTOR_OUT_LENGTH
+	_check(drive.player_world_position.distance_to(NETWORK.connector_out_curve(connector_t)) < 0.1, "Car left connector road path")
 	_check(drive.camera_zoom < NETWORK.NEIGHBORHOOD_ZOOM, "Connector did not zoom out while driving")
 	drive._process_connector_out(10.0)
 
