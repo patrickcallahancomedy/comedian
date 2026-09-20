@@ -663,6 +663,8 @@ func _turn_left() -> void:
 	if drive_complete or transition_active:
 		return
 
+	if steering_mode == "approach":
+		return
 	if steering_mode == "lane":
 		target_lane = maxi(0, target_lane - 1)
 		return
@@ -676,6 +678,8 @@ func _turn_right() -> void:
 	if drive_complete or transition_active:
 		return
 
+	if steering_mode == "approach":
+		return
 	if steering_mode == "lane":
 		target_lane = mini(lane_count - 1, target_lane + 1)
 		return
@@ -1176,8 +1180,8 @@ func _draw_connector_scene() -> void:
 		1.0
 	)
 	var eased := smoothstep(0.0, 1.0, progress)
-	var next_id := DRIVE_PROFILES.ORDER[transition_target_index]
-	var to_highway := next_id == "highway"
+	var next_id: String = str(DRIVE_PROFILES.ORDER[transition_target_index])
+	var to_highway: bool = next_id == "highway"
 
 	var ground_from := Color(0.42, 0.50, 0.39)
 	var ground_to := (
@@ -1194,7 +1198,7 @@ func _draw_connector_scene() -> void:
 		true
 	)
 
-	var width := lerpf(
+	var width: float = lerpf(
 		transition_from_road_width,
 		transition_to_road_width,
 		eased
@@ -1220,12 +1224,12 @@ func _draw_connector_scene() -> void:
 
 	# Lane lines fade in while zooming out to highway and disappear while
 	# zooming into the single broad venue approach.
-	var visual_lanes := (
+	var visual_lanes: int = (
 		transition_to_lane_count
 		if to_highway
 		else transition_from_lane_count
 	)
-	var line_alpha := eased if to_highway else 1.0 - eased
+	var line_alpha: float = eased if to_highway else 1.0 - eased
 
 	if visual_lanes > 1 and line_alpha > 0.01:
 		var visual_lane_width := width / float(visual_lanes)
