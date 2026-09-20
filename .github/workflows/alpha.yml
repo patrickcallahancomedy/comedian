@@ -29,25 +29,6 @@ jobs:
       - name: Checkout ALPHA
         uses: actions/checkout@v4
 
-      - name: Remove obsolete drive experiment branches
-        shell: bash
-        run: |
-          set -u
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          for old_branch in \
-            drive-grid-v0.1 \
-            drive-playtest-v0.7 \
-            drive-playtest-v0.8 \
-            drive-playtest-v0.9 \
-            drive-playtest-v0.10 \
-            drive-playtest-v0.11 \
-            drive-playtest-v0.12 \
-            drive-playtest-v0.13 \
-            drive-playtest-v0.14
-          do
-            git push origin --delete "$old_branch" || true
-          done
-
       - name: Import Godot project
         shell: bash
         run: |
