@@ -20,211 +20,210 @@ func _run() -> void:
 	var drive := packed.instantiate()
 	get_root().add_child(drive)
 
-	var background := drive.get_node_or_null("GroundBackground") as ColorRect
 	var car := drive.get_node_or_null("PlayerCar") as TextureRect
 	var city_map := drive.get_node_or_null("CityMap")
 	var map_label := drive.get_node_or_null("MapLabel") as Label
-	var status_label := drive.get_node_or_null("StatusLabel") as Label
 
-	_check(background != null, "Ground background is missing")
 	_check(car != null, "Player car is missing")
 	_check(city_map != null, "CityMap is missing")
-	_check(map_label != null, "DRIVE map label is missing")
-	_check(status_label != null, "DRIVE status label is missing")
+	_check(map_label != null, "Map label is missing")
 
 	if car != null:
 		_check(car.texture != null, "Player car texture did not load")
 
-		var center := car.position + car.size * 0.5
+	if city_map == null:
+		drive.free()
+		_finish()
+		return
+
+	_check(
+		city_map.get("active_stage_id") == "neighborhood",
+		"DRIVE does not start in the neighborhood"
+	)
+	_check(
+		city_map.get("steering_mode") == "turn",
+		"Neighborhood is not using turn mode"
+	)
+	_check(
+		int(city_map.get("lane_count")) == 1,
+		"Neighborhood should use one lane"
+	)
+	_check(
+		is_equal_approx(float(city_map.get("car_scale")), 1.0),
+		"Neighborhood car scale is wrong"
+	)
+	_check(
+		bool(city_map.get("stop_signs_enabled")),
+		"Neighborhood stop signs are disabled"
+	)
+	_check(
+		float(city_map.get("intersection_spacing")) >= 1800.0,
+		"Neighborhood blocks are still too short"
+	)
+	_check_no_dead_ends(city_map, "Neighborhood")
+
+	for point in city_map.get("turn_intersections"):
+		var route = city_map.call(
+			"_find_turn_route",
+			point,
+			city_map.get("exit_intersection")
+		)
 		_check(
-			center.distance_to(Vector2(215, 382)) < 2.0,
-			"Player car is not centered"
+			not route.is_empty(),
+			"Neighborhood node cannot reach the gate"
 		)
 
-	if city_map != null:
-		var intersections = city_map.get("intersections")
-		var positions = city_map.get("intersection_positions")
-		var roads = city_map.get("roads")
-		var route = city_map.get("shortest_route")
-		var parking_slots = city_map.get("parking_slots")
-		var open_slots = city_map.get("open_parking_slots")
-		var destination = city_map.get("destination_intersection")
-		var minimap_world_size: Vector2 = city_map.get("minimap_world_size")
-		var stop_signs = city_map.get("stop_sign_intersections")
+	city_map.call("_load_stage", 1, false)
 
-		_check(
-			int(city_map.get("world_size")) == 20,
-			"Logical DRIVE graph is not 20x20"
-		)
-		_check(
-			minimap_world_size == Vector2(42.0, 34.0),
-			"Physical minimap world size is wrong"
-		)
-		_check(
-			intersections is Array and not intersections.is_empty(),
-			"World has no intersections"
-		)
-		_check(
-			positions is Dictionary and positions.size() == intersections.size(),
-			"Not every intersection has a physical position"
-		)
-		_check(
-			roads is Array and not roads.is_empty(),
-			"World has no roads"
-		)
-		_check(
-			route is Array and not route.is_empty(),
-			"Whole-trip GPS route was not found"
-		)
-		_check(
-			parking_slots is Array and parking_slots.size() == 4,
-			"Parking lot does not have four candidate spaces"
-		)
-		_check(
-			open_slots is Array and open_slots.size() == 2,
-			"Parking lot does not have exactly two open spaces"
-		)
-		_check(
-			open_slots.has(destination),
-			"GPS destination is not an open parking space"
-		)
-		_check(
-			stop_signs is Array and not stop_signs.is_empty(),
-			"Neighborhood generated no stop signs"
-		)
+	var main_speed := float(city_map.get("drive_speed"))
 
-		var neighborhood_distance := _distance_between(
-			positions,
-			Vector2i(0, 12),
-			Vector2i(1, 12)
-		)
-		var city_distance := _distance_between(
-			positions,
-			Vector2i(10, 4),
-			Vector2i(11, 4)
-		)
-		var highway_distance := _distance_between(
-			positions,
-			Vector2i(5, 10),
-			Vector2i(6, 10)
-		)
+	_check(
+		city_map.get("active_stage_id") == "main_road",
+		"Main road profile failed to load"
+	)
+	_check(
+		city_map.get("steering_mode") == "lane",
+		"Main road is not using lane mode"
+	)
+	_check(
+		int(city_map.get("lane_count")) == 2,
+		"Main road should have two lanes"
+	)
+	_check(
+		is_equal_approx(float(city_map.get("car_scale")), 0.75),
+		"Main road car should be 75 percent scale"
+	)
+	_check(
+		city_map.get("lane_traffic").size() > 0,
+		"Main road has no passing traffic"
+	)
 
+	city_map.call("_load_stage", 2, false)
+
+	var highway_speed := float(city_map.get("drive_speed"))
+
+	_check(
+		city_map.get("active_stage_id") == "highway",
+		"Highway profile failed to load"
+	)
+	_check(
+		int(city_map.get("lane_count")) == 3,
+		"Highway should have three lanes"
+	)
+	_check(
+		is_equal_approx(float(city_map.get("car_scale")), 0.5),
+		"Highway car should be 50 percent scale"
+	)
+	_check(
+		highway_speed > main_speed,
+		"Highway is not faster than the main road"
+	)
+	_check(
+		int(city_map.get("active_profile").get("exit_lane", -1)) == 2,
+		"Highway does not require the right exit lane"
+	)
+
+	var old_gate_distance := float(city_map.get("lane_gate_distance"))
+	city_map.set("section_started", true)
+	city_map.set("current_lane", 0)
+	city_map.set("target_lane", 0)
+	city_map.set("lane_distance", old_gate_distance)
+	city_map.call("_process_lane_mode", 0.0)
+
+	_check(
+		city_map.get("active_stage_id") == "highway",
+		"Missing the highway exit incorrectly advanced the stage"
+	)
+	_check(
+		float(city_map.get("lane_gate_distance")) > old_gate_distance,
+		"Missing the highway exit did not move the next gate forward"
+	)
+
+	city_map.set("current_lane", 2)
+	city_map.set("target_lane", 2)
+	city_map.set(
+		"lane_distance",
+		float(city_map.get("lane_gate_distance"))
+	)
+	city_map.call("_process_lane_mode", 0.0)
+
+	_check(
+		city_map.get("active_stage_id") == "downtown",
+		"Correct highway exit did not advance to downtown"
+	)
+	_check(
+		city_map.get("steering_mode") == "turn",
+		"Downtown is not using turn mode"
+	)
+	_check(
+		is_equal_approx(float(city_map.get("car_scale")), 1.25),
+		"Downtown car should be 125 percent scale"
+	)
+	_check(
+		bool(city_map.get("one_way_enabled")),
+		"Downtown one-way streets are disabled"
+	)
+	_check_no_dead_ends(city_map, "Downtown")
+
+	var one_way_count := 0
+
+	for road in city_map.get("turn_roads"):
+		if bool(road.get("one_way", false)):
+			one_way_count += 1
+
+	_check(
+		one_way_count > 0,
+		"Downtown generated no one-way streets"
+	)
+
+	for point in city_map.get("turn_intersections"):
+		var route = city_map.call(
+			"_find_turn_route",
+			point,
+			city_map.get("exit_intersection")
+		)
 		_check(
-			neighborhood_distance > city_distance * 2.0,
-			"Neighborhood blocks are not physically longer than city blocks"
-		)
-		_check(
-			highway_distance > neighborhood_distance,
-			"Highway segments are not the longest road spacing"
-		)
-
-		var road_regions: Dictionary = {}
-		var neighborhood_road_count := 0
-		var city_one_way_count := 0
-		var has_highway_side_loop := false
-
-		for road in roads:
-			var region_id := str(road.get("region", ""))
-			road_regions[region_id] = true
-
-			if region_id == "neighborhood":
-				neighborhood_road_count += 1
-
-			if (
-				region_id == "city"
-				and str(road.get("road_type", "")) == "city"
-				and bool(road.get("one_way", false))
-			):
-				city_one_way_count += 1
-
-			if (
-				road.get("from") == Vector2i(7, 9)
-				or road.get("to") == Vector2i(7, 9)
-				or road.get("from") == Vector2i(8, 9)
-				or road.get("to") == Vector2i(8, 9)
-			):
-				has_highway_side_loop = true
-
-		for region_id in ["neighborhood", "highway", "city", "parking"]:
-			_check(
-				road_regions.has(region_id),
-				"Shared world is missing region: %s" % region_id
-			)
-
-		_check(
-			neighborhood_road_count == 32,
-			"Neighborhood did not remove exactly 8 of its 40 grid roads"
-		)
-		_check(
-			city_one_way_count > 0,
-			"City generated no one-way streets"
-		)
-		_check(
-			not has_highway_side_loop,
-			"Highway still contains the random side loop"
+			not route.is_empty(),
+			"Downtown node cannot legally reach the gate"
 		)
 
-		var normal_speed := float(
-			city_map.call("_drive_speed_for_road", {
-				"road_type": "neighborhood"
-			})
-		)
-		var highway_speed := float(
-			city_map.call("_drive_speed_for_road", {
-				"road_type": "highway"
-			})
-		)
-		_check(
-			highway_speed > normal_speed,
-			"Highway is not faster than normal roads"
-		)
+	city_map.call("_load_stage", 4, false)
 
-		if route is Array and not route.is_empty():
-			_check(
-				route[0] == city_map.get("start_intersection"),
-				"GPS route does not begin at Darren's house"
-			)
-			_check(
-				route[route.size() - 1] == destination,
-				"GPS route does not end at the parking destination"
-			)
-
-		var mini_start: Vector2 = city_map.call(
-			"_world_to_minimap",
-			Vector2.ZERO
-		)
-		var mini_end: Vector2 = city_map.call(
-			"_world_to_minimap",
-			minimap_world_size
-		)
-
-		_check(
-			mini_end.x > mini_start.x and mini_end.y > mini_start.y,
-			"Minimap physical-world projection is invalid"
-		)
-
-		if map_label != null:
-			_check(
-				map_label.text == "NEIGHBORHOOD",
-				"DRIVE does not begin in the neighborhood"
-			)
+	_check(
+		city_map.get("active_stage_id") == "parking",
+		"Parking profile failed to load"
+	)
+	_check(
+		int(city_map.get("lane_count")) == 1,
+		"Parking should use one lane"
+	)
+	_check(
+		not bool(city_map.get("stop_signs_enabled")),
+		"Parking should not use stop signs"
+	)
+	_check_no_dead_ends(city_map, "Parking")
 
 	drive.free()
 	_finish()
 
 
-func _distance_between(
-	positions: Dictionary,
-	a: Vector2i,
-	b: Vector2i
-) -> float:
-	if not positions.has(a) or not positions.has(b):
-		return 0.0
+func _check_no_dead_ends(city_map, label: String) -> void:
+	var degree: Dictionary = {}
 
-	var a_position: Vector2 = positions[a]
-	var b_position: Vector2 = positions[b]
+	for point in city_map.get("turn_intersections"):
+		degree[point] = 0
 
-	return a_position.distance_to(b_position)
+	for road in city_map.get("turn_roads"):
+		var a: Vector2i = road["from"]
+		var b: Vector2i = road["to"]
+		degree[a] = int(degree.get(a, 0)) + 1
+		degree[b] = int(degree.get(b, 0)) + 1
+
+	for point in degree.keys():
+		_check(
+			int(degree[point]) >= 2,
+			"%s generated a dead end" % label
+		)
 
 
 func _check(condition: bool, message: String) -> void:
