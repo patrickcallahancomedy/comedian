@@ -12,6 +12,7 @@ signal trip_finished(result: Dictionary)
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
 const STEP_SECONDS := 1.0
+const TURN_SECONDS := 0.22
 const WORLD_ZOOM := 4.5
 const CAR_REFERENCE_SCALE := 1.5
 
@@ -48,6 +49,11 @@ var visual_world_position := Vector2.ZERO
 var visual_cell_scale := 1.0
 var motion_direction := Vector2.UP
 var blocked_this_step := false
+
+var map_rotation := 0.0
+var map_rotation_from := 0.0
+var map_rotation_to := 0.0
+var turn_elapsed := TURN_SECONDS
 
 var player_screen_center := Vector2.ZERO
 var car_base_position := Vector2.ZERO
@@ -96,6 +102,10 @@ func _reset_to_start() -> void:
 	scale_to = visual_cell_scale
 	step_elapsed = STEP_SECONDS
 	blocked_this_step = false
+	map_rotation = 0.0
+	map_rotation_from = 0.0
+	map_rotation_to = 0.0
+	turn_elapsed = TURN_SECONDS
 	status_label.text = "TAP START"
 	forward_button.show()
 	left_button.disabled = false
@@ -123,6 +133,13 @@ func _process(delta: float) -> void:
 
 	drive_time += delta
 	step_elapsed += delta
+	turn_elapsed += delta
+
+	if turn_elapsed < TURN_SECONDS:
+		var turn_t := clampf(turn_elapsed / TURN_SECONDS, 0.0, 1.0)
+		map_rotation = lerp_angle(map_rotation_from, map_rotation_to, smoothstep(0.0, 1.0, turn_t))
+	else:
+		map_rotation = map_rotation_to
 
 	var t := clampf(step_elapsed / STEP_SECONDS, 0.0, 1.0)
 	var eased := smoothstep(0.0, 1.0, t)
@@ -257,7 +274,7 @@ func _turn_left() -> void:
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
-		heading = Vector2i(heading.y, -heading.x)
+		_set_heading(Vector2i(heading.y, -heading.x))
 
 
 func _turn_right() -> void:
@@ -269,7 +286,14 @@ func _turn_right() -> void:
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
-		heading = Vector2i(-heading.y, heading.x)
+		_set_heading(Vector2i(-heading.y, heading.x))
+
+
+func _set_heading(new_heading: Vector2i) -> void:
+	heading = new_heading
+	map_rotation_from = map_rotation
+	map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
+	turn_elapsed = 0.0
 
 
 func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
@@ -284,7 +308,8 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 func _update_car_visual() -> void:
 	player_car.position = car_base_position
 	player_car.scale = Vector2.ONE * CAR_REFERENCE_SCALE * visual_cell_scale
-	player_car.rotation = motion_direction.angle() + PI / 2.0
+	# The car stays visually upright; steering rotates the world around it.
+	player_car.rotation = 0.0
 
 
 func _draw() -> void:
@@ -406,19 +431,24 @@ func _draw_map_outline() -> void:
 
 
 func _draw_world_rect(rect: Rect2, color: Color) -> void:
-	var screen_rect := Rect2(
+	var points := PackedVector2Array([
 		_world_to_screen(rect.position),
-		rect.size * WORLD_ZOOM
-	)
-	draw_rect(screen_rect, color, true)
+		_world_to_screen(Vector2(rect.end.x, rect.position.y)),
+		_world_to_screen(rect.end),
+		_world_to_screen(Vector2(rect.position.x, rect.end.y)),
+	])
+	draw_colored_polygon(points, color)
 
 
 func _draw_world_rect_outline(rect: Rect2, color: Color, width: float) -> void:
-	var screen_rect := Rect2(
+	var points := [
 		_world_to_screen(rect.position),
-		rect.size * WORLD_ZOOM
-	)
-	draw_rect(screen_rect, color, false, width)
+		_world_to_screen(Vector2(rect.end.x, rect.position.y)),
+		_world_to_screen(rect.end),
+		_world_to_screen(Vector2(rect.position.x, rect.end.y)),
+	]
+	for index in range(4):
+		draw_line(points[index], points[(index + 1) % 4], color, width, true)
 
 
 func _draw_world_line(a: Vector2, b: Vector2, color: Color, width: float) -> void:
@@ -432,10 +462,9 @@ func _draw_world_line(a: Vector2, b: Vector2, color: Color, width: float) -> voi
 
 
 func _world_to_screen(world_point: Vector2) -> Vector2:
-	return (
-		player_screen_center
-		+ (world_point - visual_world_position) * WORLD_ZOOM
-	)
+	var offset := (world_point - visual_world_position) * WORLD_ZOOM
+	offset = offset.rotated(map_rotation)
+	return player_screen_center + offset
 
 
 func _finish_drive() -> void:
