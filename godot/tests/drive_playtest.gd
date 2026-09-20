@@ -27,9 +27,7 @@ func run() -> void:
 			if city.stage_index != last_stage:
 				decision_target = Vector2i(-99, -99)
 				last_stage = city.stage_index
-			if city.transition_active:
-				pass
-			elif city.steering_mode == "turn":
+			if city.steering_mode == "turn":
 				var at: Vector2i = city.target_intersection if city.is_driving else city.current_intersection
 				# Queue one choice per road. Read only the displayed GPS route.
 				if at != decision_target and at != city.exit_intersection:
@@ -55,6 +53,8 @@ func run() -> void:
 						wanted = (wanted + 1) % city.lane_count
 				if city.active_stage_id == "highway" and city.lane_gate_distance - city.lane_distance < 1500:
 					wanted = int(city.active_profile.get("exit_lane", city.lane_count - 1))
+				elif city.active_stage_id == "parking_street" and city.lane_gate_distance - city.lane_distance < 900:
+					wanted = int(city.active_profile.get("parking_lane", city.lane_count - 1))
 				if wanted > city.target_lane:
 					city._turn_right()
 				elif wanted < city.target_lane:
@@ -64,7 +64,7 @@ func run() -> void:
 			frames += 1
 		check(city.drive_complete, "Trip stalled: seed %d, stage %s" % [seed_value, city.active_stage_id])
 		check(not scene.trip_result.is_empty(), "Missing arrival result")
-		check(city.drive_time < 70.0, "Trip too long: %d" % seed_value)
+		check(city.drive_time < 65.0, "Trip too long: %d" % seed_value)
 		if injected_mistake:
 			check(city.wrong_turns > 0, "Wrong turn not recorded")
 		var original_result: Dictionary = scene.trip_result.duplicate()
