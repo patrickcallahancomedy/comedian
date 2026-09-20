@@ -39,19 +39,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          godot --headless --path godot --script res://tests/car_drive_test.gd
+          timeout 45s godot --headless --path godot --script res://tests/car_drive_test.gd
 
       - name: 100-trip drive playtest
         shell: bash
         run: |
           set -euo pipefail
-          godot --headless --path godot --script res://tests/drive_playtest.gd
+          timeout 90s godot --headless --path godot --script res://tests/drive_playtest.gd
 
       - name: Drive regression suite
         shell: bash
         run: |
           set -euo pipefail
-          godot --headless --path godot --script res://tests/drive_regression.gd
+          timeout 45s godot --headless --path godot --script res://tests/drive_regression.gd
 
       - name: Prepare export templates
         shell: bash
