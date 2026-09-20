@@ -12,8 +12,8 @@ signal trip_finished(result: Dictionary)
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
 const STEP_SECONDS := 1.0
-const WORLD_ZOOM := 3.0
-const CAR_REFERENCE_SCALE := 1.0
+const WORLD_ZOOM := 4.5
+const CAR_REFERENCE_SCALE := 1.5
 
 const NEIGHBORHOOD_COLOR := Color(0.34, 0.57, 0.31)
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
