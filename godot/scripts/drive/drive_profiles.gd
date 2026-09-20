@@ -1,12 +1,12 @@
 class_name DriveProfiles
 extends RefCounted
 
+# v0.8 keeps the richer v0.7 profiles below, but the playable trip is intentionally
+# only three beats: local streets -> highway -> venue district.
 const ORDER := [
 	"neighborhood",
-	"main_road",
 	"highway",
 	"downtown",
-	"parking",
 ]
 
 const BASE_SPEED := 680.0
@@ -22,8 +22,8 @@ const PROFILES := {
 		"speed_scale": 1.0,
 		"road_scale": 1.0,
 		"block_scale": 1.0,
-		"stop_signs": true,
-		"auto_stop_time": 0.45,
+		"stop_signs": false,
+		"auto_stop_time": 0.0,
 		"one_way": false,
 		"grid_size": Vector2i(4, 4),
 		"entry": Vector2i(0, 3),
@@ -79,9 +79,9 @@ const PROFILES := {
 		"speed_scale": 0.90,
 		"road_scale": 1.10,
 		"block_scale": 0.50,
-		"stop_signs": true,
-		"auto_stop_time": 0.35,
-		"one_way": true,
+		"stop_signs": false,
+		"auto_stop_time": 0.0,
+		"one_way": false,
 		"grid_size": Vector2i(4, 4),
 		"entry": Vector2i(0, 3),
 		"exit": Vector2i(3, 0),
