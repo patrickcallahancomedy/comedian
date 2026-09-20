@@ -1,0 +1,88 @@
+name: DRIVE v0.9 Mobile Playtest
+
+on:
+  push:
+    branches:
+      - drive-playtest-v0.9
+    paths:
+      - "godot/**"
+      - ".github/workflows/drive-v09-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comedian-drive-v09
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  test-and-export:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout v0.9
+        uses: actions/checkout@v4
+
+      - name: Import Godot project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path godot --quit
+
+      - name: Structural drive test
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --script res://tests/car_drive_test.gd
+
+      - name: 100-trip drive playtest
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --script res://tests/drive_playtest.gd
+
+      - name: Drive regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --script res://tests/drive_regression.gd
+
+      - name: Prepare export templates
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/"
+
+      - name: Export web build
+        shell: bash
+        working-directory: godot
+        run: |
+          set -euo pipefail
+          rm -rf build/drive-v09
+          mkdir -p build/drive-v09
+          godot --headless --path . --export-release "Web" build/drive-v09/index.html
+          touch build/drive-v09/.nojekyll
+
+          BUILD_NAME="drive-v09-${GITHUB_SHA:0:8}"
+          mv build/drive-v09/index.js "build/drive-v09/${BUILD_NAME}.js"
+          mv build/drive-v09/index.wasm "build/drive-v09/${BUILD_NAME}.wasm"
+          mv build/drive-v09/index.pck "build/drive-v09/${BUILD_NAME}.pck"
+
+          sed -i "s#src=\"index.js\"#src=\"${BUILD_NAME}.js\"#" build/drive-v09/index.html
+          sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/drive-v09/index.html
+          sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/drive-v09/index.html
+          sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/drive-v09/index.html
+
+      - name: Publish v0.9 playtest without replacing main game
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: godot/build/drive-v09
+          target-folder: drive-v0.9
+          clean: false
