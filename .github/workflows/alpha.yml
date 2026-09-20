@@ -31,10 +31,8 @@ jobs:
 
       - name: Remove obsolete drive experiment branches
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
+          set -u
           for old_branch in \
             drive-grid-v0.1 \
             drive-playtest-v0.7 \
@@ -46,18 +44,7 @@ jobs:
             drive-playtest-v0.13 \
             drive-playtest-v0.14
           do
-            echo "Deleting $old_branch if it exists"
-            status=$(curl -sS -o /tmp/delete-ref.txt -w "%{http_code}" \
-              -X DELETE \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs/heads/$old_branch")
-            if [ "$status" = "204" ] || [ "$status" = "422" ]; then
-              echo "$old_branch: $status"
-            else
-              cat /tmp/delete-ref.txt
-              exit 1
-            fi
+            git push origin --delete "$old_branch" || true
           done
 
       - name: Import Godot project
