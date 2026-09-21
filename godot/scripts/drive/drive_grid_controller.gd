@@ -42,7 +42,6 @@ var highway_column := 0
 var highway_lane := MAP.HIGHWAY_ENTRY_LANE
 var queued_highway_lane := MAP.HIGHWAY_ENTRY_LANE
 
-var step_elapsed := 0.0
 var move_from := Vector2.ZERO
 var move_to := Vector2.ZERO
 var scale_from := 1.0
@@ -102,7 +101,6 @@ func _reset_to_start() -> void:
 	move_to = visual_world_position
 	scale_from = visual_cell_scale
 	scale_to = visual_cell_scale
-	step_elapsed = STEP_SECONDS
 	blocked_this_step = false
 	map_rotation = 0.0
 	map_rotation_from = 0.0
@@ -134,7 +132,6 @@ func _process(delta: float) -> void:
 		return
 
 	drive_time += delta
-	step_elapsed += delta
 	turn_elapsed += delta
 
 	if turn_elapsed < TURN_SECONDS:
@@ -143,26 +140,70 @@ func _process(delta: float) -> void:
 	else:
 		map_rotation = map_rotation_to
 
-	# Carry extra frame time across cell boundaries instead of throwing it away.
-	# This keeps forward motion truly continuous from one block into the next.
-	while step_elapsed >= STEP_SECONDS and not drive_complete:
-		var overflow := step_elapsed - STEP_SECONDS
-		visual_world_position = move_to
-		visual_cell_scale = scale_to
-		_begin_next_step()
-		# _begin_next_step() resets the timer; restore this frame's leftover time.
-		step_elapsed = overflow
-
-	var t := clampf(step_elapsed / STEP_SECONDS, 0.0, 1.0)
-	visual_world_position = move_from.lerp(move_to, t)
-	visual_cell_scale = lerpf(scale_from, scale_to, t)
+	_advance_continuous_motion(delta)
 
 	_update_car_visual()
 	queue_redraw()
 
 
+func _advance_continuous_motion(delta: float) -> void:
+	var remaining_time := delta
+
+	while remaining_time > 0.0 and not drive_complete:
+		if blocked_this_step:
+			return
+
+		var distance_to_target := visual_world_position.distance_to(move_to)
+		if distance_to_target <= 0.001:
+			visual_world_position = move_to
+			visual_cell_scale = scale_to
+			_begin_next_step()
+			continue
+
+		var speed := _current_world_speed()
+		var time_to_target := distance_to_target / speed
+		var travel_time := minf(remaining_time, time_to_target)
+
+		visual_world_position = visual_world_position.move_toward(
+			move_to,
+			speed * travel_time
+		)
+
+		var segment_length := move_from.distance_to(move_to)
+		if segment_length > 0.001:
+			var progress := 1.0 - (
+				visual_world_position.distance_to(move_to) / segment_length
+			)
+			visual_cell_scale = lerpf(
+				scale_from,
+				scale_to,
+				clampf(progress, 0.0, 1.0)
+			)
+
+		remaining_time -= travel_time
+
+		if visual_world_position.distance_to(move_to) <= 0.001:
+			visual_world_position = move_to
+			visual_cell_scale = scale_to
+			_begin_next_step()
+
+
+func _current_world_speed() -> float:
+	match road_kind:
+		"neighborhood":
+			return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
+		"highway":
+			return float(MAP.HIGHWAY_CELL) / STEP_SECONDS
+		"city":
+			return float(MAP.CITY_CELL) / STEP_SECONDS
+		"connector_one":
+			return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
+		"connector_two":
+			return float(MAP.CITY_CELL) / STEP_SECONDS
+	return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
+
+
 func _begin_next_step() -> void:
-	step_elapsed = 0.0
 	move_from = visual_world_position
 	scale_from = visual_cell_scale
 	blocked_this_step = false
@@ -300,6 +341,9 @@ func _set_heading(new_heading: Vector2i) -> void:
 	map_rotation_from = map_rotation
 	map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
 	turn_elapsed = 0.0
+
+	if blocked_this_step:
+		_begin_next_step()
 
 
 func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
