@@ -144,9 +144,9 @@ func _process(delta: float) -> void:
 		map_rotation = map_rotation_to
 
 	var t := clampf(step_elapsed / STEP_SECONDS, 0.0, 1.0)
-	var eased := smoothstep(0.0, 1.0, t)
-	visual_world_position = move_from.lerp(move_to, eased)
-	visual_cell_scale = lerpf(scale_from, scale_to, eased)
+	# Keep forward travel at a constant speed so grid boundaries do not feel like stops.
+	visual_world_position = move_from.lerp(move_to, t)
+	visual_cell_scale = lerpf(scale_from, scale_to, t)
 
 	if step_elapsed >= STEP_SECONDS:
 		visual_world_position = move_to
