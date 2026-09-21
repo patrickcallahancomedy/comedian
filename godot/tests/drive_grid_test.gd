@@ -122,6 +122,12 @@ func _run() -> void:
 	drive.scale_from = 6.0
 	drive._begin_city_step()
 	_check(drive.road_kind == "city", "Second connector did not enter city")
+	drive.visual_cell_scale = drive.CITY_CAR_SCALE
+	drive._update_car_visual()
+	_check(
+		is_equal_approx(drive.player_car.scale.x, drive.CAR_REFERENCE_SCALE * 6.0),
+		"Rendered city car scale is not actually 6x"
+	)
 
 	scene.free()
 	_finish()
