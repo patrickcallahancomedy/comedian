@@ -18,6 +18,7 @@ const WORLD_SCALE := 2.0
 const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
 const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
 const CITY_CAR_SCALE := 6.0
+const CITY_CONNECTOR_SCALE := 2.0
 const CITY_SPEED_MULTIPLIER := 0.8
 
 const NEIGHBORHOOD_COLOR := Color(0.34, 0.57, 0.31)
@@ -293,9 +294,9 @@ func _begin_highway_step() -> void:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
 			road_kind = "connector_two"
 			move_to = MAP.city_entry_point()
-			# Stay at highway scale on the skinny off-ramp.
-			# The car begins growing only after it has entered the city.
-			scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
+			# Start growing on the off-ramp, but keep the car small enough
+			# to stay visually inside the connector.
+			scale_to = CITY_CONNECTOR_SCALE
 			motion_direction = (move_to - move_from).normalized()
 			status_label.text = "CONNECTOR"
 			return
@@ -327,6 +328,9 @@ func _begin_city_step() -> void:
 		road_kind = "city"
 		city_cell = MAP.CITY_ENTRY
 		heading = Vector2i.RIGHT
+		# Crossing the city boundary is a deliberate size pop.
+		visual_cell_scale = CITY_CAR_SCALE
+		scale_from = CITY_CAR_SCALE
 
 	if city_cell == MAP.CITY_DESTINATION:
 		_finish_drive()
