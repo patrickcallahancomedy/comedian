@@ -12,7 +12,9 @@ func _initialize() -> void:
 func _run() -> void:
 	print("DRIVE GRID v0.1 TEST START")
 
-	_check(MAP.MAP_SIZE == Vector2i(800, 800), "Logical map is not 800x800")
+	_check(MAP.MAP_SIZE == Vector2i(880, 800), "Logical map size is wrong")
+	_check(is_equal_approx(MAP.CONNECTOR_ONE_RECT.size.x, 80.0), "Connector one is not doubled to 80 units")
+	_check(is_equal_approx(MAP.CONNECTOR_TWO_RECT.size.x, 80.0), "Connector two is not doubled to 80 units")
 	_check(MAP.MASTER_UNIT == 10, "Master snap unit changed")
 	_check(MAP.rect_is_master_snapped(MAP.NEIGHBORHOOD_RECT), "Neighborhood is off master grid")
 	_check(MAP.rect_is_master_snapped(MAP.CONNECTOR_ONE_RECT), "Connector one is off master grid")
@@ -76,9 +78,9 @@ func _run() -> void:
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
-			float(MAP.NEIGHBORHOOD_CELL) * 0.5 / drive.STEP_SECONDS
+			float(MAP.NEIGHBORHOOD_CELL) / drive.STEP_SECONDS
 		),
-		"First connector is not using the longer transition speed"
+		"First connector speed changed unexpectedly"
 	)
 
 	# Connector hands directly to the four-lane highway.
