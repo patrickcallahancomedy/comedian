@@ -140,7 +140,7 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "connector_two", "Correct highway lane missed city connector")
-	_check(is_equal_approx(drive.scale_to, 2.0), "City connector should grow toward the capped connector size")
+	_check(is_equal_approx(drive.scale_to, 6.0), "City connector should grow smoothly to full city scale")
 
 	# The city connector decelerates from highway speed down to 0.8x neighborhood speed.
 	drive.visual_world_position.x = MAP.CONNECTOR_TWO_RECT.position.x
@@ -160,13 +160,12 @@ func _run() -> void:
 	)
 
 	drive.visual_world_position = MAP.city_entry_point()
-	drive.visual_cell_scale = drive.CITY_CONNECTOR_SCALE
+	drive.visual_cell_scale = 6.0
 	drive.move_from = drive.visual_world_position
-	drive.scale_from = drive.CITY_CONNECTOR_SCALE
+	drive.scale_from = 6.0
 	drive._begin_city_step()
 	_check(drive.road_kind == "city", "Second connector did not enter city")
-	_check(is_equal_approx(drive.visual_cell_scale, 6.0), "City car did not pop to full size at the boundary")
-	_check(is_equal_approx(drive.scale_from, 6.0), "City movement did not preserve the popped city size")
+	_check(is_equal_approx(drive.visual_cell_scale, 6.0), "City entry should preserve the smoothly-grown city size")
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
