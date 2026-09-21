@@ -118,7 +118,6 @@ func _start_drive() -> void:
 	started = true
 	forward_button.hide()
 	status_label.text = "NEIGHBORHOOD"
-	step_elapsed = STEP_SECONDS
 	_begin_next_step()
 
 
