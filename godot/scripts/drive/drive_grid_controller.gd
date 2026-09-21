@@ -17,6 +17,7 @@ const DISPLAY_SCALE := 1.0
 const WORLD_SCALE := 2.0
 const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
 const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
+const CITY_CAR_SCALE := 2.5
 
 const NEIGHBORHOOD_COLOR := Color(0.34, 0.57, 0.31)
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
@@ -192,7 +193,7 @@ func _current_world_speed() -> float:
 		"neighborhood":
 			return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
 		"highway":
-			return float(MAP.HIGHWAY_CELL) * 2.0 / STEP_SECONDS
+			return float(MAP.HIGHWAY_CELL) * 4.0 / STEP_SECONDS
 		"city":
 			return float(MAP.CITY_CELL) / STEP_SECONDS
 		"connector_one":
@@ -259,7 +260,7 @@ func _begin_highway_step() -> void:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
 			road_kind = "connector_two"
 			move_to = MAP.city_entry_point()
-			scale_to = MAP.car_scale_for_cell(MAP.CITY_CELL)
+			scale_to = CITY_CAR_SCALE
 			motion_direction = (move_to - move_from).normalized()
 			status_label.text = "CONNECTOR"
 			return
@@ -300,7 +301,7 @@ func _begin_city_step() -> void:
 	if _cell_inside(desired, MAP.CITY_SIZE):
 		city_cell = desired
 		move_to = MAP.city_cell_center(city_cell)
-		scale_to = MAP.car_scale_for_cell(MAP.CITY_CELL)
+		scale_to = CITY_CAR_SCALE
 		motion_direction = Vector2(heading)
 		status_label.text = "CITY"
 		return
@@ -316,7 +317,7 @@ func _turn_left() -> void:
 		return
 
 	if road_kind == "highway":
-		queued_highway_lane = maxi(0, queued_highway_lane - 1)
+		_set_highway_lane(queued_highway_lane - 1)
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
@@ -328,11 +329,26 @@ func _turn_right() -> void:
 		return
 
 	if road_kind == "highway":
-		queued_highway_lane = mini(MAP.HIGHWAY_LANES - 1, queued_highway_lane + 1)
+		_set_highway_lane(queued_highway_lane + 1)
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
 		_set_heading(Vector2i(-heading.y, heading.x))
+
+
+func _set_highway_lane(requested_lane: int) -> void:
+	var new_lane := clampi(requested_lane, 0, MAP.HIGHWAY_LANES - 1)
+	if new_lane == queued_highway_lane:
+		return
+
+	queued_highway_lane = new_lane
+	highway_lane = new_lane
+
+	# Retarget the active highway segment immediately so the merge begins on tap,
+	# rather than waiting for the next forward grid checkpoint.
+	move_from = visual_world_position
+	move_to = MAP.highway_cell_center(highway_column, new_lane)
+	motion_direction = (move_to - visual_world_position).normalized()
 
 
 func _set_heading(new_heading: Vector2i) -> void:
