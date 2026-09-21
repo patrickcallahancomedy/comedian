@@ -146,13 +146,11 @@ func _process(delta: float) -> void:
 	# Carry extra frame time across cell boundaries instead of throwing it away.
 	# This keeps forward motion truly continuous from one block into the next.
 	while step_elapsed >= STEP_SECONDS and not drive_complete:
-		step_elapsed -= STEP_SECONDS
+		var overflow := step_elapsed - STEP_SECONDS
 		visual_world_position = move_to
 		visual_cell_scale = scale_to
 		_begin_next_step()
-		# _begin_next_step() normally starts a fresh segment at zero. Restore the
-		# leftover time from this frame so there is no one-frame hitch at the seam.
-		var overflow := step_elapsed
+		# _begin_next_step() resets the timer; restore this frame's leftover time.
 		step_elapsed = overflow
 
 	var t := clampf(step_elapsed / STEP_SECONDS, 0.0, 1.0)
