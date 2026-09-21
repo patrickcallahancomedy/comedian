@@ -89,8 +89,8 @@ func _run() -> void:
 		"Highway is not running at the faster speed"
 	)
 
-	var lane_before := drive.queued_highway_lane
-	var target_y_before := drive.move_to.y
+	var lane_before: int = drive.queued_highway_lane
+	var target_y_before: float = drive.move_to.y
 	drive._turn_right()
 	_check(drive.queued_highway_lane == lane_before + 1, "Highway lane input did not register")
 	_check(not is_equal_approx(drive.move_to.y, target_y_before), "Highway merge still waits for checkpoint")
