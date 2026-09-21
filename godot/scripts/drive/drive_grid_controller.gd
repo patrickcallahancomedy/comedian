@@ -293,7 +293,9 @@ func _begin_highway_step() -> void:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
 			road_kind = "connector_two"
 			move_to = MAP.city_entry_point()
-			scale_to = CITY_CAR_SCALE
+			# Stay at highway scale on the skinny off-ramp.
+			# The car begins growing only after it has entered the city.
+			scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
 			motion_direction = (move_to - move_from).normalized()
 			status_label.text = "CONNECTOR"
 			return
