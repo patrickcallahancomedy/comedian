@@ -192,7 +192,7 @@ func _current_world_speed() -> float:
 		"neighborhood":
 			return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
 		"highway":
-			return float(MAP.HIGHWAY_CELL) / STEP_SECONDS
+			return float(MAP.HIGHWAY_CELL) * 2.0 / STEP_SECONDS
 		"city":
 			return float(MAP.CITY_CELL) / STEP_SECONDS
 		"connector_one":
