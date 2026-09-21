@@ -438,7 +438,7 @@ func _draw_highway() -> void:
 	_draw_world_rect(MAP.HIGHWAY_RECT, HIGHWAY_COLOR)
 
 	for lane in range(1, MAP.HIGHWAY_LANES):
-		var y := MAP.HIGHWAY_RECT.position.y + lane * MAP.HIGHWAY_CELL
+		var y := MAP.HIGHWAY_RECT.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
 		_draw_world_line(
 			Vector2(MAP.HIGHWAY_RECT.position.x, y),
 			Vector2(MAP.HIGHWAY_RECT.end.x, y),
@@ -460,9 +460,9 @@ func _draw_highway() -> void:
 	var exit_rect := Rect2(
 		Vector2(
 			MAP.HIGHWAY_RECT.end.x - MAP.HIGHWAY_CELL,
-			MAP.HIGHWAY_RECT.position.y + MAP.HIGHWAY_EXIT_LANE * MAP.HIGHWAY_CELL
+			MAP.HIGHWAY_RECT.position.y + MAP.HIGHWAY_EXIT_LANE * MAP.HIGHWAY_LANE_WIDTH
 		),
-		Vector2(MAP.HIGHWAY_CELL, MAP.HIGHWAY_CELL)
+		Vector2(MAP.HIGHWAY_CELL, MAP.HIGHWAY_LANE_WIDTH)
 	)
 	_draw_world_rect_outline(exit_rect, Color(1.0, 0.92, 0.34), 3.0)
 
