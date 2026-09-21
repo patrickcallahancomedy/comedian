@@ -114,12 +114,12 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "connector_two", "Correct highway lane missed city connector")
-	_check(is_equal_approx(drive.scale_to, 2.5), "Second connector does not use huge city car scale")
+	_check(is_equal_approx(drive.scale_to, 4.0), "Second connector does not use huge city car scale")
 
 	drive.visual_world_position = MAP.city_entry_point()
-	drive.visual_cell_scale = 2.5
+	drive.visual_cell_scale = 4.0
 	drive.move_from = drive.visual_world_position
-	drive.scale_from = 2.5
+	drive.scale_from = 4.0
 	drive._begin_city_step()
 	_check(drive.road_kind == "city", "Second connector did not enter city")
 
