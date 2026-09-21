@@ -2,10 +2,10 @@ class_name DriveGridMap
 extends RefCounted
 
 ## DRIVE GRID v0.1
-## One 800x800 logical board. Every module snaps to MASTER_UNIT so layouts can
+## One modular logical board. Every module snaps to MASTER_UNIT so layouts can
 ## be rearranged like Lego without hand-tuned coordinates.
 
-const MAP_SIZE := Vector2i(800, 800)
+const MAP_SIZE := Vector2i(880, 800)
 const MASTER_UNIT := 10
 
 const NEIGHBORHOOD_CELL := 40
@@ -14,10 +14,10 @@ const HIGHWAY_LANE_WIDTH := 10
 const CITY_CELL := 60
 
 const NEIGHBORHOOD_RECT := Rect2(10, 310, 160, 160)
-const CONNECTOR_ONE_RECT := Rect2(170, 360, 40, 20)
-const HIGHWAY_RECT := Rect2(210, 350, 300, 40)
-const CONNECTOR_TWO_RECT := Rect2(510, 380, 40, 20)
-const CITY_RECT := Rect2(550, 240, 240, 240)
+const CONNECTOR_ONE_RECT := Rect2(170, 360, 80, 20)
+const HIGHWAY_RECT := Rect2(250, 350, 300, 40)
+const CONNECTOR_TWO_RECT := Rect2(550, 380, 80, 20)
+const CITY_RECT := Rect2(630, 240, 240, 240)
 
 const NEIGHBORHOOD_SIZE := Vector2i(4, 4)
 const CITY_SIZE := Vector2i(4, 4)
