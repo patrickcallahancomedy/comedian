@@ -80,7 +80,24 @@ func _run() -> void:
 			drive._current_world_speed(),
 			float(MAP.NEIGHBORHOOD_CELL) / drive.STEP_SECONDS
 		),
-		"First connector speed changed unexpectedly"
+		"On-ramp does not start at neighborhood speed"
+	)
+
+	# The highway connector accelerates across its physical 80-unit ramp.
+	drive.visual_world_position.x = MAP.CONNECTOR_ONE_RECT.position.x
+	var ramp_start_speed: float = drive._current_world_speed()
+	drive.visual_world_position.x = MAP.CONNECTOR_ONE_RECT.position.x + MAP.CONNECTOR_ONE_RECT.size.x * 0.5
+	var ramp_mid_speed: float = drive._current_world_speed()
+	drive.visual_world_position.x = MAP.CONNECTOR_ONE_RECT.end.x
+	var ramp_end_speed: float = drive._current_world_speed()
+	_check(ramp_mid_speed > ramp_start_speed, "On-ramp does not accelerate through the middle")
+	_check(ramp_end_speed > ramp_mid_speed, "On-ramp does not continue accelerating")
+	_check(
+		is_equal_approx(
+			ramp_end_speed,
+			float(MAP.HIGHWAY_CELL) * 4.0 / drive.STEP_SECONDS
+		),
+		"On-ramp does not reach highway speed"
 	)
 
 	# Connector hands directly to the four-lane highway.
