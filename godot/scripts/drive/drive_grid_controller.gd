@@ -18,6 +18,7 @@ const WORLD_SCALE := 2.0
 const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
 const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
 const CITY_CAR_SCALE := 6.0
+const CITY_SPEED_MULTIPLIER := 0.8
 
 const NEIGHBORHOOD_COLOR := Color(0.34, 0.57, 0.31)
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
@@ -195,7 +196,7 @@ func _current_world_speed() -> float:
 		"highway":
 			return float(MAP.HIGHWAY_CELL) * 4.0 / STEP_SECONDS
 		"city":
-			return float(MAP.CITY_CELL) / STEP_SECONDS
+			return float(MAP.NEIGHBORHOOD_CELL) * CITY_SPEED_MULTIPLIER / STEP_SECONDS
 		"connector_one":
 			var neighborhood_speed := float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
 			var highway_speed := float(MAP.HIGHWAY_CELL) * 4.0 / STEP_SECONDS
@@ -205,13 +206,29 @@ func _current_world_speed() -> float:
 				_connector_one_progress()
 			)
 		"connector_two":
-			return float(MAP.CITY_CELL) / STEP_SECONDS
+			var highway_speed := float(MAP.HIGHWAY_CELL) * 4.0 / STEP_SECONDS
+			var city_speed := float(MAP.NEIGHBORHOOD_CELL) * CITY_SPEED_MULTIPLIER / STEP_SECONDS
+			return lerpf(
+				highway_speed,
+				city_speed,
+				_connector_two_progress()
+			)
 	return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
 
 
 func _connector_one_progress() -> float:
 	var ramp_start := MAP.CONNECTOR_ONE_RECT.position.x
 	var ramp_end := MAP.CONNECTOR_ONE_RECT.end.x
+	return clampf(
+		inverse_lerp(ramp_start, ramp_end, visual_world_position.x),
+		0.0,
+		1.0
+	)
+
+
+func _connector_two_progress() -> float:
+	var ramp_start := MAP.CONNECTOR_TWO_RECT.position.x
+	var ramp_end := MAP.CONNECTOR_TWO_RECT.end.x
 	return clampf(
 		inverse_lerp(ramp_start, ramp_end, visual_world_position.x),
 		0.0,
