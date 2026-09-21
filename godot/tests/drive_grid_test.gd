@@ -73,6 +73,13 @@ func _run() -> void:
 	drive._begin_neighborhood_step()
 	_check(drive.road_kind == "connector_one", "Outside gate did not enter connector")
 	_check(is_equal_approx(drive.scale_to, 0.5), "First connector does not scale toward highway")
+	_check(
+		is_equal_approx(
+			drive._current_world_speed(),
+			float(MAP.NEIGHBORHOOD_CELL) * 0.5 / drive.STEP_SECONDS
+		),
+		"First connector is not using the longer transition speed"
+	)
 
 	# Connector hands directly to the four-lane highway.
 	drive.visual_world_position = MAP.highway_entry_point()
