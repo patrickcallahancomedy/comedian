@@ -142,12 +142,36 @@ func _run() -> void:
 	_check(drive.road_kind == "connector_two", "Correct highway lane missed city connector")
 	_check(is_equal_approx(drive.scale_to, 6.0), "Second connector does not use huge city car scale")
 
+	# The city connector decelerates from highway speed down to 0.8x neighborhood speed.
+	drive.visual_world_position.x = MAP.CONNECTOR_TWO_RECT.position.x
+	var exit_start_speed: float = drive._current_world_speed()
+	drive.visual_world_position.x = MAP.CONNECTOR_TWO_RECT.position.x + MAP.CONNECTOR_TWO_RECT.size.x * 0.5
+	var exit_mid_speed: float = drive._current_world_speed()
+	drive.visual_world_position.x = MAP.CONNECTOR_TWO_RECT.end.x
+	var exit_end_speed: float = drive._current_world_speed()
+	_check(exit_mid_speed < exit_start_speed, "City off-ramp does not slow through the middle")
+	_check(exit_end_speed < exit_mid_speed, "City off-ramp does not keep slowing")
+	_check(
+		is_equal_approx(
+			exit_end_speed,
+			float(MAP.NEIGHBORHOOD_CELL) * 0.8 / drive.STEP_SECONDS
+		),
+		"City off-ramp does not reach 0.8x neighborhood speed"
+	)
+
 	drive.visual_world_position = MAP.city_entry_point()
 	drive.visual_cell_scale = 6.0
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = 6.0
 	drive._begin_city_step()
 	_check(drive.road_kind == "city", "Second connector did not enter city")
+	_check(
+		is_equal_approx(
+			drive._current_world_speed(),
+			float(MAP.NEIGHBORHOOD_CELL) * 0.8 / drive.STEP_SECONDS
+		),
+		"City speed is not 0.8x neighborhood speed"
+	)
 	drive.visual_cell_scale = drive.CITY_CAR_SCALE
 	drive._update_car_visual()
 	_check(
