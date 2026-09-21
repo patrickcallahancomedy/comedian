@@ -43,7 +43,7 @@ func _run() -> void:
 	)
 	_check(
 		is_equal_approx(MAP.car_scale_for_cell(MAP.CITY_CELL), 1.5),
-		"City car is not 150 percent"
+		"City grid scale changed unexpectedly"
 	)
 
 	var packed := load("res://scenes/drive/drive_module.tscn") as PackedScene
@@ -81,6 +81,19 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "highway", "Connector did not enter highway")
+	_check(
+		is_equal_approx(
+			drive._current_world_speed(),
+			float(MAP.HIGHWAY_CELL) * 4.0 / drive.STEP_SECONDS
+		),
+		"Highway is not running at the faster speed"
+	)
+
+	var lane_before := drive.queued_highway_lane
+	var target_y_before := drive.move_to.y
+	drive._turn_right()
+	_check(drive.queued_highway_lane == lane_before + 1, "Highway lane input did not register")
+	_check(not is_equal_approx(drive.move_to.y, target_y_before), "Highway merge still waits for checkpoint")
 
 	# A missed exit loops instead of trapping the run.
 	drive.highway_column = MAP.HIGHWAY_COLUMNS - 1
@@ -101,12 +114,12 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "connector_two", "Correct highway lane missed city connector")
-	_check(is_equal_approx(drive.scale_to, 1.5), "Second connector does not scale toward city")
+	_check(is_equal_approx(drive.scale_to, 2.5), "Second connector does not use huge city car scale")
 
 	drive.visual_world_position = MAP.city_entry_point()
-	drive.visual_cell_scale = 1.5
+	drive.visual_cell_scale = 2.5
 	drive.move_from = drive.visual_world_position
-	drive.scale_from = 1.5
+	drive.scale_from = 2.5
 	drive._begin_city_step()
 	_check(drive.road_kind == "city", "Second connector did not enter city")
 
