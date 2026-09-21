@@ -10,11 +10,12 @@ const MASTER_UNIT := 10
 
 const NEIGHBORHOOD_CELL := 40
 const HIGHWAY_CELL := 20
+const HIGHWAY_LANE_WIDTH := 10
 const CITY_CELL := 60
 
 const NEIGHBORHOOD_RECT := Rect2(10, 310, 160, 160)
 const CONNECTOR_ONE_RECT := Rect2(170, 360, 40, 20)
-const HIGHWAY_RECT := Rect2(210, 320, 300, 80)
+const HIGHWAY_RECT := Rect2(210, 350, 300, 40)
 const CONNECTOR_TWO_RECT := Rect2(510, 380, 40, 20)
 const CITY_RECT := Rect2(550, 240, 240, 240)
 
@@ -91,7 +92,7 @@ static func city_cell_center(cell: Vector2i) -> Vector2:
 static func highway_cell_center(column: int, lane: int) -> Vector2:
 	return HIGHWAY_RECT.position + Vector2(
 		(float(column) + 0.5) * HIGHWAY_CELL,
-		(float(lane) + 0.5) * HIGHWAY_CELL
+		(float(lane) + 0.5) * HIGHWAY_LANE_WIDTH
 	)
 
 
