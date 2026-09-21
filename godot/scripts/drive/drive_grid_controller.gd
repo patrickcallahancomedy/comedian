@@ -18,7 +18,6 @@ const WORLD_SCALE := 2.0
 const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
 const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
 const CITY_CAR_SCALE := 6.0
-const CITY_CONNECTOR_SCALE := 2.0
 const CITY_SPEED_MULTIPLIER := 0.8
 
 const NEIGHBORHOOD_COLOR := Color(0.34, 0.57, 0.31)
@@ -294,9 +293,9 @@ func _begin_highway_step() -> void:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
 			road_kind = "connector_two"
 			move_to = MAP.city_entry_point()
-			# Start growing on the off-ramp, but keep the car small enough
-			# to stay visually inside the connector.
-			scale_to = CITY_CONNECTOR_SCALE
+			# The off-ramp widens to a full city-block width, so the car can
+			# grow smoothly all the way to its city scale before crossing in.
+			scale_to = CITY_CAR_SCALE
 			motion_direction = (move_to - move_from).normalized()
 			status_label.text = "CONNECTOR"
 			return
@@ -328,9 +327,6 @@ func _begin_city_step() -> void:
 		road_kind = "city"
 		city_cell = MAP.CITY_ENTRY
 		heading = Vector2i.RIGHT
-		# Crossing the city boundary is a deliberate size pop.
-		visual_cell_scale = CITY_CAR_SCALE
-		scale_from = CITY_CAR_SCALE
 
 	if city_cell == MAP.CITY_DESTINATION:
 		_finish_drive()
@@ -428,7 +424,7 @@ func _draw() -> void:
 
 	_draw_world_rect(MAP.CONNECTOR_ONE_RECT, CONNECTOR_COLOR)
 	_draw_highway()
-	_draw_world_rect(MAP.CONNECTOR_TWO_RECT, CONNECTOR_COLOR)
+	_draw_city_connector()
 
 	_draw_grid_zone(
 		MAP.CITY_RECT,
@@ -487,6 +483,23 @@ func _draw_neighborhood_border_with_gate() -> void:
 		BORDER_COLOR,
 		4.0
 	)
+
+
+func _draw_city_connector() -> void:
+	# The city off-ramp starts at the existing highway-sized width and
+	# widens linearly until its end matches one full city block.
+	var rect := MAP.CONNECTOR_TWO_RECT
+	var center_y := rect.get_center().y
+	var start_half_width := rect.size.y * 0.5
+	var end_half_width := float(MAP.CITY_CELL) * 0.5
+
+	var points := PackedVector2Array([
+		_world_to_screen(Vector2(rect.position.x, center_y - start_half_width)),
+		_world_to_screen(Vector2(rect.end.x, center_y - end_half_width)),
+		_world_to_screen(Vector2(rect.end.x, center_y + end_half_width)),
+		_world_to_screen(Vector2(rect.position.x, center_y + start_half_width)),
+	])
+	draw_colored_polygon(points, CONNECTOR_COLOR)
 
 
 func _draw_highway() -> void:
