@@ -143,15 +143,21 @@ func _process(delta: float) -> void:
 	else:
 		map_rotation = map_rotation_to
 
-	var t := clampf(step_elapsed / STEP_SECONDS, 0.0, 1.0)
-	# Keep forward travel at a constant speed so grid boundaries do not feel like stops.
-	visual_world_position = move_from.lerp(move_to, t)
-	visual_cell_scale = lerpf(scale_from, scale_to, t)
-
-	if step_elapsed >= STEP_SECONDS:
+	# Carry extra frame time across cell boundaries instead of throwing it away.
+	# This keeps forward motion truly continuous from one block into the next.
+	while step_elapsed >= STEP_SECONDS and not drive_complete:
+		step_elapsed -= STEP_SECONDS
 		visual_world_position = move_to
 		visual_cell_scale = scale_to
 		_begin_next_step()
+		# _begin_next_step() normally starts a fresh segment at zero. Restore the
+		# leftover time from this frame so there is no one-frame hitch at the seam.
+		var overflow := step_elapsed
+		step_elapsed = overflow
+
+	var t := clampf(step_elapsed / STEP_SECONDS, 0.0, 1.0)
+	visual_world_position = move_from.lerp(move_to, t)
+	visual_cell_scale = lerpf(scale_from, scale_to, t)
 
 	_update_car_visual()
 	queue_redraw()
