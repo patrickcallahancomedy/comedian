@@ -197,10 +197,26 @@ func _current_world_speed() -> float:
 		"city":
 			return float(MAP.CITY_CELL) / STEP_SECONDS
 		"connector_one":
-			return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
+			var neighborhood_speed := float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
+			var highway_speed := float(MAP.HIGHWAY_CELL) * 4.0 / STEP_SECONDS
+			return lerpf(
+				neighborhood_speed,
+				highway_speed,
+				_connector_one_progress()
+			)
 		"connector_two":
 			return float(MAP.CITY_CELL) / STEP_SECONDS
 	return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
+
+
+func _connector_one_progress() -> float:
+	var ramp_start := MAP.CONNECTOR_ONE_RECT.position.x
+	var ramp_end := MAP.CONNECTOR_ONE_RECT.end.x
+	return clampf(
+		inverse_lerp(ramp_start, ramp_end, visual_world_position.x),
+		0.0,
+		1.0
+	)
 
 
 func _begin_next_step() -> void:
