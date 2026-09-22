@@ -57,9 +57,16 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	var drive = scene.get_node("CityMap")
+	var neighborhood_tiles = scene.get_node("CityMap/NeighborhoodTiles")
 	var navigation = scene.get_node("Navigation")
 
 	_check(drive != null, "Grid controller missing")
+	_check(neighborhood_tiles != null, "Neighborhood TileMapLayer missing")
+	if neighborhood_tiles != null:
+		_check(
+			neighborhood_tiles.get_used_cells().size() == 16,
+			"Neighborhood TileMapLayer is not filling the 4x4 driving grid"
+		)
 	_check(navigation != null, "Navigation display missing")
 	if navigation != null:
 		_check(navigation.get_instruction() == "↑  ROUTE READY", "Navigation is not ready before start")
