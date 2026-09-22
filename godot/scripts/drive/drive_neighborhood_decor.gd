@@ -33,7 +33,7 @@ func _build_houses() -> void:
 		var atlas_texture := AtlasTexture.new()
 		atlas_texture.atlas = HOUSE_ATLAS
 		atlas_texture.region = Rect2(
-			Vector2((index % 2) * 64, ((index / 2) as int % 2) * 64),
+			Vector2((index % 2) * 64, (int(index / 2) % 2) * 64),
 			Vector2(64, 64)
 		)
 
