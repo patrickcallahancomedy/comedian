@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://ddyjqns4g4t0g" path="res://scripts/drive/drive_grid_controller.gd" id="1_boj34"]
 [ext_resource type="Texture2D" uid="uid://dkqq7eu8lpill" path="res://assets/car/player_car_top.png" id="1_car"]
 [ext_resource type="Script" uid="uid://dnqi0cw64kxjr" path="res://scripts/drive/drive_session.gd" id="3_session"]
-[ext_resource type="Script" path="res://scripts/drive/drive_gps.gd" id="4_gps"]
+[ext_resource type="Script" path="res://scripts/drive/drive_navigation.gd" id="4_nav"]
 
 [node name="DriveModule" type="Control" unique_id=1084516026]
 layout_mode = 3
@@ -60,15 +60,23 @@ theme_override_font_sizes/font_size = 18
 text = "TAP START"
 horizontal_alignment = 1
 
-[node name="GPS" type="Control" parent="."]
+[node name="Navigation" type="Label" parent="."]
 z_index = 4
 layout_mode = 0
-offset_left = 12.0
+offset_left = 20.0
 offset_top = 72.0
-offset_right = 172.0
-offset_bottom = 218.0
+offset_right = 410.0
+offset_bottom = 112.0
 mouse_filter = 2
-script = ExtResource("4_gps")
+theme_override_colors/font_color = Color(1, 0.94, 0.56, 1)
+theme_override_colors/font_shadow_color = Color(0.05, 0.06, 0.05, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 22
+text = "↑  ROUTE READY"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("4_nav")
 
 [node name="PlayerCar" type="TextureRect" parent="." unique_id=1726496357]
 z_index = 2
