@@ -58,6 +58,7 @@ func _run() -> void:
 	root.add_child(scene)
 	var drive = scene.get_node("CityMap")
 	var neighborhood_tiles = scene.get_node("CityMap/NeighborhoodTiles")
+	var neighborhood_decor = scene.get_node("CityMap/NeighborhoodDecor")
 	var navigation = scene.get_node("Navigation")
 
 	_check(drive != null, "Grid controller missing")
@@ -66,6 +67,12 @@ func _run() -> void:
 		_check(
 			neighborhood_tiles.get_used_cells().size() == 16,
 			"Neighborhood TileMapLayer is not filling the 4x4 driving grid"
+		)
+	_check(neighborhood_decor != null, "Neighborhood Sprite2D decor missing")
+	if neighborhood_decor != null:
+		_check(
+			neighborhood_decor.get_child_count() == 5,
+			"Neighborhood decor does not contain the five house sprites"
 		)
 	_check(navigation != null, "Navigation display missing")
 	if navigation != null:
