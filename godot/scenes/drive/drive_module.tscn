@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://dnqi0cw64kxjr" path="res://scripts/drive/drive_session.gd" id="3_session"]
 [ext_resource type="Script" path="res://scripts/drive/drive_navigation.gd" id="4_nav"]
 [ext_resource type="Script" path="res://scripts/drive/drive_neighborhood_tiles.gd" id="5_neighborhood_tiles"]
+[ext_resource type="Script" path="res://scripts/drive/drive_neighborhood_decor.gd" id="6_neighborhood_decor"]
 
 [node name="DriveModule" type="Control" unique_id=1084516026]
 layout_mode = 3
@@ -39,6 +40,9 @@ script = ExtResource("1_boj34")
 [node name="NeighborhoodTiles" type="TileMapLayer" parent="CityMap"]
 texture_filter = 1
 script = ExtResource("5_neighborhood_tiles")
+
+[node name="NeighborhoodDecor" type="Node2D" parent="CityMap"]
+script = ExtResource("6_neighborhood_decor")
 
 [node name="MapLabel" type="Label" parent="." unique_id=636909609]
 visible = false
