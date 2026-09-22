@@ -57,27 +57,22 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	var drive = scene.get_node("CityMap")
-	var gps = scene.get_node("GPS")
+	var navigation = scene.get_node("Navigation")
 
 	_check(drive != null, "Grid controller missing")
-	_check(gps != null, "GPS overview missing")
-	if gps != null:
-		var route: PackedVector2Array = gps._route_points()
-		_check(route.size() >= 2, "GPS route is empty")
-		if route.size() >= 2:
-			_check(
-				route[0].is_equal_approx(MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_START)),
-				"GPS route does not start at the player"
-			)
-			_check(
-				route[route.size() - 1].is_equal_approx(MAP.city_cell_center(MAP.CITY_DESTINATION)),
-				"GPS route does not end at the destination"
-			)
+	_check(navigation != null, "Navigation display missing")
+	if navigation != null:
+		_check(navigation.get_instruction() == "↑  ROUTE READY", "Navigation is not ready before start")
 	_check(is_equal_approx(drive.STEP_SECONDS, 1.0), "Movement is not one block per second")
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
 
 	drive._start_drive()
 	_check(drive.started, "START did not begin grid drive")
+	if navigation != null:
+		_check(
+			navigation.get_instruction() == "↑  STRAIGHT  •  2 BLOCKS",
+			"Navigation does not show the first neighborhood instruction"
+		)
 
 	# Prove the only way out is the perimeter gate.
 	drive.neighborhood_cell = MAP.NEIGHBORHOOD_GATE
