@@ -10,7 +10,6 @@ extends Control
 signal trip_finished(result: Dictionary)
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
-const NEIGHBORHOOD_TILE_TEXTURE = preload("res://assets/drive/neighborhood/neighborhood_intersection.png")
 
 const STEP_SECONDS := 1.0
 const TURN_SECONDS := 0.20
@@ -416,7 +415,12 @@ func _update_car_visual() -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.085, 0.08), true)
 
-	_draw_neighborhood_art()
+	_draw_grid_zone(
+		MAP.NEIGHBORHOOD_RECT,
+		MAP.NEIGHBORHOOD_CELL,
+		NEIGHBORHOOD_COLOR
+	)
+	_draw_neighborhood_border_with_gate()
 
 	_draw_world_rect(MAP.CONNECTOR_ONE_RECT, CONNECTOR_COLOR)
 	_draw_highway()
@@ -431,38 +435,6 @@ func _draw() -> void:
 
 	_draw_destination()
 	_draw_map_outline()
-
-
-func _draw_neighborhood_art() -> void:
-	# Draw the approved external neighborhood tile through the same CanvasItem
-	# path that already renders reliably in the web export.
-	var origin := (
-		player_screen_center
-		- (visual_world_position * WORLD_ZOOM).rotated(map_rotation)
-	)
-	draw_set_transform(
-		origin,
-		map_rotation,
-		Vector2.ONE * WORLD_ZOOM
-	)
-
-	for y in range(MAP.NEIGHBORHOOD_SIZE.y):
-		for x in range(MAP.NEIGHBORHOOD_SIZE.x):
-			var cell_rect := Rect2(
-				MAP.NEIGHBORHOOD_RECT.position + Vector2(
-					x * MAP.NEIGHBORHOOD_CELL,
-					y * MAP.NEIGHBORHOOD_CELL
-				),
-				Vector2.ONE * MAP.NEIGHBORHOOD_CELL
-			)
-			draw_texture_rect(
-				NEIGHBORHOOD_TILE_TEXTURE,
-				cell_rect,
-				false
-			)
-
-	# Restore normal screen-space drawing for the rest of the map.
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_grid_zone(rect: Rect2, cell_size: int, color: Color) -> void:
