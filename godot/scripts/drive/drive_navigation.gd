@@ -35,7 +35,6 @@ func get_instruction() -> String:
 	match drive.road_kind:
 		"neighborhood":
 			return _grid_instruction(
-				drive.neighborhood_cell,
 				drive.heading,
 				_neighborhood_desired_direction(drive.neighborhood_cell),
 				_neighborhood_blocks_remaining(drive.neighborhood_cell)
@@ -52,7 +51,6 @@ func get_instruction() -> String:
 			return "↑  CITY AHEAD"
 		"city":
 			return _grid_instruction(
-				drive.city_cell,
 				drive.heading,
 				_city_desired_direction(drive.city_cell),
 				_city_blocks_remaining(drive.city_cell)
@@ -102,14 +100,11 @@ func _city_blocks_remaining(cell: Vector2i) -> int:
 
 
 func _grid_instruction(
-	heading: Vector2i,
 	current_heading: Vector2i,
 	desired_direction: Vector2i,
 	blocks_remaining: int
 ) -> String:
-	# First argument is intentionally the current cell for readable call sites.
 	# Direction wording is relative to the car, matching the player's controls.
-	var _cell := heading
 	var arrow_and_word := "↑  STRAIGHT"
 
 	if desired_direction == current_heading:
