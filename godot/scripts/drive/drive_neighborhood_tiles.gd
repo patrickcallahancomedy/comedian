@@ -1,16 +1,20 @@
 extends TileMapLayer
 
-## Neighborhood art layer for the driving microgame.
-## Uses a native TileMapLayer so the visual grid stays editable and can later
-## accept procedural road tiles without touching the driving controller.
+## Neighborhood road art for the driving microgame.
+## The TileSet is a normal external Godot resource so the atlas is inspectable
+## in the editor. This script only paints the 4x4 layer and follows the drive camera.
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
-const TILE_TEXTURE = preload("res://assets/drive/neighborhood/neighborhood_intersection.png")
+const NEIGHBORHOOD_TILE_SET = preload("res://resources/drive/neighborhood_tileset.tres")
 const TILE_PIXELS := 128
 
 
 func _ready() -> void:
-	_build_tiles()
+	tile_set = NEIGHBORHOOD_TILE_SET
+	_paint_neighborhood()
+	# TileMapLayer batches internal rendering updates. Force the initial atlas
+	# and cells to be ready before the first visible frame.
+	update_internals()
 	_sync_to_drive_camera()
 
 
@@ -18,21 +22,11 @@ func _process(_delta: float) -> void:
 	_sync_to_drive_camera()
 
 
-func _build_tiles() -> void:
-	var set := TileSet.new()
-	set.tile_size = Vector2i(TILE_PIXELS, TILE_PIXELS)
-
-	var atlas := TileSetAtlasSource.new()
-	atlas.texture = TILE_TEXTURE
-	atlas.texture_region_size = Vector2i(TILE_PIXELS, TILE_PIXELS)
-	atlas.create_tile(Vector2i.ZERO)
-
-	var source_id := set.add_source(atlas)
-	tile_set = set
-
+func _paint_neighborhood() -> void:
+	clear()
 	for y in range(MAP.NEIGHBORHOOD_SIZE.y):
 		for x in range(MAP.NEIGHBORHOOD_SIZE.x):
-			set_cell(Vector2i(x, y), source_id, Vector2i.ZERO)
+			set_cell(Vector2i(x, y), 0, Vector2i.ZERO, 0)
 
 
 func _sync_to_drive_camera() -> void:
@@ -40,7 +34,8 @@ func _sync_to_drive_camera() -> void:
 	if drive == null or drive.player_screen_center == Vector2.ZERO:
 		return
 
-	# Match the controller's existing world-to-screen transform exactly.
+	# The TileSet uses the source image's 128 px cell spacing. Scale that
+	# spacing to one neighborhood world cell, then apply the drive camera zoom.
 	var first_cell_local := map_to_local(Vector2i.ZERO)
 	var first_cell_world := MAP.neighborhood_cell_center(Vector2i.ZERO)
 	var target_screen: Vector2 = drive._world_to_screen(first_cell_world)
