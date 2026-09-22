@@ -43,8 +43,8 @@ func _sync_to_drive_camera() -> void:
 	# Match the controller's existing world-to-screen transform exactly.
 	var first_cell_local := map_to_local(Vector2i.ZERO)
 	var first_cell_world := MAP.neighborhood_cell_center(Vector2i.ZERO)
-	var target_screen := drive._world_to_screen(first_cell_world)
-	var screen_scale := (
+	var target_screen: Vector2 = drive._world_to_screen(first_cell_world)
+	var screen_scale: float = (
 		float(MAP.NEIGHBORHOOD_CELL)
 		* drive.WORLD_ZOOM
 		/ float(TILE_PIXELS)
