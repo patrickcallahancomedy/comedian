@@ -57,8 +57,22 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	var drive = scene.get_node("CityMap")
+	var gps = scene.get_node("GPS")
 
 	_check(drive != null, "Grid controller missing")
+	_check(gps != null, "GPS overview missing")
+	if gps != null:
+		var route: PackedVector2Array = gps._route_points()
+		_check(route.size() >= 2, "GPS route is empty")
+		if route.size() >= 2:
+			_check(
+				route[0].is_equal_approx(MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_START)),
+				"GPS route does not start at the player"
+			)
+			_check(
+				route[route.size() - 1].is_equal_approx(MAP.city_cell_center(MAP.CITY_DESTINATION)),
+				"GPS route does not end at the destination"
+			)
 	_check(is_equal_approx(drive.STEP_SECONDS, 1.0), "Movement is not one block per second")
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
 
