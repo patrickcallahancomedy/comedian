@@ -415,11 +415,8 @@ func _update_car_visual() -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.085, 0.08), true)
 
-	_draw_grid_zone(
-		MAP.NEIGHBORHOOD_RECT,
-		MAP.NEIGHBORHOOD_CELL,
-		NEIGHBORHOOD_COLOR
-	)
+	# Neighborhood road visuals are owned by NeighborhoodTiles.
+	# Keep only the perimeter/gate overlay here.
 	_draw_neighborhood_border_with_gate()
 
 	_draw_world_rect(MAP.CONNECTOR_ONE_RECT, CONNECTOR_COLOR)
