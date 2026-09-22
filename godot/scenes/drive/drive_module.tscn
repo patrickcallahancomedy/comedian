@@ -37,11 +37,13 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_boj34")
 
-[node name="NeighborhoodTiles" type="TileMapLayer" parent="CityMap"]
+[node name="NeighborhoodTiles" type="TileMapLayer" parent="."]
+z_index = 2
 texture_filter = 1
 script = ExtResource("5_neighborhood_tiles")
 
-[node name="NeighborhoodDecor" type="Node2D" parent="CityMap"]
+[node name="NeighborhoodDecor" type="Node2D" parent="."]
+z_index = 2
 script = ExtResource("6_neighborhood_decor")
 
 [node name="MapLabel" type="Label" parent="." unique_id=636909609]
@@ -88,7 +90,7 @@ vertical_alignment = 1
 script = ExtResource("4_nav")
 
 [node name="PlayerCar" type="TextureRect" parent="." unique_id=1726496357]
-z_index = 2
+z_index = 3
 layout_mode = 0
 offset_left = 166.0
 offset_top = 333.0

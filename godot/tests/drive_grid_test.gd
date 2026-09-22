@@ -57,8 +57,8 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	var drive = scene.get_node("CityMap")
-	var neighborhood_tiles = scene.get_node("CityMap/NeighborhoodTiles")
-	var neighborhood_decor = scene.get_node("CityMap/NeighborhoodDecor")
+	var neighborhood_tiles = scene.get_node("NeighborhoodTiles")
+	var neighborhood_decor = scene.get_node("NeighborhoodDecor")
 	var navigation = scene.get_node("Navigation")
 
 	_check(drive != null, "Grid controller missing")

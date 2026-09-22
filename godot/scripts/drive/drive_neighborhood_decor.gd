@@ -60,7 +60,7 @@ func _build_houses() -> void:
 
 
 func _sync_to_drive_camera() -> void:
-	var drive = get_parent()
+	var drive = get_node("../CityMap")
 	if drive == null or drive.player_screen_center == Vector2.ZERO:
 		return
 
