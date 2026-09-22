@@ -70,7 +70,7 @@ func _run() -> void:
 	_check(drive.started, "START did not begin grid drive")
 	if navigation != null:
 		_check(
-			navigation.get_instruction() == "↑  STRAIGHT  •  2 BLOCKS",
+			navigation.get_instruction() == "↑  STRAIGHT  •  1 BLOCK",
 			"Navigation does not show the first neighborhood instruction"
 		)
 
