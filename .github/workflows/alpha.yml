@@ -60,6 +60,8 @@ jobs:
 
           grep -a -q "drive_grid_controller.gd" build/alpha/index.pck
           grep -a -q "drive_grid_map.gd" build/alpha/index.pck
+          grep -a -q "neighborhood_tileset.tres" build/alpha/index.pck
+          grep -a -q "neighborhood_intersection.png" build/alpha/index.pck
 
           BUILD_NAME="alpha-${GITHUB_SHA:0:8}"
           mv build/alpha/index.js "build/alpha/${BUILD_NAME}.js"
