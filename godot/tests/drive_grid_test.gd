@@ -71,8 +71,8 @@ func _run() -> void:
 	_check(neighborhood_decor != null, "Neighborhood Sprite2D decor missing")
 	if neighborhood_decor != null:
 		_check(
-			neighborhood_decor.get_child_count() == 5,
-			"Neighborhood decor does not contain the five house sprites"
+			neighborhood_decor.get_child_count() == 12,
+			"Neighborhood decor does not contain the twelve house sprites"
 		)
 	_check(navigation != null, "Navigation display missing")
 	if navigation != null:
