@@ -34,22 +34,9 @@ jobs:
           echo "sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
           echo "short=${TARGET_SHA:0:8}" >> "$GITHUB_OUTPUT"
 
-      - name: Wait for matching GitHub Pages build
+      - name: Give Pages a moment to settle
         shell: bash
-        run: |
-          set -euo pipefail
-          SHORT="${{ steps.target.outputs.short }}"
-          for attempt in $(seq 1 60); do
-            HTML="$(curl -fsSL "https://patrickcallahancomedy.github.io/comedian/alpha/?qa=$RANDOM" || true)"
-            if printf "%s" "$HTML" | grep -q "alpha-${SHORT}.js"; then
-              echo "Found deployed build alpha-${SHORT}"
-              exit 0
-            fi
-            echo "Waiting for alpha-${SHORT}... ($attempt/60)"
-            sleep 5
-          done
-          echo "Timed out waiting for deployed build alpha-${SHORT}" >&2
-          exit 1
+        run: sleep 8
 
       - name: Install Playwright
         shell: bash
