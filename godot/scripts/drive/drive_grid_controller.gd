@@ -20,13 +20,13 @@ const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
 const CITY_CAR_SCALE := 6.0
 const CITY_SPEED_MULTIPLIER := 0.8
 
-const NEIGHBORHOOD_COLOR := Color(0.30, 0.50, 0.24)
-const NEIGHBORHOOD_SIDEWALK_COLOR := Color(0.72, 0.69, 0.62)
-const NEIGHBORHOOD_ROAD_COLOR := Color(0.18, 0.20, 0.23)
-const NEIGHBORHOOD_ROAD_WIDTH := 12.0
-const NEIGHBORHOOD_SIDEWALK_WIDTH := 18.0
-const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 2
-const NEIGHBORHOOD_EDGE_COLOR := Color(0.22, 0.34, 0.20)
+const NEIGHBORHOOD_COLOR := Color(0.27, 0.43, 0.23)
+const NEIGHBORHOOD_SIDEWALK_COLOR := Color(0.70, 0.67, 0.60)
+const NEIGHBORHOOD_ROAD_COLOR := Color(0.16, 0.18, 0.22)
+const NEIGHBORHOOD_ROAD_WIDTH := 13.0
+const NEIGHBORHOOD_SIDEWALK_WIDTH := 17.0
+const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 1.5
+const NEIGHBORHOOD_EDGE_COLOR := Color(0.24, 0.36, 0.20)
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
 const HIGHWAY_COLOR := Color(0.72, 0.42, 0.58)
 const CITY_COLOR := Color(0.42, 0.44, 0.48)
@@ -442,8 +442,10 @@ func _draw() -> void:
 
 
 func _draw_neighborhood() -> void:
-	# Draw the 4x4 neighborhood as sixteen actual road blocks.
-	# The car always sits at a block center, so the art and movement graph match.
+	# Draw the 4x4 neighborhood as sixteen road tiles:
+	# corners are L-turns, perimeter cells are inward-facing T-junctions,
+	# and the four interior cells are four-way intersections.
+	# The car always sits at a tile center, so art and movement stay identical.
 	var rect := MAP.NEIGHBORHOOD_RECT
 	var padding := float(MAP.NEIGHBORHOOD_CELL * NEIGHBORHOOD_VISUAL_PADDING_CELLS)
 
