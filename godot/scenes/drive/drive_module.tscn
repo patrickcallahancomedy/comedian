@@ -104,10 +104,10 @@ grow_vertical = 0
 theme_override_constants/separation = 12
 
 [node name="LeftButton" type="Button" parent="TouchControls" unique_id=1378762602]
-custom_minimum_size = Vector2(118, 64)
+custom_minimum_size = Vector2(126, 64)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 30
 text = "<"
 
 [node name="ForwardButton" type="Button" parent="TouchControls" unique_id=2034903650]
@@ -118,10 +118,10 @@ theme_override_font_sizes/font_size = 17
 text = "START"
 
 [node name="RightButton" type="Button" parent="TouchControls" unique_id=727376704]
-custom_minimum_size = Vector2(118, 64)
+custom_minimum_size = Vector2(126, 64)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 30
 text = ">"
 
 [node name="Arrival" type="PanelContainer" parent="." unique_id=1109936761]
