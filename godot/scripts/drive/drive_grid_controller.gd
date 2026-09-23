@@ -28,10 +28,10 @@ const NEIGHBORHOOD_ROOF_COLOR := Color(0.36, 0.24, 0.20)
 const NEIGHBORHOOD_ROAD_WIDTH := 12.0
 const NEIGHBORHOOD_SIDEWALK_WIDTH := 18.0
 const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 2
-const NEIGHBORHOOD_EDGE_COLOR := Color(0.20, 0.36, 0.18)
-const NEIGHBORHOOD_FENCE_COLOR := Color(0.48, 0.36, 0.24)
-const NEIGHBORHOOD_TREE_COLOR := Color(0.12, 0.29, 0.12)
-const NEIGHBORHOOD_EDGE_OFFSET := 14.0
+const NEIGHBORHOOD_EDGE_COLOR := Color(0.16, 0.28, 0.15)
+const NEIGHBORHOOD_HEDGE_COLOR := Color(0.10, 0.22, 0.10)
+const NEIGHBORHOOD_HEDGE_HIGHLIGHT := Color(0.22, 0.40, 0.18)
+const NEIGHBORHOOD_HEDGE_DEPTH := 6.0
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
 const HIGHWAY_COLOR := Color(0.72, 0.42, 0.58)
 const CITY_COLOR := Color(0.42, 0.44, 0.48)
@@ -512,59 +512,92 @@ func _draw_neighborhood() -> void:
 	_draw_neighborhood_boundary(visual_rect)
 
 
-func _draw_neighborhood_boundary(visual_rect: Rect2) -> void:
+func _draw_neighborhood_boundary(_visual_rect: Rect2) -> void:
 	var rect := MAP.NEIGHBORHOOD_RECT
 	var gate_cell := MAP.NEIGHBORHOOD_GATE
 	var gate_side := MAP.NEIGHBORHOOD_GATE_SIDE
-	var fence_top := rect.position.y - NEIGHBORHOOD_EDGE_OFFSET
-	var fence_bottom := rect.end.y + NEIGHBORHOOD_EDGE_OFFSET
-	var fence_left := rect.position.x - NEIGHBORHOOD_EDGE_OFFSET
-	var fence_right := rect.end.x + NEIGHBORHOOD_EDGE_OFFSET
 
-	# Fence / hedge line around the outside. The real exit is left open.
-	_draw_world_line(
-		Vector2(visual_rect.position.x + 8.0, fence_top),
-		Vector2(visual_rect.end.x - 8.0, fence_top),
-		NEIGHBORHOOD_FENCE_COLOR,
-		3.0
+	# A compact hedge sits immediately outside the playable area. It makes the
+	# edge read as a real property boundary instead of another stretch of road.
+	var top_hedge := Rect2(
+		Vector2(rect.position.x, rect.position.y - NEIGHBORHOOD_HEDGE_DEPTH),
+		Vector2(rect.size.x, NEIGHBORHOOD_HEDGE_DEPTH)
 	)
-	_draw_world_line(
-		Vector2(visual_rect.position.x + 8.0, fence_bottom),
-		Vector2(visual_rect.end.x - 8.0, fence_bottom),
-		NEIGHBORHOOD_FENCE_COLOR,
-		3.0
+	var bottom_hedge := Rect2(
+		Vector2(rect.position.x, rect.end.y),
+		Vector2(rect.size.x, NEIGHBORHOOD_HEDGE_DEPTH)
 	)
-	_draw_world_line(
-		Vector2(fence_left, visual_rect.position.y + 8.0),
-		Vector2(fence_left, visual_rect.end.y - 8.0),
-		NEIGHBORHOOD_FENCE_COLOR,
-		3.0
+	var left_hedge := Rect2(
+		Vector2(rect.position.x - NEIGHBORHOOD_HEDGE_DEPTH, rect.position.y),
+		Vector2(NEIGHBORHOOD_HEDGE_DEPTH, rect.size.y)
 	)
 
+	_draw_world_rect(top_hedge, NEIGHBORHOOD_HEDGE_COLOR)
+	_draw_world_rect(bottom_hedge, NEIGHBORHOOD_HEDGE_COLOR)
+	_draw_world_rect(left_hedge, NEIGHBORHOOD_HEDGE_COLOR)
+
+	# The right hedge is split around the one real exit.
 	var gate_top := rect.position.y + gate_cell.y * MAP.NEIGHBORHOOD_CELL
 	var gate_bottom := gate_top + MAP.NEIGHBORHOOD_CELL
 	if gate_side == Vector2i.RIGHT:
-		_draw_world_line(
-			Vector2(fence_right, visual_rect.position.y + 8.0),
-			Vector2(fence_right, gate_top - 5.0),
-			NEIGHBORHOOD_FENCE_COLOR,
-			3.0
+		_draw_world_rect(
+			Rect2(
+				Vector2(rect.end.x, rect.position.y),
+				Vector2(NEIGHBORHOOD_HEDGE_DEPTH, gate_top - rect.position.y)
+			),
+			NEIGHBORHOOD_HEDGE_COLOR
 		)
-		_draw_world_line(
-			Vector2(fence_right, gate_bottom + 5.0),
-			Vector2(fence_right, visual_rect.end.y - 8.0),
-			NEIGHBORHOOD_FENCE_COLOR,
-			3.0
+		_draw_world_rect(
+			Rect2(
+				Vector2(rect.end.x, gate_bottom),
+				Vector2(NEIGHBORHOOD_HEDGE_DEPTH, rect.end.y - gate_bottom)
+			),
+			NEIGHBORHOOD_HEDGE_COLOR
 		)
 	else:
-		_draw_world_line(
-			Vector2(fence_right, visual_rect.position.y + 8.0),
-			Vector2(fence_right, visual_rect.end.y - 8.0),
-			NEIGHBORHOOD_FENCE_COLOR,
-			3.0
+		_draw_world_rect(
+			Rect2(
+				Vector2(rect.end.x, rect.position.y),
+				Vector2(NEIGHBORHOOD_HEDGE_DEPTH, rect.size.y)
+			),
+			NEIGHBORHOOD_HEDGE_COLOR
 		)
 
-	# Close every perimeter road visually except the actual neighborhood exit.
+	# One subtle highlight on the neighborhood-facing side gives the hedge depth.
+	_draw_world_line(
+		Vector2(rect.position.x, rect.position.y),
+		Vector2(rect.end.x, rect.position.y),
+		NEIGHBORHOOD_HEDGE_HIGHLIGHT,
+		2.0
+	)
+	_draw_world_line(
+		Vector2(rect.position.x, rect.end.y),
+		Vector2(rect.end.x, rect.end.y),
+		NEIGHBORHOOD_HEDGE_HIGHLIGHT,
+		2.0
+	)
+	_draw_world_line(
+		Vector2(rect.position.x, rect.position.y),
+		Vector2(rect.position.x, rect.end.y),
+		NEIGHBORHOOD_HEDGE_HIGHLIGHT,
+		2.0
+	)
+
+	if gate_side == Vector2i.RIGHT:
+		_draw_world_line(
+			Vector2(rect.end.x, rect.position.y),
+			Vector2(rect.end.x, gate_top),
+			NEIGHBORHOOD_HEDGE_HIGHLIGHT,
+			2.0
+		)
+		_draw_world_line(
+			Vector2(rect.end.x, gate_bottom),
+			Vector2(rect.end.x, rect.end.y),
+			NEIGHBORHOOD_HEDGE_HIGHLIGHT,
+			2.0
+		)
+
+	# Close every non-exit road with a simple curb at the actual gameplay edge.
 	for x_index in range(MAP.NEIGHBORHOOD_SIZE.x):
 		var center_x := rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
 		_draw_dead_end_cap(Vector2(center_x, rect.position.y), Vector2.UP)
@@ -576,16 +609,6 @@ func _draw_neighborhood_boundary(visual_rect: Rect2) -> void:
 		if not (gate_side == Vector2i.RIGHT and gate_cell.y == y_index):
 			_draw_dead_end_cap(Vector2(rect.end.x, center_y), Vector2.RIGHT)
 
-	# Sparse landscaping makes the boundary feel physical without adding assets.
-	for index in range(4):
-		var along_x := rect.position.x + (float(index) + 0.5) * MAP.NEIGHBORHOOD_CELL
-		var along_y := rect.position.y + (float(index) + 0.5) * MAP.NEIGHBORHOOD_CELL
-		_draw_world_circle(Vector2(along_x, fence_top - 10.0), 4.5, NEIGHBORHOOD_TREE_COLOR)
-		_draw_world_circle(Vector2(along_x, fence_bottom + 10.0), 4.5, NEIGHBORHOOD_TREE_COLOR)
-		_draw_world_circle(Vector2(fence_left - 10.0, along_y), 4.5, NEIGHBORHOOD_TREE_COLOR)
-		if not (gate_side == Vector2i.RIGHT and gate_cell.y == index):
-			_draw_world_circle(Vector2(fence_right + 10.0, along_y), 4.5, NEIGHBORHOOD_TREE_COLOR)
-
 
 func _draw_dead_end_cap(center: Vector2, direction: Vector2) -> void:
 	var half_width := NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5
@@ -594,15 +617,7 @@ func _draw_dead_end_cap(center: Vector2, direction: Vector2) -> void:
 		center - tangent * half_width,
 		center + tangent * half_width,
 		NEIGHBORHOOD_SIDEWALK_COLOR,
-		4.0
-	)
-
-
-func _draw_world_circle(center: Vector2, radius: float, color: Color) -> void:
-	draw_circle(
-		_world_to_screen(center),
-		radius * WORLD_ZOOM,
-		color
+		3.0
 	)
 
 
