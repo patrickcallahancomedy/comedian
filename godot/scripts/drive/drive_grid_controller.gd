@@ -592,13 +592,14 @@ func _draw_city() -> void:
 
 func _city_connections(cell: Vector2i) -> Array[Vector2i]:
 	var connections: Array[Vector2i] = []
-	for direction in [
+	var directions: Array[Vector2i] = [
 		Vector2i.UP,
 		Vector2i.RIGHT,
 		Vector2i.DOWN,
 		Vector2i.LEFT,
-	]:
-		var neighbor := cell + direction
+	]
+	for direction in directions:
+		var neighbor: Vector2i = cell + direction
 		if _cell_inside(neighbor, MAP.CITY_SIZE):
 			connections.append(direction)
 
