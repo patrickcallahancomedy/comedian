@@ -64,7 +64,7 @@ jobs:
           TARGET_SHORT: ${{ steps.target.outputs.short }}
         run: |
           mkdir -p qa
-          cat > /tmp/capture-alpha.js <<'NODE'
+          cat > capture-alpha.js <<'NODE'
           const { chromium } = require("playwright");
 
           (async () => {
@@ -79,10 +79,10 @@ jobs:
 
             await page.goto(
               `https://patrickcallahancomedy.github.io/comedian/alpha/?build=${short}&qa=1`,
-              { waitUntil: "networkidle", timeout: 120000 }
+              { waitUntil: "domcontentloaded", timeout: 120000 }
             );
 
-            await page.waitForTimeout(5000);
+            await page.waitForTimeout(15000);
             await page.screenshot({
               path: "qa/latest-alpha.png",
               fullPage: true,
@@ -92,7 +92,7 @@ jobs:
           })();
           NODE
 
-          node /tmp/capture-alpha.js
+          node capture-alpha.js
 
       - name: Commit latest screenshot
         shell: bash
