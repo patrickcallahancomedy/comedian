@@ -288,7 +288,7 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "connector_two", "Correct highway lane missed city connector")
-	_check(is_equal_approx(drive.scale_to, 6.0), "City connector should grow smoothly to full city scale")
+	_check(is_equal_approx(drive.scale_to, 1.5), "City connector should grow smoothly to full city scale")
 
 	# The city connector decelerates from highway speed down to 0.8x neighborhood speed.
 	var active_exit_rect: Rect2 = drive._connector_two_rect()
@@ -309,12 +309,12 @@ func _run() -> void:
 	)
 
 	drive.visual_world_position = drive._city_entry_point()
-	drive.visual_cell_scale = 6.0
+	drive.visual_cell_scale = drive.CITY_CAR_SCALE
 	drive.move_from = drive.visual_world_position
-	drive.scale_from = 6.0
+	drive.scale_from = drive.CITY_CAR_SCALE
 	drive._begin_city_step()
 	_check(drive.road_kind == "city", "Second connector did not enter city")
-	_check(is_equal_approx(drive.visual_cell_scale, 6.0), "City entry should preserve the smoothly-grown city size")
+	_check(is_equal_approx(drive.visual_cell_scale, 1.5), "City entry should preserve the smoothly-grown city size")
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
@@ -325,8 +325,8 @@ func _run() -> void:
 	drive.visual_cell_scale = drive.CITY_CAR_SCALE
 	drive._update_car_visual()
 	_check(
-		is_equal_approx(drive.player_car.scale.x, drive.CAR_REFERENCE_SCALE * 6.0),
-		"Rendered city car scale is not actually 6x"
+		is_equal_approx(drive.player_car.scale.x, drive.CAR_REFERENCE_SCALE * drive.CITY_CAR_SCALE),
+		"Rendered city car scale does not match the 1.5x city target"
 	)
 
 	scene.free()
