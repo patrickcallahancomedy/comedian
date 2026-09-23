@@ -156,6 +156,22 @@ jobs:
             fullPage: false
           });
 
+          // Let the car reach the far city edge. It will pause there until the
+          // final turn, which makes this timing resilient across minor speed changes.
+          await page.waitForTimeout(8000);
+          await page.screenshot({
+            path: "debug/alpha-city.png",
+            fullPage: false
+          });
+
+          // Turn left toward the curbside destination and capture the venue arrival.
+          await page.touchscreen.tap(95, 835);
+          await page.waitForTimeout(2300);
+          await page.screenshot({
+            path: "debug/alpha-venue-arrival.png",
+            fullPage: false
+          });
+
           await browser.close();
           EOF
 
@@ -172,5 +188,7 @@ jobs:
             debug/alpha-connector-one.png
             debug/alpha-highway.png
             debug/alpha-connector-two.png
+            debug/alpha-city.png
+            debug/alpha-venue-arrival.png
           if-no-files-found: error
           retention-days: 7
