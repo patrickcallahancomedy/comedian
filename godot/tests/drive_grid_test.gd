@@ -113,16 +113,35 @@ func _run() -> void:
 	)
 	_check(navigation != null, "Navigation display missing")
 	if navigation != null:
-		_check(navigation.get_instruction() == "↑  ROUTE READY", "Navigation is not ready before start")
+		_check(navigation.text == "", "Legacy text navigation should be blank")
+		_check(navigation.get_turn_hint().is_empty(), "Turn arrow should stay hidden before START")
 	_check(is_equal_approx(drive.STEP_SECONDS, 1.0), "Movement is not one block per second")
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
 
 	drive._start_drive()
 	_check(drive.started, "START did not begin grid drive")
 	if navigation != null:
+		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
-			navigation.get_instruction() == "↑  STRAIGHT  •  1 BLOCK",
-			"Navigation does not show the first neighborhood instruction"
+			initial_hint.get("cell") == Vector2i(1, 1),
+			"First turn arrow is not anchored to the expected intersection"
+		)
+		_check(
+			initial_hint.get("turn") == "right",
+			"First turn arrow should point right"
+		)
+
+		# Missing that turn should move the hint to the next best intersection.
+		drive.neighborhood_cell = Vector2i(1, 0)
+		drive.heading = Vector2i.UP
+		var reroute_hint: Dictionary = navigation.get_turn_hint()
+		_check(
+			reroute_hint.get("cell") == Vector2i(1, 0),
+			"Missed turn did not move the arrow to the next intersection"
+		)
+		_check(
+			reroute_hint.get("turn") == "right",
+			"Rerouted turn arrow should point right"
 		)
 
 	# Prove the only way out is the perimeter gate.

@@ -34,6 +34,12 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 
+func get_turn_hint() -> Dictionary:
+	if drive == null or not drive.started or drive.drive_complete:
+		return {}
+	return _current_turn_hint()
+
+
 func _update_status_visibility() -> void:
 	if drive == null or status_label == null:
 		return
@@ -54,7 +60,7 @@ func _draw() -> void:
 	if drive == null or not drive.started or drive.drive_complete:
 		return
 
-	var hint := _current_turn_hint()
+	var hint: Dictionary = get_turn_hint()
 	if hint.is_empty():
 		return
 
@@ -191,7 +197,7 @@ func _first_turn_on_route(
 	# The neighborhood gate has one final outward movement that is not a grid
 	# cell. Mark the gate itself when that exit requires a turn.
 	if final_direction != Vector2i.ZERO:
-		var final_state := route.back()
+		var final_state: Vector3i = route.back()
 		var final_cell := Vector2i(final_state.x, final_state.y)
 		var final_heading := _direction_from_index(final_state.z)
 		var final_turn := _relative_turn(final_heading, final_direction)
