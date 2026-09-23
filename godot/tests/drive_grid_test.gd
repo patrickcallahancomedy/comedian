@@ -132,6 +132,23 @@ func _run() -> void:
 			"Off-ramp does not widen toward the city"
 		)
 
+	_check(
+		not drive._city_connections(Vector2i(0, 0)).has(Vector2i.LEFT),
+		"City top-left corner incorrectly opens through the border"
+	)
+	_check(
+		not drive._city_connections(Vector2i(0, 0)).has(Vector2i.UP),
+		"City top-left corner incorrectly opens through the border"
+	)
+	_check(
+		drive._city_connections(MAP.CITY_ENTRY).has(Vector2i.LEFT),
+		"City entry is not the one intentional outside opening"
+	)
+	_check(
+		not drive._city_connections(MAP.CITY_DESTINATION).has(Vector2i.RIGHT),
+		"City destination incorrectly opens through the outside border"
+	)
+
 	var parking_rect: Rect2 = drive._parking_space_rect()
 	var venue_rect: Rect2 = drive._venue_rect()
 	var destination_center: Vector2 = drive._city_cell_center(MAP.CITY_DESTINATION)
@@ -144,8 +161,8 @@ func _run() -> void:
 		"Venue facade is not curbside outside the parking space"
 	)
 	_check(
-		venue_rect.end.x <= drive._city_rect().end.x + 0.01,
-		"Venue facade extends outside the city visual bounds"
+		venue_rect.position.x > drive._city_rect().end.x,
+		"Venue should sit outside the curb at the city edge"
 	)
 
 	_check(navigation != null, "Navigation display missing")
