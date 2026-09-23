@@ -160,13 +160,22 @@ func _run() -> void:
 		not drive._city_connections(MAP.CITY_DESTINATION).has(Vector2i.RIGHT),
 		"City destination incorrectly opens through the outside border"
 	)
+	_check(
+		drive.CITY_WORLD_ZOOM < drive.WORLD_ZOOM,
+		"City camera does not zoom out enough to show its tile layout"
+	)
 
 	var parking_rect: Rect2 = drive._parking_space_rect()
 	var venue_rect: Rect2 = drive._venue_rect()
 	var destination_center: Vector2 = drive._city_cell_center(MAP.CITY_DESTINATION)
+	var parking_stop: Vector2 = drive._parking_stop_point()
 	_check(
-		parking_rect.has_point(destination_center),
-		"Destination parking space does not contain the arrival point"
+		parking_rect.has_point(parking_stop),
+		"Destination parking space does not contain the curbside stop point"
+	)
+	_check(
+		parking_stop.x > destination_center.x,
+		"Final parking stop is not shifted toward the venue curb"
 	)
 	_check(
 		venue_rect.end.x < destination_center.x,
@@ -361,6 +370,28 @@ func _run() -> void:
 		is_equal_approx(drive.player_car.scale.x, drive.CAR_REFERENCE_SCALE * drive.CITY_CAR_SCALE),
 		"Rendered city car scale does not match the 1.5x city target"
 	)
+
+	# Reaching the destination performs one short curbside parking move before
+	# the trip completes.
+	drive.road_kind = "city"
+	drive.city_cell = MAP.CITY_DESTINATION
+	drive.parking_maneuver_started = false
+	drive.drive_complete = false
+	drive.visual_world_position = drive._city_cell_center(MAP.CITY_DESTINATION)
+	drive.move_from = drive.visual_world_position
+	drive.scale_from = drive.CITY_CAR_SCALE
+	drive._begin_city_step()
+	_check(drive.parking_maneuver_started, "Destination did not start curbside parking")
+	_check(
+		drive.move_to == drive._parking_stop_point(),
+		"Parking maneuver does not target the curbside stop point"
+	)
+	_check(not drive.drive_complete, "Drive completed before curbside parking finished")
+
+	drive.visual_world_position = drive.move_to
+	drive.move_from = drive.visual_world_position
+	drive._begin_city_step()
+	_check(drive.drive_complete, "Drive did not complete after curbside parking")
 
 	scene.free()
 	_finish()

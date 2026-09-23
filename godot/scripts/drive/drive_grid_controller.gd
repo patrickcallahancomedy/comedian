@@ -16,6 +16,7 @@ const TURN_SECONDS := 0.20
 const DISPLAY_SCALE := 1.0
 const WORLD_SCALE := 2.0
 const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
+const CITY_WORLD_ZOOM := WORLD_ZOOM * 0.72
 const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
 const CITY_CAR_SCALE := 1.5
 const CITY_SPEED_MULTIPLIER := 0.8
@@ -50,7 +51,6 @@ const CITY_GROUND_COLOR := Color(0.24, 0.255, 0.27)
 const CITY_SIDEWALK_COLOR := Color(0.52, 0.52, 0.50)
 const CITY_SIDEWALK_EDGE := Color(0.68, 0.67, 0.63, 0.55)
 const CITY_ROAD_COLOR := Color(0.105, 0.115, 0.13)
-const CITY_ROAD_ALT := Color(0.12, 0.13, 0.145)
 const CITY_ROAD_WIDTH := 20.0
 const CITY_SIDEWALK_WIDTH := 30.0
 const CITY_BUILDING_COLORS := [
@@ -75,6 +75,7 @@ const BORDER_COLOR := Color(0.93, 0.92, 0.86)
 
 var started := false
 var drive_complete := false
+var parking_maneuver_started := false
 var drive_time := 0.0
 var missed_turns := 0
 
@@ -133,6 +134,7 @@ func _refresh_layout() -> void:
 func _reset_to_start() -> void:
 	started = false
 	drive_complete = false
+	parking_maneuver_started = false
 	drive_time = 0.0
 	missed_turns = 0
 	road_kind = "neighborhood"
@@ -377,6 +379,14 @@ func _begin_city_step() -> void:
 		heading = Vector2i.RIGHT
 
 	if city_cell == MAP.CITY_DESTINATION:
+		if not parking_maneuver_started:
+			parking_maneuver_started = true
+			move_to = _parking_stop_point()
+			scale_to = CITY_CAR_SCALE
+			motion_direction = (move_to - move_from).normalized()
+			status_label.text = "PARKING"
+			return
+
 		_finish_drive()
 		return
 
@@ -1126,19 +1136,28 @@ func _city_entry_point() -> Vector2:
 	return MAP.city_entry_point() + _highway_lap_offset()
 
 
+func _parking_stop_point() -> Vector2:
+	# Nudge the final car position toward the curb instead of ending in the
+	# middle of the lane. The logical destination cell itself does not change.
+	return _city_cell_center(MAP.CITY_DESTINATION) + Vector2(5.5, 0.0)
+
+
 func _parking_space_rect() -> Rect2:
-	var center := _city_cell_center(MAP.CITY_DESTINATION)
+	var center := _parking_stop_point()
 	return Rect2(
-		center + Vector2(-4.5, -12.0),
-		Vector2(9.0, 24.0)
+		center + Vector2(-4.0, -12.0),
+		Vector2(8.0, 24.0)
 	)
 
 
 func _venue_rect() -> Rect2:
 	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
 	return Rect2(
-		destination_center + Vector2(-42.0, -42.0),
-		Vector2(26.0, 26.0)
+		Vector2(
+			destination_center.x + CITY_SIDEWALK_WIDTH * 0.5 + 2.0,
+			destination_center.y - 22.0
+		),
+		Vector2(18.0, 44.0)
 	)
 
 
@@ -1146,81 +1165,82 @@ func _draw_destination() -> void:
 	var parking_rect := _parking_space_rect()
 	var venue_rect := _venue_rect()
 	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
+	var curb_x := destination_center.x + CITY_ROAD_WIDTH * 0.5
 
-	# Two short curbside ticks hint at a parking space without boxing the car in.
+	# Two short curbside ticks imply a parallel-parking bay without drawing a
+	# large target box under the car.
 	_draw_world_line(
-		Vector2(parking_rect.position.x, parking_rect.position.y),
-		Vector2(parking_rect.position.x, parking_rect.position.y + 5.0),
+		Vector2(parking_rect.end.x, parking_rect.position.y),
+		Vector2(parking_rect.end.x, parking_rect.position.y + 4.5),
 		PARKING_LINE_COLOR,
-		0.7
+		0.65
 	)
 	_draw_world_line(
-		Vector2(parking_rect.position.x, parking_rect.end.y - 5.0),
-		Vector2(parking_rect.position.x, parking_rect.end.y),
+		Vector2(parking_rect.end.x, parking_rect.end.y - 4.5),
+		Vector2(parking_rect.end.x, parking_rect.end.y),
 		PARKING_LINE_COLOR,
-		0.7
+		0.65
 	)
 
-	# Sidewalk apron between the venue block and the destination intersection.
-	var front_walk := Rect2(
-		Vector2(venue_rect.end.x, venue_rect.position.y + 9.0),
-		Vector2(8.0, 14.0)
+	# A narrow sidewalk strip bridges the curb directly to the venue frontage.
+	var venue_sidewalk := Rect2(
+		Vector2(curb_x, destination_center.y - 26.0),
+		Vector2(maxf(1.0, venue_rect.position.x - curb_x + 1.5), 52.0)
 	)
-	_draw_world_rect(front_walk, VENUE_SIDEWALK_COLOR)
+	_draw_world_rect(venue_sidewalk, VENUE_SIDEWALK_COLOR)
 
-	# Compact top-down venue footprint with a shadow and inset roof.
+	# Compact commercial building. Keeping the footprint close to the curb
+	# makes the venue visible while the car is actually parked.
 	_draw_world_rect(
-		Rect2(venue_rect.position + Vector2(1.5, 1.5), venue_rect.size),
+		Rect2(venue_rect.position + Vector2(1.3, 1.3), venue_rect.size),
 		Color(0.0, 0.0, 0.0, 0.22)
 	)
 	_draw_world_rect(venue_rect, VENUE_BUILDING_COLOR)
-	_draw_world_rect(
-		Rect2(
-			venue_rect.position + Vector2(3.0, 3.0),
-			venue_rect.size - Vector2(6.0, 6.0)
-		),
-		VENUE_ROOF_COLOR
-	)
 
-	# The street-facing facade is the venue's east edge, directly beside the
-	# parking destination.
+	var roof := Rect2(
+		venue_rect.position + Vector2(2.5, 2.5),
+		venue_rect.size - Vector2(5.0, 5.0)
+	)
+	_draw_world_rect(roof, VENUE_ROOF_COLOR)
+
+	# Street-facing front wall and recessed warm doorway.
 	var facade := Rect2(
-		Vector2(venue_rect.end.x - 4.0, venue_rect.position.y + 2.5),
-		Vector2(4.0, venue_rect.size.y - 5.0)
+		Vector2(venue_rect.position.x, venue_rect.position.y + 2.5),
+		Vector2(3.6, venue_rect.size.y - 5.0)
 	)
 	_draw_world_rect(facade, VENUE_TRIM_COLOR)
 
-	# Warm entrance and a small marquee make this read as a venue without a
-	# giant label.
 	var door_rect := Rect2(
-		Vector2(venue_rect.end.x - 2.5, venue_rect.end.y - 10.0),
-		Vector2(4.5, 7.0)
+		Vector2(venue_rect.position.x - 0.4, destination_center.y - 5.0),
+		Vector2(5.0, 10.0)
 	)
 	_draw_world_rect(door_rect, VENUE_WINDOW_COLOR)
 
+	# Small marquee over the door: enough to read as a venue entrance without
+	# putting a giant label in the world.
 	var marquee := PackedVector2Array([
-		Vector2(venue_rect.end.x - 3.0, venue_rect.end.y - 12.0),
-		Vector2(venue_rect.end.x + 5.0, venue_rect.end.y - 12.0),
-		Vector2(venue_rect.end.x + 4.0, venue_rect.end.y - 8.5),
-		Vector2(venue_rect.end.x - 3.0, venue_rect.end.y - 8.5),
+		Vector2(venue_rect.position.x - 3.0, destination_center.y - 8.0),
+		Vector2(venue_rect.position.x + 7.0, destination_center.y - 8.0),
+		Vector2(venue_rect.position.x + 6.0, destination_center.y - 5.2),
+		Vector2(venue_rect.position.x - 3.0, destination_center.y - 5.2),
 	])
 	_draw_world_polygon(marquee, VENUE_AWNING_COLOR)
 
-	# Two poster cases on the facade plus one rooftop unit sell the commercial
-	# building silhouette from the top-down camera.
-	var poster_one := Rect2(
-		Vector2(venue_rect.end.x - 2.0, venue_rect.position.y + 4.5),
-		Vector2(3.5, 5.0)
+	var sign_rect := Rect2(
+		Vector2(venue_rect.position.x - 0.2, destination_center.y - 15.0),
+		Vector2(5.4, 4.0)
 	)
-	var poster_two := Rect2(
-		Vector2(venue_rect.end.x - 2.0, venue_rect.position.y + 11.0),
-		Vector2(3.5, 5.0)
-	)
-	_draw_world_rect(poster_one, Color(0.78, 0.47, 0.22, 0.78))
-	_draw_world_rect(poster_two, Color(0.35, 0.43, 0.49, 0.78))
+	_draw_world_rect(sign_rect, VENUE_SIGN_COLOR)
 
+	var poster_rect := Rect2(
+		Vector2(venue_rect.position.x - 0.1, destination_center.y + 9.0),
+		Vector2(3.8, 6.0)
+	)
+	_draw_world_rect(poster_rect, Color(0.36, 0.44, 0.50, 0.80))
+
+	# One rooftop unit gives the top-down footprint some believable structure.
 	_draw_world_rect(
-		Rect2(venue_rect.position + Vector2(7.0, 6.0), Vector2(7.0, 5.0)),
+		Rect2(venue_rect.position + Vector2(10.0, 9.0), Vector2(5.0, 4.0)),
 		Color(0.22, 0.23, 0.23)
 	)
 
@@ -1268,8 +1288,20 @@ func _draw_world_line(a: Vector2, b: Vector2, color: Color, width: float) -> voi
 	)
 
 
+func _current_world_zoom() -> float:
+	if road_kind == "connector_two":
+		return lerpf(
+			WORLD_ZOOM,
+			CITY_WORLD_ZOOM,
+			_connector_two_progress()
+		)
+	if road_kind == "city":
+		return CITY_WORLD_ZOOM
+	return WORLD_ZOOM
+
+
 func _world_to_screen(world_point: Vector2) -> Vector2:
-	var offset := (world_point - visual_world_position) * WORLD_ZOOM
+	var offset := (world_point - visual_world_position) * _current_world_zoom()
 	offset = offset.rotated(map_rotation)
 	return player_screen_center + offset
 
