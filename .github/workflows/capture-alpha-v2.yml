@@ -124,10 +124,35 @@ jobs:
             fullPage: false
           });
 
-          // The same route feeds directly through the connector into the highway.
-          await page.waitForTimeout(4500);
+          // Catch the on-ramp mid-transition, then the highway after the merge.
+          await page.waitForTimeout(2100);
+          await page.screenshot({
+            path: "debug/alpha-connector-one.png",
+            fullPage: false
+          });
+
+          await page.waitForTimeout(2400);
           await page.screenshot({
             path: "debug/alpha-highway.png",
+            fullPage: false
+          });
+
+          // Third pass: take the correct neighborhood route, move into the
+          // rightmost highway lane, and capture the off-ramp toward the city.
+          await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
+          await page.waitForTimeout(12000);
+          await page.touchscreen.tap(215, 884);
+          await page.waitForTimeout(1600);
+          await page.touchscreen.tap(335, 835);
+
+          // Wait until the car is firmly on the highway, then move right once.
+          await page.waitForTimeout(4700);
+          await page.touchscreen.tap(335, 835);
+
+          // Capture around the highway-to-city connector transition.
+          await page.waitForTimeout(3400);
+          await page.screenshot({
+            path: "debug/alpha-connector-two.png",
             fullPage: false
           });
 
@@ -144,6 +169,8 @@ jobs:
             debug/alpha-first-turn.png
             debug/alpha-reroute.png
             debug/alpha-correct-turn.png
+            debug/alpha-connector-one.png
             debug/alpha-highway.png
+            debug/alpha-connector-two.png
           if-no-files-found: error
           retention-days: 7
