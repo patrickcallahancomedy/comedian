@@ -11,6 +11,7 @@ const ARROW_COLOR := Color(1.0, 0.94, 0.56, 1.0)
 const ARROW_SHADOW := Color(0.04, 0.05, 0.04, 0.9)
 const ARROW_LENGTH := 30.0
 const ARROW_HEAD := 10.0
+const ARROW_VERTICAL_OFFSET := -34.0
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -76,7 +77,11 @@ func _draw() -> void:
 		_:
 			return
 
-	_draw_arrow(drive._world_to_screen(world_position), turn)
+	# Keep the marker inside the road intersection but above the centered car.
+	_draw_arrow(
+		drive._world_to_screen(world_position) + Vector2(0.0, ARROW_VERTICAL_OFFSET),
+		turn
+	)
 
 
 func _current_turn_hint() -> Dictionary:
