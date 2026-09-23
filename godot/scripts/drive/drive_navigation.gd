@@ -7,17 +7,17 @@ extends Label
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const MARKER_BG := Color(0.055, 0.062, 0.072, 0.94)
-const MARKER_INNER := Color(0.095, 0.105, 0.12, 0.96)
-const MARKER_BORDER := Color(1.0, 1.0, 1.0, 0.16)
-const MARKER_ACCENT := Color(1.0, 0.82, 0.28, 0.96)
-const MARKER_ICON := Color(0.985, 0.985, 0.97, 1.0)
-const MARKER_SHADOW := Color(0.0, 0.0, 0.0, 0.32)
+const MARKER_BG := Color(0.045, 0.052, 0.062, 0.92)
+const MARKER_INNER := Color(0.105, 0.115, 0.132, 0.94)
+const MARKER_BORDER := Color(1.0, 1.0, 1.0, 0.18)
+const MARKER_ACCENT := Color(1.0, 0.80, 0.22, 0.98)
+const MARKER_ICON := Color(0.99, 0.99, 0.98, 1.0)
+const MARKER_SHADOW := Color(0.0, 0.0, 0.0, 0.30)
+const MARKER_HALO := Color(1.0, 0.80, 0.22, 0.16)
 
-const MARKER_RADIUS := 27.0
-const MARKER_VERTICAL_OFFSET := -66.0
-const MARKER_POINTER_HEIGHT := 9.0
-const MARKER_POINTER_HALF_WIDTH := 7.0
+const MARKER_RADIUS := 26.0
+const MARKER_NEAR_CAR_DISTANCE := 86.0
+const MARKER_LIFT := 62.0
 const CHEVRON_WIDTH := 5.0
 const CHEVRON_HALF_WIDTH := 8.5
 const CHEVRON_HALF_HEIGHT := 12.0
@@ -283,54 +283,46 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 
 
 func _draw_turn_marker(intersection: Vector2, turn: String) -> void:
-	var pulse := 1.0 + sin(ui_time * 3.0) * 0.035
-	var center := intersection + Vector2(
-		0.0,
-		MARKER_VERTICAL_OFFSET + sin(ui_time * 2.2) * 1.5
-	)
+	var pulse := 1.0 + sin(ui_time * 3.0) * 0.025
+	var center := intersection
+	var distance_to_car := intersection.distance_to(drive.player_screen_center)
+	var lifted := distance_to_car < MARKER_NEAR_CAR_DISTANCE
+
+	# Upcoming turns live directly on the intersection. Once the car reaches
+	# that intersection, the badge lifts just enough to stay readable.
+	if lifted:
+		center += Vector2(0.0, -MARKER_LIFT)
+
 	var radius := MARKER_RADIUS * pulse
 
-	# Soft stacked shadow gives the marker depth without looking like a button.
-	draw_circle(center + Vector2(0.0, 5.0), radius + 3.0, MARKER_SHADOW)
+	# Soft halo + glassy dark disc. This reads as a game waypoint rather than
+	# a map pin or a road decal.
+	draw_circle(center + Vector2(0.0, 4.0), radius + 3.0, MARKER_SHADOW)
+	draw_circle(center, radius + 6.0 + sin(ui_time * 2.6) * 1.5, MARKER_HALO)
 	draw_circle(center, radius + 1.5, MARKER_BORDER)
 	draw_circle(center, radius, MARKER_BG)
 	draw_circle(center, radius - 4.0, MARKER_INNER)
 
-	# Thin accent arc reads like current navigation state, not decoration.
+	# A restrained accent arc adds polish without turning into a progress ring.
 	draw_arc(
 		center,
 		radius - 1.0,
 		-PI * 0.78,
 		PI * 0.78,
-		28,
+		32,
 		MARKER_ACCENT,
-		2.5,
+		2.4,
 		true
 	)
 
-	# Small pointer anchors the floating UI to the actual intersection.
-	var pointer_top := center + Vector2(0.0, radius - 1.0)
-	var pointer_tip := intersection + Vector2(0.0, -5.0)
-	var pointer := PackedVector2Array([
-		pointer_top + Vector2(-MARKER_POINTER_HALF_WIDTH, 0.0),
-		pointer_top + Vector2(MARKER_POINTER_HALF_WIDTH, 0.0),
-		pointer_tip,
-	])
-	draw_colored_polygon(pointer, MARKER_BG)
-	draw_line(
-		pointer_top + Vector2(-MARKER_POINTER_HALF_WIDTH, 0.0),
-		pointer_tip,
-		MARKER_BORDER,
-		1.5,
-		true
-	)
-	draw_line(
-		pointer_tip,
-		pointer_top + Vector2(MARKER_POINTER_HALF_WIDTH, 0.0),
-		MARKER_BORDER,
-		1.5,
-		true
-	)
+	if lifted:
+		# Minimal stem + glowing anchor dot keeps the floating badge tied to the
+		# exact intersection while avoiding the old map-pin triangle.
+		var stem_start := center + Vector2(0.0, radius + 3.0)
+		var stem_end := intersection + Vector2(0.0, -8.0)
+		draw_line(stem_start, stem_end, Color(1.0, 1.0, 1.0, 0.24), 1.5, true)
+		draw_circle(intersection, 6.0, Color(1.0, 0.80, 0.22, 0.12))
+		draw_circle(intersection, 3.0, MARKER_ACCENT)
 
 	_draw_chevron(center, turn)
 
