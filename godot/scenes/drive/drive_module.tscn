@@ -1,11 +1,11 @@
-[gd_scene format=3 uid="uid://toj3nfh0umto"]
+[gd_scene format=4 uid="uid://toj3nfh0umto"]
 
 [ext_resource type="Script" uid="uid://ddyjqns4g4t0g" path="res://scripts/drive/drive_grid_controller.gd" id="1_boj34"]
 [ext_resource type="Texture2D" uid="uid://dkqq7eu8lpill" path="res://assets/car/player_car_top.png" id="1_car"]
+[ext_resource type="TileSet" uid="uid://d25o5v4xg2o36" path="res://resources/drive/neighborhood_tileset.tres" id="3_l7lm1"]
 [ext_resource type="Script" uid="uid://dnqi0cw64kxjr" path="res://scripts/drive/drive_session.gd" id="3_session"]
-[ext_resource type="Script" path="res://scripts/drive/drive_navigation.gd" id="4_nav"]
-[ext_resource type="Script" path="res://scripts/drive/drive_neighborhood_tiles.gd" id="5_neighborhood_tiles"]
-[ext_resource type="Script" path="res://scripts/drive/drive_neighborhood_decor.gd" id="6_neighborhood_decor"]
+[ext_resource type="Script" uid="uid://decwj71t5uanu" path="res://scripts/drive/drive_navigation.gd" id="4_nav"]
+[ext_resource type="Script" uid="uid://eqmrqhtlnyu0" path="res://scripts/drive/drive_neighborhood_tiles.gd" id="5_neighborhood_tiles"]
 
 [node name="DriveModule" type="Control" unique_id=1084516026]
 layout_mode = 3
@@ -37,14 +37,19 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_boj34")
 
-[node name="NeighborhoodTiles" type="TileMapLayer" parent="."]
+[node name="NeighborhoodTiles" type="TileMapLayer" parent="." unique_id=611814016]
+visible = false
 z_index = 2
 texture_filter = 1
+position = Vector2(-325, -909)
+scale = Vector2(2.813, 2.813)
+tile_map_data = PackedByteArray("AAABAAIAAQAAAAAAAAABAAEAAQAAAAAAAAAAAAMAAQAAAAAAAAACAAMAAQAAAAAAAAACAAEAAQAAAAAAAAADAAEAAQAAAAAAAAAAAAEAAQAAAAAAAAAAAAIAAQAAAAAAAAACAAIAAQAAAAAAAAACAAAAAQAAAAAAAAADAAAAAQAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAQAAAAAAAAABAAMAAQAAAAAAAAADAAMAAQAAAAAAAAADAAIAAQAAAAAAAAA=")
+tile_set = ExtResource("3_l7lm1")
 script = ExtResource("5_neighborhood_tiles")
 
-[node name="NeighborhoodDecor" type="Node2D" parent="."]
+[node name="NeighborhoodDecor" type="Node2D" parent="." unique_id=1485605181]
+visible = false
 z_index = 2
-script = ExtResource("6_neighborhood_decor")
 
 [node name="MapLabel" type="Label" parent="." unique_id=636909609]
 visible = false
@@ -71,14 +76,13 @@ theme_override_font_sizes/font_size = 18
 text = "TAP START"
 horizontal_alignment = 1
 
-[node name="Navigation" type="Label" parent="."]
+[node name="Navigation" type="Label" parent="." unique_id=1768688850]
 z_index = 4
 layout_mode = 0
 offset_left = 20.0
 offset_top = 72.0
 offset_right = 410.0
 offset_bottom = 112.0
-mouse_filter = 2
 theme_override_colors/font_color = Color(1, 0.94, 0.56, 1)
 theme_override_colors/font_shadow_color = Color(0.05, 0.06, 0.05, 0.8)
 theme_override_constants/shadow_offset_x = 1

@@ -11,7 +11,7 @@ const TILE_PIXELS := 128
 
 func _ready() -> void:
 	tile_set = NEIGHBORHOOD_TILE_SET
-	_paint_neighborhood()
+	
 	# TileMapLayer batches internal rendering updates. Force the initial atlas
 	# and cells to be ready before the first visible frame.
 	update_internals()
