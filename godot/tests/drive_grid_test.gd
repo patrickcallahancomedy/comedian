@@ -169,12 +169,16 @@ func _run() -> void:
 		"Destination parking space does not contain the arrival point"
 	)
 	_check(
-		venue_rect.position.x > destination_center.x,
-		"Venue facade is not curbside outside the parking space"
+		venue_rect.end.x < destination_center.x,
+		"Venue is not in the block beside the parking destination"
 	)
 	_check(
-		venue_rect.position.x > drive._city_rect().end.x,
-		"Venue should sit outside the curb at the city edge"
+		venue_rect.end.y < destination_center.y,
+		"Venue is not positioned on the adjacent corner block"
+	)
+	_check(
+		drive._city_rect().encloses(venue_rect),
+		"Venue should stay inside the visible city block"
 	)
 
 	_check(navigation != null, "Navigation display missing")
