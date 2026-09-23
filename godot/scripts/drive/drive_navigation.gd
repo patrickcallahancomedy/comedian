@@ -7,11 +7,13 @@ extends Label
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ARROW_COLOR := Color(1.0, 0.94, 0.56, 1.0)
-const ARROW_SHADOW := Color(0.04, 0.05, 0.04, 0.9)
-const ARROW_LENGTH := 30.0
-const ARROW_HEAD := 10.0
-const ARROW_VERTICAL_OFFSET := -34.0
+const ARROW_COLOR := Color(0.96, 0.95, 0.90, 0.92)
+const ARROW_OUTLINE := Color(0.04, 0.05, 0.04, 0.78)
+const ARROW_LENGTH := 56.0
+const ARROW_SHAFT_HALF := 5.5
+const ARROW_HEAD_LENGTH := 18.0
+const ARROW_HEAD_HALF_HEIGHT := 15.0
+const ARROW_VERTICAL_OFFSET := -72.0
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -21,6 +23,7 @@ func _ready() -> void:
 	# Reuse the existing Navigation node as a full-screen, non-interactive
 	# drawing layer. No new embedded assets are needed.
 	text = ""
+	z_index = 2
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	offset_left = 0.0
@@ -270,17 +273,48 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 
 func _draw_arrow(center: Vector2, turn: String) -> void:
 	var horizontal := 1.0 if turn == "right" else -1.0
-	var half_length := ARROW_LENGTH * 0.5
-	var tail := center + Vector2(-horizontal * half_length, 0.0)
-	var tip := center + Vector2(horizontal * half_length, 0.0)
-	var wing_top := tip + Vector2(-horizontal * ARROW_HEAD, -ARROW_HEAD)
-	var wing_bottom := tip + Vector2(-horizontal * ARROW_HEAD, ARROW_HEAD)
 
-	# A dark under-stroke keeps the marker legible over roads and sidewalks.
-	draw_line(tail, tip, ARROW_SHADOW, 9.0, true)
-	draw_line(tip, wing_top, ARROW_SHADOW, 9.0, true)
-	draw_line(tip, wing_bottom, ARROW_SHADOW, 9.0, true)
+	# Use a filled road-marker shape instead of a thin HUD-style icon.
+	# The dark outer shape is only a narrow readability edge.
+	var outer := _arrow_polygon(
+		center,
+		horizontal,
+		ARROW_LENGTH + 8.0,
+		ARROW_SHAFT_HALF + 3.0,
+		ARROW_HEAD_LENGTH + 4.0,
+		ARROW_HEAD_HALF_HEIGHT + 4.0
+	)
+	var inner := _arrow_polygon(
+		center,
+		horizontal,
+		ARROW_LENGTH,
+		ARROW_SHAFT_HALF,
+		ARROW_HEAD_LENGTH,
+		ARROW_HEAD_HALF_HEIGHT
+	)
 
-	draw_line(tail, tip, ARROW_COLOR, 5.0, true)
-	draw_line(tip, wing_top, ARROW_COLOR, 5.0, true)
-	draw_line(tip, wing_bottom, ARROW_COLOR, 5.0, true)
+	draw_colored_polygon(outer, ARROW_OUTLINE)
+	draw_colored_polygon(inner, ARROW_COLOR)
+
+
+func _arrow_polygon(
+	center: Vector2,
+	horizontal: float,
+	length: float,
+	shaft_half: float,
+	head_length: float,
+	head_half_height: float
+) -> PackedVector2Array:
+	var tail_x := -length * 0.5
+	var tip_x := length * 0.5
+	var head_base_x := tip_x - head_length
+
+	return PackedVector2Array([
+		center + Vector2(tail_x * horizontal, -shaft_half),
+		center + Vector2(head_base_x * horizontal, -shaft_half),
+		center + Vector2(head_base_x * horizontal, -head_half_height),
+		center + Vector2(tip_x * horizontal, 0.0),
+		center + Vector2(head_base_x * horizontal, head_half_height),
+		center + Vector2(head_base_x * horizontal, shaft_half),
+		center + Vector2(tail_x * horizontal, shaft_half),
+	])
