@@ -65,7 +65,7 @@ const VENUE_BUILDING_COLOR := Color(0.18, 0.16, 0.15)
 const VENUE_TRIM_COLOR := Color(0.10, 0.10, 0.105)
 const VENUE_WINDOW_COLOR := Color(0.95, 0.63, 0.24, 0.82)
 const VENUE_AWNING_COLOR := Color(0.42, 0.16, 0.13)
-const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.82)
+const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.58)
 const GRID_COLOR := Color(0.08, 0.09, 0.09, 0.45)
 const BORDER_COLOR := Color(0.93, 0.92, 0.86)
 
@@ -1098,8 +1098,8 @@ func _city_entry_point() -> Vector2:
 func _parking_space_rect() -> Rect2:
 	var center := _city_cell_center(MAP.CITY_DESTINATION)
 	return Rect2(
-		center + Vector2(-8.0, -17.0),
-		Vector2(16.0, 34.0)
+		center + Vector2(-5.0, -12.0),
+		Vector2(10.0, 24.0)
 	)
 
 
