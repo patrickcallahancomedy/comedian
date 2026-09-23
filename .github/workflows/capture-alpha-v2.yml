@@ -16,6 +16,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve latest game build
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_SHA="$(git log -1 --format=%H -- godot)"
+          echo "TARGET_SHORT=${TARGET_SHA:0:8}" >> "$GITHUB_ENV"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -28,12 +37,12 @@ jobs:
           npm install playwright
           npx playwright install --with-deps chromium
 
-      - name: Capture deployed alpha with software WebGL
+      - name: Capture deployed turn guidance
         env:
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
           mkdir -p debug
-          cat > /tmp/capture.mjs <<'EOF'
+          cat > capture-alpha.mjs <<'EOF'
           import { chromium } from "playwright";
 
           const browser = await chromium.launch({
@@ -56,34 +65,45 @@ jobs:
           });
 
           const page = await context.newPage();
+          const build = process.env.TARGET_SHORT;
 
           await page.goto(
-            "https://patrickcallahancomedy.github.io/comedian/alpha/?build=dfc4b8e4&capture=2",
+            `https://patrickcallahancomedy.github.io/comedian/alpha/?build=${build}&capture=turns`,
             { waitUntil: "domcontentloaded", timeout: 120000 }
           );
 
-          await page.waitForTimeout(25000);
+          await page.waitForTimeout(15000);
 
-          const start = page.getByText("START", { exact: true });
-          if (await start.count()) {
-            await start.first().click().catch(() => {});
-            await page.waitForTimeout(2500);
-          }
+          // START is rendered inside the Godot canvas, so tap its known mobile
+          // control position rather than looking for a DOM text node.
+          await page.touchscreen.tap(215, 884);
 
+          // First planned turn approaching (1, 1).
+          await page.waitForTimeout(1400);
           await page.screenshot({
-            path: "debug/alpha-neighborhood.png",
+            path: "debug/alpha-first-turn.png",
+            fullPage: false
+          });
+
+          // Continue straight past the planned turn. The route should recalculate
+          // and move the arrow to the next best intersection.
+          await page.waitForTimeout(1000);
+          await page.screenshot({
+            path: "debug/alpha-reroute.png",
             fullPage: false
           });
 
           await browser.close();
           EOF
 
-          xvfb-run -a node /tmp/capture.mjs
+          xvfb-run -a node capture-alpha.mjs
 
-      - name: Upload screenshot
+      - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
           name: alpha-neighborhood-screenshot-v2
-          path: debug/alpha-neighborhood.png
+          path: |
+            debug/alpha-first-turn.png
+            debug/alpha-reroute.png
           if-no-files-found: error
           retention-days: 7
