@@ -28,7 +28,18 @@ const NEIGHBORHOOD_SIDEWALK_WIDTH := 17.0
 const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 1.5
 const NEIGHBORHOOD_EDGE_COLOR := Color(0.24, 0.36, 0.20)
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
-const HIGHWAY_COLOR := Color(0.72, 0.42, 0.58)
+const HIGHWAY_ASPHALT_COLOR := Color(0.115, 0.125, 0.145)
+const HIGHWAY_ASPHALT_ALT := Color(0.135, 0.145, 0.165)
+const HIGHWAY_TEXTURE_COLOR := Color(0.04, 0.045, 0.055, 0.22)
+const HIGHWAY_SHOULDER_COLOR := Color(0.20, 0.21, 0.22)
+const HIGHWAY_MARKING_COLOR := Color(0.93, 0.92, 0.86, 0.92)
+const HIGHWAY_EDGE_COLOR := Color(0.97, 0.96, 0.90, 0.96)
+const HIGHWAY_EXIT_GUIDE_COLOR := Color(1.0, 0.78, 0.24, 0.90)
+const HIGHWAY_TERRAIN_COLOR := Color(0.20, 0.29, 0.20)
+const HIGHWAY_TERRAIN_ALT := Color(0.23, 0.32, 0.22)
+const HIGHWAY_TERRAIN_GRID_COLOR := Color(0.08, 0.12, 0.08, 0.24)
+const HIGHWAY_TERRAIN_PADDING := 90.0
+const HIGHWAY_TERRAIN_CELL := 20.0
 const CITY_COLOR := Color(0.42, 0.44, 0.48)
 const GRID_COLOR := Color(0.08, 0.09, 0.09, 0.45)
 const BORDER_COLOR := Color(0.93, 0.92, 0.86)
@@ -426,6 +437,7 @@ func _draw() -> void:
 
 	_draw_neighborhood()
 
+	_draw_highway_surroundings()
 	_draw_world_rect(MAP.CONNECTOR_ONE_RECT, CONNECTOR_COLOR)
 	_draw_highway()
 	_draw_city_connector()
@@ -603,37 +615,158 @@ func _draw_city_connector() -> void:
 	draw_colored_polygon(points, CONNECTOR_COLOR)
 
 
-func _draw_highway() -> void:
-	_draw_world_rect(MAP.HIGHWAY_RECT, HIGHWAY_COLOR)
-
-	for lane in range(1, MAP.HIGHWAY_LANES):
-		var y := MAP.HIGHWAY_RECT.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
-		_draw_world_line(
-			Vector2(MAP.HIGHWAY_RECT.position.x, y),
-			Vector2(MAP.HIGHWAY_RECT.end.x, y),
-			BORDER_COLOR,
-			1.5
-		)
-
-	for column in range(1, MAP.HIGHWAY_COLUMNS):
-		var x := MAP.HIGHWAY_RECT.position.x + column * MAP.HIGHWAY_CELL
-		_draw_world_line(
-			Vector2(x, MAP.HIGHWAY_RECT.position.y),
-			Vector2(x, MAP.HIGHWAY_RECT.end.y),
-			GRID_COLOR,
-			1.0
-		)
-
-	_draw_world_rect_outline(MAP.HIGHWAY_RECT, BORDER_COLOR, 3.0)
-
-	var exit_rect := Rect2(
+func _draw_highway_surroundings() -> void:
+	var rect := Rect2(
 		Vector2(
-			MAP.HIGHWAY_RECT.end.x - MAP.HIGHWAY_CELL,
-			MAP.HIGHWAY_RECT.position.y + MAP.HIGHWAY_EXIT_LANE * MAP.HIGHWAY_LANE_WIDTH
+			MAP.HIGHWAY_RECT.position.x,
+			MAP.HIGHWAY_RECT.position.y - HIGHWAY_TERRAIN_PADDING
 		),
-		Vector2(MAP.HIGHWAY_CELL, MAP.HIGHWAY_LANE_WIDTH)
+		Vector2(
+			MAP.HIGHWAY_RECT.size.x,
+			MAP.HIGHWAY_RECT.size.y + HIGHWAY_TERRAIN_PADDING * 2.0
+		)
 	)
-	_draw_world_rect_outline(exit_rect, Color(1.0, 0.92, 0.34), 3.0)
+
+	var columns := int(ceil(rect.size.x / HIGHWAY_TERRAIN_CELL))
+	var rows := int(ceil(rect.size.y / HIGHWAY_TERRAIN_CELL))
+
+	for row in range(rows):
+		for column in range(columns):
+			var cell_position := rect.position + Vector2(
+				float(column) * HIGHWAY_TERRAIN_CELL,
+				float(row) * HIGHWAY_TERRAIN_CELL
+			)
+			var cell_size := Vector2(
+				minf(HIGHWAY_TERRAIN_CELL, rect.end.x - cell_position.x),
+				minf(HIGHWAY_TERRAIN_CELL, rect.end.y - cell_position.y)
+			)
+			var color := HIGHWAY_TERRAIN_COLOR
+			if (row + column) % 2 == 1:
+				color = HIGHWAY_TERRAIN_ALT
+			_draw_world_rect(Rect2(cell_position, cell_size), color)
+
+	var x := rect.position.x + HIGHWAY_TERRAIN_CELL
+	while x < rect.end.x:
+		_draw_world_line(
+			Vector2(x, rect.position.y),
+			Vector2(x, rect.end.y),
+			HIGHWAY_TERRAIN_GRID_COLOR,
+			0.8
+		)
+		x += HIGHWAY_TERRAIN_CELL
+
+	var y := rect.position.y + HIGHWAY_TERRAIN_CELL
+	while y < rect.end.y:
+		_draw_world_line(
+			Vector2(rect.position.x, y),
+			Vector2(rect.end.x, y),
+			HIGHWAY_TERRAIN_GRID_COLOR,
+			0.8
+		)
+		y += HIGHWAY_TERRAIN_CELL
+
+
+func _draw_highway() -> void:
+	# Alternate very subtle lane bands so the asphalt has depth without
+	# reading like the old grid placeholder.
+	for lane in range(MAP.HIGHWAY_LANES):
+		var lane_rect := Rect2(
+			Vector2(
+				MAP.HIGHWAY_RECT.position.x,
+				MAP.HIGHWAY_RECT.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
+			),
+			Vector2(MAP.HIGHWAY_RECT.size.x, MAP.HIGHWAY_LANE_WIDTH)
+		)
+		var lane_color := HIGHWAY_ASPHALT_COLOR
+		if lane % 2 == 1:
+			lane_color = HIGHWAY_ASPHALT_ALT
+		_draw_world_rect(lane_rect, lane_color)
+
+	# Narrow shoulders live inside the highway footprint so the road remains
+	# the same logical four-lane width.
+	var shoulder_width := 2.2
+	_draw_world_rect(
+		Rect2(
+			MAP.HIGHWAY_RECT.position,
+			Vector2(MAP.HIGHWAY_RECT.size.x, shoulder_width)
+		),
+		HIGHWAY_SHOULDER_COLOR
+	)
+	_draw_world_rect(
+		Rect2(
+			Vector2(MAP.HIGHWAY_RECT.position.x, MAP.HIGHWAY_RECT.end.y - shoulder_width),
+			Vector2(MAP.HIGHWAY_RECT.size.x, shoulder_width)
+		),
+		HIGHWAY_SHOULDER_COLOR
+	)
+
+	# Subtle deterministic asphalt streaks give motion texture without using
+	# an embedded image asset.
+	for column in range(MAP.HIGHWAY_COLUMNS):
+		var column_x := MAP.HIGHWAY_RECT.position.x + float(column) * MAP.HIGHWAY_CELL
+		for lane in range(MAP.HIGHWAY_LANES):
+			var lane_center_y := (
+				MAP.HIGHWAY_RECT.position.y
+				+ float(lane) * MAP.HIGHWAY_LANE_WIDTH
+				+ MAP.HIGHWAY_LANE_WIDTH * 0.5
+			)
+			var offset_y := float(((column + lane * 2) % 3) - 1) * 1.15
+			var streak_start := column_x + 3.0 + float((column + lane) % 3)
+			var streak_length := 5.0 + float((column * 2 + lane) % 4)
+			_draw_world_line(
+				Vector2(streak_start, lane_center_y + offset_y),
+				Vector2(streak_start + streak_length, lane_center_y + offset_y),
+				HIGHWAY_TEXTURE_COLOR,
+				0.65
+			)
+
+	# Dashed lane dividers replace the old full grid lines.
+	for lane in range(1, MAP.HIGHWAY_LANES):
+		var divider_y := MAP.HIGHWAY_RECT.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
+		var dash_x := MAP.HIGHWAY_RECT.position.x + 4.0
+		while dash_x < MAP.HIGHWAY_RECT.end.x:
+			var dash_end := minf(dash_x + 8.0, MAP.HIGHWAY_RECT.end.x)
+			_draw_world_line(
+				Vector2(dash_x, divider_y),
+				Vector2(dash_end, divider_y),
+				HIGHWAY_MARKING_COLOR,
+				0.9
+			)
+			dash_x += 16.0
+
+	# Solid outside edge lines make it read as a road rather than a panel.
+	_draw_world_line(
+		Vector2(MAP.HIGHWAY_RECT.position.x, MAP.HIGHWAY_RECT.position.y + shoulder_width),
+		Vector2(MAP.HIGHWAY_RECT.end.x, MAP.HIGHWAY_RECT.position.y + shoulder_width),
+		HIGHWAY_EDGE_COLOR,
+		1.15
+	)
+	_draw_world_line(
+		Vector2(MAP.HIGHWAY_RECT.position.x, MAP.HIGHWAY_RECT.end.y - shoulder_width),
+		Vector2(MAP.HIGHWAY_RECT.end.x, MAP.HIGHWAY_RECT.end.y - shoulder_width),
+		HIGHWAY_EDGE_COLOR,
+		1.15
+	)
+
+	# A restrained amber guide in the last stretch hints at the exit without
+	# restoring the old boxed-in exit cell.
+	var exit_edge_y := (
+		MAP.HIGHWAY_RECT.position.y
+		+ MAP.HIGHWAY_EXIT_LANE * MAP.HIGHWAY_LANE_WIDTH
+		+ 1.25
+	)
+	_draw_world_line(
+		Vector2(MAP.HIGHWAY_RECT.end.x - 55.0, exit_edge_y),
+		Vector2(MAP.HIGHWAY_RECT.end.x, exit_edge_y),
+		HIGHWAY_EXIT_GUIDE_COLOR,
+		1.2
+	)
+
+	_draw_world_rect_outline(
+		MAP.HIGHWAY_RECT,
+		Color(0.03, 0.035, 0.045, 0.85),
+		1.0
+	)
 
 
 func _draw_destination() -> void:
