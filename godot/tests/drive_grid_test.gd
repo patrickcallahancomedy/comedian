@@ -133,6 +133,18 @@ func _run() -> void:
 		)
 
 	_check(
+		drive._city_connections(Vector2i(0, 0)).size() == 2,
+		"City corner is not a two-way turn"
+	)
+	_check(
+		drive._city_connections(Vector2i(1, 0)).size() == 3,
+		"City perimeter tile is not a three-way intersection"
+	)
+	_check(
+		drive._city_connections(Vector2i(1, 1)).size() == 4,
+		"City interior tile is not a four-way intersection"
+	)
+	_check(
 		not drive._city_connections(Vector2i(0, 0)).has(Vector2i.LEFT),
 		"City top-left corner incorrectly opens through the border"
 	)
