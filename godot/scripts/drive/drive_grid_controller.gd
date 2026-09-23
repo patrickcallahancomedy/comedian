@@ -27,6 +27,7 @@ const NEIGHBORHOOD_HOUSE_COLOR := Color(0.64, 0.39, 0.25)
 const NEIGHBORHOOD_ROOF_COLOR := Color(0.36, 0.24, 0.20)
 const NEIGHBORHOOD_ROAD_WIDTH := 12.0
 const NEIGHBORHOOD_SIDEWALK_WIDTH := 18.0
+const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 2
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
 const HIGHWAY_COLOR := Color(0.72, 0.42, 0.58)
 const CITY_COLOR := Color(0.42, 0.44, 0.48)
@@ -422,7 +423,6 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.085, 0.08), true)
 
 	_draw_neighborhood()
-	_draw_neighborhood_border_with_gate()
 
 	_draw_world_rect(MAP.CONNECTOR_ONE_RECT, CONNECTOR_COLOR)
 	_draw_highway()
@@ -440,58 +440,64 @@ func _draw() -> void:
 
 
 func _draw_neighborhood() -> void:
-	# Simple built-in neighborhood art. No TileMap, atlas, or generated assets:
-	# just grass, sidewalks, streets, and small house blocks drawn in world space.
-	var rect := MAP.NEIGHBORHOOD_RECT
+	# The playable neighborhood is still a 4x4 logical grid, but the visual
+	# neighborhood extends beyond it so the edge of the game board never shows
+	# as empty black space when the fixed car reaches a perimeter street.
+	var logical_rect := MAP.NEIGHBORHOOD_RECT
+	var padding := float(MAP.NEIGHBORHOOD_CELL * NEIGHBORHOOD_VISUAL_PADDING_CELLS)
+	var visual_rect := logical_rect.grow(padding)
 
-	_draw_world_rect(rect, NEIGHBORHOOD_COLOR)
+	_draw_world_rect(visual_rect, NEIGHBORHOOD_COLOR)
 
-	# Sidewalk strips go down first so the roads stay clean at intersections.
-	for x_index in range(MAP.NEIGHBORHOOD_SIZE.x):
-		var center_x := rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+	var first_index := -NEIGHBORHOOD_VISUAL_PADDING_CELLS
+	var last_index := MAP.NEIGHBORHOOD_SIZE.x + NEIGHBORHOOD_VISUAL_PADDING_CELLS
+
+	# Sidewalks.
+	for x_index in range(first_index, last_index):
+		var center_x := logical_rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
 		_draw_world_rect(
 			Rect2(
-				Vector2(center_x - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5, rect.position.y),
-				Vector2(NEIGHBORHOOD_SIDEWALK_WIDTH, rect.size.y)
+				Vector2(center_x - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5, visual_rect.position.y),
+				Vector2(NEIGHBORHOOD_SIDEWALK_WIDTH, visual_rect.size.y)
 			),
 			NEIGHBORHOOD_SIDEWALK_COLOR
 		)
 
-	for y_index in range(MAP.NEIGHBORHOOD_SIZE.y):
-		var center_y := rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+	for y_index in range(first_index, last_index):
+		var center_y := logical_rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
 		_draw_world_rect(
 			Rect2(
-				Vector2(rect.position.x, center_y - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5),
-				Vector2(rect.size.x, NEIGHBORHOOD_SIDEWALK_WIDTH)
+				Vector2(visual_rect.position.x, center_y - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5),
+				Vector2(visual_rect.size.x, NEIGHBORHOOD_SIDEWALK_WIDTH)
 			),
 			NEIGHBORHOOD_SIDEWALK_COLOR
 		)
 
-	for x_index in range(MAP.NEIGHBORHOOD_SIZE.x):
-		var center_x := rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+	# Roads.
+	for x_index in range(first_index, last_index):
+		var center_x := logical_rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
 		_draw_world_rect(
 			Rect2(
-				Vector2(center_x - NEIGHBORHOOD_ROAD_WIDTH * 0.5, rect.position.y),
-				Vector2(NEIGHBORHOOD_ROAD_WIDTH, rect.size.y)
+				Vector2(center_x - NEIGHBORHOOD_ROAD_WIDTH * 0.5, visual_rect.position.y),
+				Vector2(NEIGHBORHOOD_ROAD_WIDTH, visual_rect.size.y)
 			),
 			NEIGHBORHOOD_ROAD_COLOR
 		)
 
-	for y_index in range(MAP.NEIGHBORHOOD_SIZE.y):
-		var center_y := rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+	for y_index in range(first_index, last_index):
+		var center_y := logical_rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
 		_draw_world_rect(
 			Rect2(
-				Vector2(rect.position.x, center_y - NEIGHBORHOOD_ROAD_WIDTH * 0.5),
-				Vector2(rect.size.x, NEIGHBORHOOD_ROAD_WIDTH)
+				Vector2(visual_rect.position.x, center_y - NEIGHBORHOOD_ROAD_WIDTH * 0.5),
+				Vector2(visual_rect.size.x, NEIGHBORHOOD_ROAD_WIDTH)
 			),
 			NEIGHBORHOOD_ROAD_COLOR
 		)
 
-	# Nine tiny houses make the area read as a neighborhood without introducing
-	# another asset pipeline. They live in the grassy blocks between streets.
-	for lot_y in range(3):
-		for lot_x in range(3):
-			var lot_center := rect.position + Vector2(
+	# Simple house blocks in the grass between streets.
+	for lot_y in range(first_index, last_index - 1):
+		for lot_x in range(first_index, last_index - 1):
+			var lot_center := logical_rect.position + Vector2(
 				float(lot_x + 1) * MAP.NEIGHBORHOOD_CELL,
 				float(lot_y + 1) * MAP.NEIGHBORHOOD_CELL
 			)
@@ -500,11 +506,13 @@ func _draw_neighborhood() -> void:
 			_draw_world_rect(house_rect, NEIGHBORHOOD_HOUSE_COLOR)
 
 			var roof_inset := Vector2(2.0, 2.0)
-			var roof_rect := Rect2(
-				house_rect.position + roof_inset,
-				house_rect.size - roof_inset * 2.0
+			_draw_world_rect(
+				Rect2(
+					house_rect.position + roof_inset,
+					house_rect.size - roof_inset * 2.0
+				),
+				NEIGHBORHOOD_ROOF_COLOR
 			)
-			_draw_world_rect(roof_rect, NEIGHBORHOOD_ROOF_COLOR)
 
 
 func _draw_grid_zone(rect: Rect2, cell_size: int, color: Color) -> void:
