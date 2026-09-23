@@ -94,6 +94,14 @@ jobs:
 
           node capture-alpha.js
 
+      - name: Upload screenshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha-qa-screenshot
+          path: qa/latest-alpha.png
+          if-no-files-found: error
+          retention-days: 2
+
       - name: Commit latest screenshot
         shell: bash
         run: |
