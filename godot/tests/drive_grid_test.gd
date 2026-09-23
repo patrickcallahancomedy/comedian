@@ -111,6 +111,27 @@ func _run() -> void:
 		drive.NEIGHBORHOOD_ROAD_WIDTH > 0.0,
 		"Basic neighborhood road styling is missing"
 	)
+
+	var on_ramp_points: PackedVector2Array = drive._connector_one_points()
+	_check(on_ramp_points.size() == 4, "On-ramp is not a four-point wedge")
+	if on_ramp_points.size() == 4:
+		var on_ramp_start_width := on_ramp_points[3].y - on_ramp_points[0].y
+		var on_ramp_end_width := on_ramp_points[2].y - on_ramp_points[1].y
+		_check(
+			on_ramp_end_width > on_ramp_start_width,
+			"On-ramp does not widen toward the highway"
+		)
+
+	var off_ramp_points: PackedVector2Array = drive._connector_two_points()
+	_check(off_ramp_points.size() == 4, "Off-ramp is not a four-point wedge")
+	if off_ramp_points.size() == 4:
+		var off_ramp_start_width := off_ramp_points[3].y - off_ramp_points[0].y
+		var off_ramp_end_width := off_ramp_points[2].y - off_ramp_points[1].y
+		_check(
+			off_ramp_end_width > off_ramp_start_width,
+			"Off-ramp does not widen toward the city"
+		)
+
 	_check(navigation != null, "Navigation display missing")
 	if navigation != null:
 		_check(navigation.text == "", "Legacy text navigation should be blank")

@@ -27,7 +27,13 @@ const NEIGHBORHOOD_ROAD_WIDTH := 13.0
 const NEIGHBORHOOD_SIDEWALK_WIDTH := 17.0
 const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 1.5
 const NEIGHBORHOOD_EDGE_COLOR := Color(0.24, 0.36, 0.20)
-const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
+const RAMP_ASPHALT_COLOR := Color(0.12, 0.13, 0.15)
+const RAMP_ASPHALT_ALT := Color(0.145, 0.155, 0.175)
+const RAMP_SHOULDER_COLOR := Color(0.23, 0.24, 0.24)
+const RAMP_EDGE_COLOR := Color(0.95, 0.94, 0.88, 0.92)
+const RAMP_GUIDE_COLOR := Color(1.0, 0.78, 0.24, 0.90)
+const RAMP_TEXTURE_COLOR := Color(0.04, 0.045, 0.055, 0.26)
+const RAMP_TERRAIN_PADDING := 72.0
 const HIGHWAY_ASPHALT_COLOR := Color(0.115, 0.125, 0.145)
 const HIGHWAY_ASPHALT_ALT := Color(0.135, 0.145, 0.165)
 const HIGHWAY_TEXTURE_COLOR := Color(0.04, 0.045, 0.055, 0.22)
@@ -436,10 +442,13 @@ func _update_car_visual() -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.085, 0.08), true)
 
+	# Fill the space around the ramps before drawing the neighborhood/highway
+	# on top, so there is never a black void between map modules.
+	_draw_connector_surroundings()
 	_draw_neighborhood()
 
 	_draw_highway_surroundings()
-	_draw_world_rect(MAP.CONNECTOR_ONE_RECT, CONNECTOR_COLOR)
+	_draw_connector_one()
 	_draw_highway()
 	_draw_city_connector()
 
@@ -600,21 +609,144 @@ func _draw_neighborhood_border_with_gate() -> void:
 	)
 
 
-func _draw_city_connector() -> void:
-	# The city off-ramp starts at the existing highway-sized width and
-	# widens linearly until its end matches one full city block.
-	var rect := _connector_two_rect()
-	var center_y := rect.get_center().y
-	var start_half_width := rect.size.y * 0.5
-	var end_half_width := float(MAP.CITY_CELL) * 0.5
+func _draw_connector_surroundings() -> void:
+	# Reuse the highway terrain language around both ramps. Drawn first so
+	# neighborhood/highway/city geometry can naturally cover the patch edges.
+	_draw_terrain_patch(MAP.CONNECTOR_ONE_RECT.grow(RAMP_TERRAIN_PADDING), 1)
+	_draw_terrain_patch(_connector_two_rect().grow(RAMP_TERRAIN_PADDING), 2)
 
-	var points := PackedVector2Array([
-		_world_to_screen(Vector2(rect.position.x, center_y - start_half_width)),
-		_world_to_screen(Vector2(rect.end.x, center_y - end_half_width)),
-		_world_to_screen(Vector2(rect.end.x, center_y + end_half_width)),
-		_world_to_screen(Vector2(rect.position.x, center_y + start_half_width)),
+
+func _draw_terrain_patch(rect: Rect2, phase: int) -> void:
+	var columns := int(ceil(rect.size.x / HIGHWAY_TERRAIN_CELL))
+	var rows := int(ceil(rect.size.y / HIGHWAY_TERRAIN_CELL))
+
+	for row in range(rows):
+		for column in range(columns):
+			var cell_position := rect.position + Vector2(
+				float(column) * HIGHWAY_TERRAIN_CELL,
+				float(row) * HIGHWAY_TERRAIN_CELL
+			)
+			var cell_size := Vector2(
+				minf(HIGHWAY_TERRAIN_CELL, rect.end.x - cell_position.x),
+				minf(HIGHWAY_TERRAIN_CELL, rect.end.y - cell_position.y)
+			)
+			var color := HIGHWAY_TERRAIN_COLOR
+			if (row + column + phase) % 2 == 1:
+				color = HIGHWAY_TERRAIN_ALT
+			_draw_world_rect(Rect2(cell_position, cell_size), color)
+
+	var x := rect.position.x + HIGHWAY_TERRAIN_CELL
+	while x < rect.end.x:
+		_draw_world_line(
+			Vector2(x, rect.position.y),
+			Vector2(x, rect.end.y),
+			HIGHWAY_TERRAIN_GRID_COLOR,
+			0.8
+		)
+		x += HIGHWAY_TERRAIN_CELL
+
+	var y := rect.position.y + HIGHWAY_TERRAIN_CELL
+	while y < rect.end.y:
+		_draw_world_line(
+			Vector2(rect.position.x, y),
+			Vector2(rect.end.x, y),
+			HIGHWAY_TERRAIN_GRID_COLOR,
+			0.8
+		)
+		y += HIGHWAY_TERRAIN_CELL
+
+
+func _draw_connector_one() -> void:
+	# On-ramp: narrow where it leaves the neighborhood, then opens into the
+	# highway merge area.
+	var shoulder := _connector_one_points(2.5)
+	var asphalt := _connector_one_points(0.0)
+	_draw_world_polygon(shoulder, RAMP_SHOULDER_COLOR)
+	_draw_world_polygon(asphalt, RAMP_ASPHALT_COLOR)
+	_draw_ramp_edges(asphalt, true)
+	_draw_ramp_texture(asphalt, 0)
+
+
+func _draw_city_connector() -> void:
+	# Off-ramp: starts as a highway lane and fans out toward the city street.
+	var shoulder := _connector_two_points(2.5)
+	var asphalt := _connector_two_points(0.0)
+	_draw_world_polygon(shoulder, RAMP_SHOULDER_COLOR)
+	_draw_world_polygon(asphalt, RAMP_ASPHALT_ALT)
+	_draw_ramp_edges(asphalt, false)
+	_draw_ramp_texture(asphalt, 1)
+
+
+func _connector_one_points(extra_width: float = 0.0) -> PackedVector2Array:
+	var rect := MAP.CONNECTOR_ONE_RECT
+	var start_center_y := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).y
+	var end_center_y := MAP.highway_entry_point().y
+	var start_half_width := NEIGHBORHOOD_ROAD_WIDTH * 0.5 + extra_width
+	var end_half_width := 14.0 + extra_width
+
+	return PackedVector2Array([
+		Vector2(rect.position.x, start_center_y - start_half_width),
+		Vector2(rect.end.x, end_center_y - end_half_width),
+		Vector2(rect.end.x, end_center_y + end_half_width),
+		Vector2(rect.position.x, start_center_y + start_half_width),
 	])
-	draw_colored_polygon(points, CONNECTOR_COLOR)
+
+
+func _connector_two_points(extra_width: float = 0.0) -> PackedVector2Array:
+	var rect := _connector_two_rect()
+	var start_center_y := _highway_cell_center(
+		MAP.HIGHWAY_COLUMNS - 1,
+		MAP.HIGHWAY_EXIT_LANE
+	).y
+	var end_center_y := _city_entry_point().y
+	var start_half_width := MAP.HIGHWAY_LANE_WIDTH * 0.5 + extra_width
+	var end_half_width := 22.0 + extra_width
+
+	return PackedVector2Array([
+		Vector2(rect.position.x, start_center_y - start_half_width),
+		Vector2(rect.end.x, end_center_y - end_half_width),
+		Vector2(rect.end.x, end_center_y + end_half_width),
+		Vector2(rect.position.x, start_center_y + start_half_width),
+	])
+
+
+func _draw_ramp_edges(points: PackedVector2Array, on_ramp: bool) -> void:
+	if points.size() != 4:
+		return
+
+	# One warm guide edge and one neutral edge make the ramps read as dedicated
+	# merge/diverge lanes rather than another generic road rectangle.
+	var upper_color := RAMP_GUIDE_COLOR if on_ramp else RAMP_EDGE_COLOR
+	var lower_color := RAMP_EDGE_COLOR if on_ramp else RAMP_GUIDE_COLOR
+
+	_draw_world_line(points[0], points[1], upper_color, 1.15)
+	_draw_world_line(points[3], points[2], lower_color, 1.15)
+
+	# Short dashed merge/diverge cue near the highway mouth.
+	var cue_start := points[0].lerp(points[1], 0.62)
+	var cue_end := points[0].lerp(points[1], 0.88)
+	if not on_ramp:
+		cue_start = points[3].lerp(points[2], 0.12)
+		cue_end = points[3].lerp(points[2], 0.38)
+	_draw_world_line(cue_start, cue_end, RAMP_EDGE_COLOR, 0.85)
+
+
+func _draw_ramp_texture(points: PackedVector2Array, phase: int) -> void:
+	if points.size() != 4:
+		return
+
+	for index in range(4):
+		var t := 0.24 + float(index) * 0.18
+		var top := points[0].lerp(points[1], t)
+		var bottom := points[3].lerp(points[2], t)
+		var center := top.lerp(bottom, 0.5)
+		var offset := float(((index + phase) % 3) - 1) * 0.9
+		_draw_world_line(
+			center + Vector2(-3.5, offset),
+			center + Vector2(3.5, offset),
+			RAMP_TEXTURE_COLOR,
+			0.55
+		)
 
 
 func _draw_highway_surroundings() -> void:
@@ -823,6 +955,13 @@ func _draw_destination() -> void:
 func _draw_map_outline() -> void:
 	var rect := Rect2(Vector2.ZERO, Vector2(MAP.MAP_SIZE))
 	_draw_world_rect_outline(rect, Color(0.50, 0.50, 0.47, 0.25), 1.0)
+
+
+func _draw_world_polygon(world_points: PackedVector2Array, color: Color) -> void:
+	var screen_points := PackedVector2Array()
+	for point in world_points:
+		screen_points.append(_world_to_screen(point))
+	draw_colored_polygon(screen_points, color)
 
 
 func _draw_world_rect(rect: Rect2, color: Color) -> void:
