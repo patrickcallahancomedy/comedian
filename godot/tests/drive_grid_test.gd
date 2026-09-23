@@ -57,53 +57,21 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	var drive = scene.get_node("CityMap")
-	var neighborhood_tiles = scene.get_node("NeighborhoodTiles")
-	var neighborhood_decor = scene.get_node("NeighborhoodDecor")
 	var navigation = scene.get_node("Navigation")
 
 	_check(drive != null, "Grid controller missing")
-	_check(neighborhood_tiles != null, "Neighborhood TileMapLayer missing")
-	if neighborhood_tiles != null:
-		_check(neighborhood_tiles.tile_set != null, "Neighborhood TileMapLayer has no TileSet")
-		_check(
-			neighborhood_tiles.tile_set.get_source_count() == 1,
-			"Neighborhood TileSet does not contain exactly one atlas source"
-		)
-		_check(
-			neighborhood_tiles.get_used_cells().size() == 16,
-			"Neighborhood TileMapLayer is not filling the 4x4 driving grid"
-		)
-		_check(
-			neighborhood_tiles.get_cell_source_id(Vector2i.ZERO) == 0,
-			"Neighborhood first cell is not using the atlas source"
-		)
-		_check(
-			neighborhood_tiles.get_cell_atlas_coords(Vector2i.ZERO) == Vector2i.ZERO,
-			"Neighborhood first cell is not using the intersection atlas tile"
-		)
-		_check(neighborhood_tiles.is_visible_in_tree(), "Neighborhood TileMapLayer is not visible")
-		_check(
-			neighborhood_tiles.z_index > drive.z_index,
-			"Neighborhood TileMapLayer is not above the green debug map"
-		)
-
-		# Force the same layout/sync sequence used by the live scene, then verify
-		# that the player's starting tile is centered under the fixed car.
-		drive._refresh_layout()
-		neighborhood_tiles._sync_to_drive_camera()
-		var start_tile_screen: Vector2 = neighborhood_tiles.to_global(
-			neighborhood_tiles.map_to_local(MAP.NEIGHBORHOOD_START)
-		)
-		_check(
-			start_tile_screen.distance_to(drive.player_screen_center) < 1.0,
-			"Neighborhood TileMapLayer is not aligned to the drive camera"
-		)
-	_check(neighborhood_decor != null, "Neighborhood Sprite2D decor missing")
-	if neighborhood_decor != null:
-		_check(
-			neighborhood_decor.get_child_count() == 12,
-			"Neighborhood decor does not contain the twelve house sprites"
-		)
+	_check(
+		scene.get_node_or_null("NeighborhoodTiles") == null,
+		"Legacy NeighborhoodTiles node should be removed"
+	)
+	_check(
+		scene.get_node_or_null("NeighborhoodDecor") == null,
+		"Legacy NeighborhoodDecor node should be removed"
+	)
+	_check(
+		drive.NEIGHBORHOOD_ROAD_WIDTH > 0.0,
+		"Basic neighborhood road styling is missing"
+	)
 	_check(navigation != null, "Navigation display missing")
 	if navigation != null:
 		_check(navigation.get_instruction() == "↑  ROUTE READY", "Navigation is not ready before start")
