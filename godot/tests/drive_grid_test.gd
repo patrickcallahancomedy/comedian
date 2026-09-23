@@ -178,16 +178,12 @@ func _run() -> void:
 		"Final parking stop is not shifted toward the venue curb"
 	)
 	_check(
-		venue_rect.end.x < destination_center.x,
-		"Venue is not in the block beside the parking destination"
+		venue_rect.position.x > destination_center.x,
+		"Venue should sit outside the road beside the parked car"
 	)
 	_check(
-		venue_rect.end.y < destination_center.y,
-		"Venue is not positioned on the adjacent corner block"
-	)
-	_check(
-		drive._city_rect().encloses(venue_rect),
-		"Venue should stay inside the visible city block"
+		venue_rect.position.x - parking_stop.x < 14.0,
+		"Venue is too far from the parked car to read on mobile"
 	)
 
 	_check(navigation != null, "Navigation display missing")
