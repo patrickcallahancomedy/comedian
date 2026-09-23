@@ -85,7 +85,7 @@ func _ready() -> void:
 
 
 func _refresh_layout() -> void:
-	player_screen_center = Vector2(size.x * 0.5, minf(size.y * 0.46, 360.0))
+	player_screen_center = Vector2(size.x * 0.5, size.y * 0.46)
 	car_base_position = player_screen_center - player_car.size * 0.5
 	_update_car_visual()
 	queue_redraw()
