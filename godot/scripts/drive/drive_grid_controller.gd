@@ -28,6 +28,10 @@ const NEIGHBORHOOD_ROOF_COLOR := Color(0.36, 0.24, 0.20)
 const NEIGHBORHOOD_ROAD_WIDTH := 12.0
 const NEIGHBORHOOD_SIDEWALK_WIDTH := 18.0
 const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 2
+const NEIGHBORHOOD_EDGE_COLOR := Color(0.20, 0.36, 0.18)
+const NEIGHBORHOOD_FENCE_COLOR := Color(0.48, 0.36, 0.24)
+const NEIGHBORHOOD_TREE_COLOR := Color(0.12, 0.29, 0.12)
+const NEIGHBORHOOD_EDGE_OFFSET := 14.0
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
 const HIGHWAY_COLOR := Color(0.72, 0.42, 0.58)
 const CITY_COLOR := Color(0.42, 0.44, 0.48)
@@ -440,64 +444,55 @@ func _draw() -> void:
 
 
 func _draw_neighborhood() -> void:
-	# The playable neighborhood is still a 4x4 logical grid, but the visual
-	# neighborhood extends beyond it so the edge of the game board never shows
-	# as empty black space when the fixed car reaches a perimeter street.
-	var logical_rect := MAP.NEIGHBORHOOD_RECT
+	# The logical 4x4 neighborhood stays unchanged. The extra visual area now
+	# reads as a boundary instead of more drivable streets.
+	var rect := MAP.NEIGHBORHOOD_RECT
 	var padding := float(MAP.NEIGHBORHOOD_CELL * NEIGHBORHOOD_VISUAL_PADDING_CELLS)
-	var visual_rect := logical_rect.grow(padding)
+	var visual_rect := rect.grow(padding)
 
-	_draw_world_rect(visual_rect, NEIGHBORHOOD_COLOR)
+	# Darker outer landscaping clearly separates the playable neighborhood.
+	_draw_world_rect(visual_rect, NEIGHBORHOOD_EDGE_COLOR)
+	_draw_world_rect(rect, NEIGHBORHOOD_COLOR)
 
-	var first_index := -NEIGHBORHOOD_VISUAL_PADDING_CELLS
-	var last_index := MAP.NEIGHBORHOOD_SIZE.x + NEIGHBORHOOD_VISUAL_PADDING_CELLS
-
-	# Sidewalks.
-	for x_index in range(first_index, last_index):
-		var center_x := logical_rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+	# Sidewalks and roads exist only inside the playable rectangle.
+	for x_index in range(MAP.NEIGHBORHOOD_SIZE.x):
+		var center_x := rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
 		_draw_world_rect(
 			Rect2(
-				Vector2(center_x - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5, visual_rect.position.y),
-				Vector2(NEIGHBORHOOD_SIDEWALK_WIDTH, visual_rect.size.y)
+				Vector2(center_x - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5, rect.position.y),
+				Vector2(NEIGHBORHOOD_SIDEWALK_WIDTH, rect.size.y)
 			),
 			NEIGHBORHOOD_SIDEWALK_COLOR
 		)
-
-	for y_index in range(first_index, last_index):
-		var center_y := logical_rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
 		_draw_world_rect(
 			Rect2(
-				Vector2(visual_rect.position.x, center_y - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5),
-				Vector2(visual_rect.size.x, NEIGHBORHOOD_SIDEWALK_WIDTH)
-			),
-			NEIGHBORHOOD_SIDEWALK_COLOR
-		)
-
-	# Roads.
-	for x_index in range(first_index, last_index):
-		var center_x := logical_rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
-		_draw_world_rect(
-			Rect2(
-				Vector2(center_x - NEIGHBORHOOD_ROAD_WIDTH * 0.5, visual_rect.position.y),
-				Vector2(NEIGHBORHOOD_ROAD_WIDTH, visual_rect.size.y)
+				Vector2(center_x - NEIGHBORHOOD_ROAD_WIDTH * 0.5, rect.position.y),
+				Vector2(NEIGHBORHOOD_ROAD_WIDTH, rect.size.y)
 			),
 			NEIGHBORHOOD_ROAD_COLOR
 		)
 
-	for y_index in range(first_index, last_index):
-		var center_y := logical_rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+	for y_index in range(MAP.NEIGHBORHOOD_SIZE.y):
+		var center_y := rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
 		_draw_world_rect(
 			Rect2(
-				Vector2(visual_rect.position.x, center_y - NEIGHBORHOOD_ROAD_WIDTH * 0.5),
-				Vector2(visual_rect.size.x, NEIGHBORHOOD_ROAD_WIDTH)
+				Vector2(rect.position.x, center_y - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5),
+				Vector2(rect.size.x, NEIGHBORHOOD_SIDEWALK_WIDTH)
+			),
+			NEIGHBORHOOD_SIDEWALK_COLOR
+		)
+		_draw_world_rect(
+			Rect2(
+				Vector2(rect.position.x, center_y - NEIGHBORHOOD_ROAD_WIDTH * 0.5),
+				Vector2(rect.size.x, NEIGHBORHOOD_ROAD_WIDTH)
 			),
 			NEIGHBORHOOD_ROAD_COLOR
 		)
 
-	# Simple house blocks in the grass between streets.
-	for lot_y in range(first_index, last_index - 1):
-		for lot_x in range(first_index, last_index - 1):
-			var lot_center := logical_rect.position + Vector2(
+	# Simple houses stay inside the playable neighborhood.
+	for lot_y in range(3):
+		for lot_x in range(3):
+			var lot_center := rect.position + Vector2(
 				float(lot_x + 1) * MAP.NEIGHBORHOOD_CELL,
 				float(lot_y + 1) * MAP.NEIGHBORHOOD_CELL
 			)
@@ -513,6 +508,102 @@ func _draw_neighborhood() -> void:
 				),
 				NEIGHBORHOOD_ROOF_COLOR
 			)
+
+	_draw_neighborhood_boundary(visual_rect)
+
+
+func _draw_neighborhood_boundary(visual_rect: Rect2) -> void:
+	var rect := MAP.NEIGHBORHOOD_RECT
+	var gate_cell := MAP.NEIGHBORHOOD_GATE
+	var gate_side := MAP.NEIGHBORHOOD_GATE_SIDE
+	var fence_top := rect.position.y - NEIGHBORHOOD_EDGE_OFFSET
+	var fence_bottom := rect.end.y + NEIGHBORHOOD_EDGE_OFFSET
+	var fence_left := rect.position.x - NEIGHBORHOOD_EDGE_OFFSET
+	var fence_right := rect.end.x + NEIGHBORHOOD_EDGE_OFFSET
+
+	# Fence / hedge line around the outside. The real exit is left open.
+	_draw_world_line(
+		Vector2(visual_rect.position.x + 8.0, fence_top),
+		Vector2(visual_rect.end.x - 8.0, fence_top),
+		NEIGHBORHOOD_FENCE_COLOR,
+		3.0
+	)
+	_draw_world_line(
+		Vector2(visual_rect.position.x + 8.0, fence_bottom),
+		Vector2(visual_rect.end.x - 8.0, fence_bottom),
+		NEIGHBORHOOD_FENCE_COLOR,
+		3.0
+	)
+	_draw_world_line(
+		Vector2(fence_left, visual_rect.position.y + 8.0),
+		Vector2(fence_left, visual_rect.end.y - 8.0),
+		NEIGHBORHOOD_FENCE_COLOR,
+		3.0
+	)
+
+	var gate_top := rect.position.y + gate_cell.y * MAP.NEIGHBORHOOD_CELL
+	var gate_bottom := gate_top + MAP.NEIGHBORHOOD_CELL
+	if gate_side == Vector2i.RIGHT:
+		_draw_world_line(
+			Vector2(fence_right, visual_rect.position.y + 8.0),
+			Vector2(fence_right, gate_top - 5.0),
+			NEIGHBORHOOD_FENCE_COLOR,
+			3.0
+		)
+		_draw_world_line(
+			Vector2(fence_right, gate_bottom + 5.0),
+			Vector2(fence_right, visual_rect.end.y - 8.0),
+			NEIGHBORHOOD_FENCE_COLOR,
+			3.0
+		)
+	else:
+		_draw_world_line(
+			Vector2(fence_right, visual_rect.position.y + 8.0),
+			Vector2(fence_right, visual_rect.end.y - 8.0),
+			NEIGHBORHOOD_FENCE_COLOR,
+			3.0
+		)
+
+	# Close every perimeter road visually except the actual neighborhood exit.
+	for x_index in range(MAP.NEIGHBORHOOD_SIZE.x):
+		var center_x := rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+		_draw_dead_end_cap(Vector2(center_x, rect.position.y), Vector2.UP)
+		_draw_dead_end_cap(Vector2(center_x, rect.end.y), Vector2.DOWN)
+
+	for y_index in range(MAP.NEIGHBORHOOD_SIZE.y):
+		var center_y := rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+		_draw_dead_end_cap(Vector2(rect.position.x, center_y), Vector2.LEFT)
+		if not (gate_side == Vector2i.RIGHT and gate_cell.y == y_index):
+			_draw_dead_end_cap(Vector2(rect.end.x, center_y), Vector2.RIGHT)
+
+	# Sparse landscaping makes the boundary feel physical without adding assets.
+	for index in range(4):
+		var along_x := rect.position.x + (float(index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+		var along_y := rect.position.y + (float(index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+		_draw_world_circle(Vector2(along_x, fence_top - 10.0), 4.5, NEIGHBORHOOD_TREE_COLOR)
+		_draw_world_circle(Vector2(along_x, fence_bottom + 10.0), 4.5, NEIGHBORHOOD_TREE_COLOR)
+		_draw_world_circle(Vector2(fence_left - 10.0, along_y), 4.5, NEIGHBORHOOD_TREE_COLOR)
+		if not (gate_side == Vector2i.RIGHT and gate_cell.y == index):
+			_draw_world_circle(Vector2(fence_right + 10.0, along_y), 4.5, NEIGHBORHOOD_TREE_COLOR)
+
+
+func _draw_dead_end_cap(center: Vector2, direction: Vector2) -> void:
+	var half_width := NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5
+	var tangent := Vector2(-direction.y, direction.x)
+	_draw_world_line(
+		center - tangent * half_width,
+		center + tangent * half_width,
+		NEIGHBORHOOD_SIDEWALK_COLOR,
+		4.0
+	)
+
+
+func _draw_world_circle(center: Vector2, radius: float, color: Color) -> void:
+	draw_circle(
+		_world_to_screen(center),
+		radius * WORLD_ZOOM,
+		color
+	)
 
 
 func _draw_grid_zone(rect: Rect2, cell_size: int, color: Color) -> void:
