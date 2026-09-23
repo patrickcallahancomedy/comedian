@@ -1,0 +1,89 @@
+name: Capture Alpha Screenshot V2
+
+on:
+  push:
+    branches:
+      - godot-alpha
+    paths:
+      - ".github/workflows/capture-alpha-v2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+
+      - name: Capture deployed alpha with software WebGL
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          mkdir -p debug
+          cat > /tmp/capture.mjs <<'EOF'
+          import { chromium } from "playwright";
+
+          const browser = await chromium.launch({
+            headless: false,
+            args: [
+              "--use-gl=angle",
+              "--use-angle=swiftshader",
+              "--enable-unsafe-swiftshader",
+              "--enable-webgl",
+              "--ignore-gpu-blocklist",
+              "--disable-gpu-sandbox"
+            ]
+          });
+
+          const context = await browser.newContext({
+            viewport: { width: 430, height: 932 },
+            deviceScaleFactor: 1,
+            isMobile: true,
+            hasTouch: true
+          });
+
+          const page = await context.newPage();
+
+          await page.goto(
+            "https://patrickcallahancomedy.github.io/comedian/alpha/?build=dfc4b8e4&capture=2",
+            { waitUntil: "domcontentloaded", timeout: 120000 }
+          );
+
+          await page.waitForTimeout(25000);
+
+          const start = page.getByText("START", { exact: true });
+          if (await start.count()) {
+            await start.first().click().catch(() => {});
+            await page.waitForTimeout(2500);
+          }
+
+          await page.screenshot({
+            path: "debug/alpha-neighborhood.png",
+            fullPage: false
+          });
+
+          await browser.close();
+          EOF
+
+          xvfb-run -a node /tmp/capture.mjs
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha-neighborhood-screenshot-v2
+          path: debug/alpha-neighborhood.png
+          if-no-files-found: error
+          retention-days: 7
