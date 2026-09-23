@@ -8,12 +8,12 @@ extends Label
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
 const ARROW_COLOR := Color(0.96, 0.95, 0.90, 0.92)
-const ARROW_OUTLINE := Color(0.04, 0.05, 0.04, 0.78)
+const ARROW_OUTLINE := Color(0.04, 0.05, 0.04, 0.55)
 const ARROW_LENGTH := 56.0
 const ARROW_SHAFT_HALF := 5.5
 const ARROW_HEAD_LENGTH := 18.0
 const ARROW_HEAD_HALF_HEIGHT := 15.0
-const ARROW_VERTICAL_OFFSET := -72.0
+const ARROW_VERTICAL_OFFSET := -36.0
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -279,10 +279,10 @@ func _draw_arrow(center: Vector2, turn: String) -> void:
 	var outer := _arrow_polygon(
 		center,
 		horizontal,
-		ARROW_LENGTH + 8.0,
-		ARROW_SHAFT_HALF + 3.0,
-		ARROW_HEAD_LENGTH + 4.0,
-		ARROW_HEAD_HALF_HEIGHT + 4.0
+		ARROW_LENGTH + 4.0,
+		ARROW_SHAFT_HALF + 1.5,
+		ARROW_HEAD_LENGTH + 2.0,
+		ARROW_HEAD_HALF_HEIGHT + 2.0
 	)
 	var inner := _arrow_polygon(
 		center,
