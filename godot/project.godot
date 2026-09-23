@@ -27,6 +27,7 @@ SceneRouter="*res://systems/scene_router.gd"
 window/size/viewport_width=430
 window/size/viewport_height=764
 window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [physics]
 
