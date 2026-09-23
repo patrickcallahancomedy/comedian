@@ -34,7 +34,16 @@ jobs:
           cat > /tmp/capture.mjs <<'EOF'
           import { chromium } from "playwright";
 
-          const browser = await chromium.launch({ headless: true });
+          const browser = await chromium.launch({
+            headless: true,
+            args: [
+              "--use-gl=angle",
+              "--use-angle=swiftshader",
+              "--enable-webgl",
+              "--ignore-gpu-blocklist",
+              "--disable-gpu-sandbox"
+            ]
+          });
           const page = await browser.newPage({
             viewport: { width: 430, height: 932 },
             deviceScaleFactor: 1,
