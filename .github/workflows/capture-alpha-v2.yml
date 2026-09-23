@@ -109,6 +109,28 @@ jobs:
             fullPage: false
           });
 
+          // Reload and take the correct route so QA also reaches the highway.
+          await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
+          await page.waitForTimeout(12000);
+          await page.touchscreen.tap(215, 884);
+
+          // Turn right for the planned neighborhood route, then verify the
+          // completed marker clears before continuing toward the highway.
+          await page.waitForTimeout(1600);
+          await page.touchscreen.tap(335, 835);
+          await page.waitForTimeout(900);
+          await page.screenshot({
+            path: "debug/alpha-correct-turn.png",
+            fullPage: false
+          });
+
+          // The same route feeds directly through the connector into the highway.
+          await page.waitForTimeout(4500);
+          await page.screenshot({
+            path: "debug/alpha-highway.png",
+            fullPage: false
+          });
+
           await browser.close();
           EOF
 
@@ -121,5 +143,7 @@ jobs:
           path: |
             debug/alpha-first-turn.png
             debug/alpha-reroute.png
+            debug/alpha-correct-turn.png
+            debug/alpha-highway.png
           if-no-files-found: error
           retention-days: 7
