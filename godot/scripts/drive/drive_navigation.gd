@@ -7,23 +7,32 @@ extends Label
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ARROW_COLOR := Color(0.96, 0.95, 0.90, 0.92)
-const ARROW_OUTLINE := Color(0.04, 0.05, 0.04, 0.55)
-const ARROW_LENGTH := 48.0
-const ARROW_SHAFT_HALF := 4.5
-const ARROW_HEAD_LENGTH := 15.0
-const ARROW_HEAD_HALF_HEIGHT := 12.0
-const ARROW_VERTICAL_OFFSET := -42.0
+const MARKER_BG := Color(0.055, 0.062, 0.072, 0.94)
+const MARKER_INNER := Color(0.095, 0.105, 0.12, 0.96)
+const MARKER_BORDER := Color(1.0, 1.0, 1.0, 0.16)
+const MARKER_ACCENT := Color(1.0, 0.82, 0.28, 0.96)
+const MARKER_ICON := Color(0.985, 0.985, 0.97, 1.0)
+const MARKER_SHADOW := Color(0.0, 0.0, 0.0, 0.32)
+
+const MARKER_RADIUS := 27.0
+const MARKER_VERTICAL_OFFSET := -66.0
+const MARKER_POINTER_HEIGHT := 9.0
+const MARKER_POINTER_HALF_WIDTH := 7.0
+const CHEVRON_WIDTH := 5.0
+const CHEVRON_HALF_WIDTH := 8.5
+const CHEVRON_HALF_HEIGHT := 12.0
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
+
+var ui_time := 0.0
 
 
 func _ready() -> void:
 	# Reuse the existing Navigation node as a full-screen, non-interactive
 	# drawing layer. No new embedded assets are needed.
 	text = ""
-	z_index = 2
+	z_index = 4
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	offset_left = 0.0
@@ -33,7 +42,8 @@ func _ready() -> void:
 	queue_redraw()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	ui_time += delta
 	_update_status_visibility()
 	queue_redraw()
 
@@ -80,9 +90,10 @@ func _draw() -> void:
 		_:
 			return
 
-	# Keep the marker inside the road intersection but above the centered car.
-	_draw_arrow(
-		drive._world_to_screen(world_position) + Vector2(0.0, ARROW_VERTICAL_OFFSET),
+	# Modern mobile-game waypoint: a compact floating badge, visually tied
+	# to the exact intersection by a small pointer.
+	_draw_turn_marker(
+		drive._world_to_screen(world_position),
 		turn
 	)
 
@@ -271,50 +282,72 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 	)
 
 
-func _draw_arrow(center: Vector2, turn: String) -> void:
-	var horizontal := 1.0 if turn == "right" else -1.0
-
-	# Use a filled road-marker shape instead of a thin HUD-style icon.
-	# The dark outer shape is only a narrow readability edge.
-	var outer := _arrow_polygon(
-		center,
-		horizontal,
-		ARROW_LENGTH + 3.0,
-		ARROW_SHAFT_HALF + 1.0,
-		ARROW_HEAD_LENGTH + 1.5,
-		ARROW_HEAD_HALF_HEIGHT + 1.5
+func _draw_turn_marker(intersection: Vector2, turn: String) -> void:
+	var pulse := 1.0 + sin(ui_time * 3.0) * 0.035
+	var center := intersection + Vector2(
+		0.0,
+		MARKER_VERTICAL_OFFSET + sin(ui_time * 2.2) * 1.5
 	)
-	var inner := _arrow_polygon(
+	var radius := MARKER_RADIUS * pulse
+
+	# Soft stacked shadow gives the marker depth without looking like a button.
+	draw_circle(center + Vector2(0.0, 5.0), radius + 3.0, MARKER_SHADOW)
+	draw_circle(center, radius + 1.5, MARKER_BORDER)
+	draw_circle(center, radius, MARKER_BG)
+	draw_circle(center, radius - 4.0, MARKER_INNER)
+
+	# Thin accent arc reads like current navigation state, not decoration.
+	draw_arc(
 		center,
-		horizontal,
-		ARROW_LENGTH,
-		ARROW_SHAFT_HALF,
-		ARROW_HEAD_LENGTH,
-		ARROW_HEAD_HALF_HEIGHT
+		radius - 1.0,
+		-PI * 0.78,
+		PI * 0.78,
+		28,
+		MARKER_ACCENT,
+		2.5,
+		true
 	)
 
-	draw_colored_polygon(outer, ARROW_OUTLINE)
-	draw_colored_polygon(inner, ARROW_COLOR)
-
-
-func _arrow_polygon(
-	center: Vector2,
-	horizontal: float,
-	length: float,
-	shaft_half: float,
-	head_length: float,
-	head_half_height: float
-) -> PackedVector2Array:
-	var tail_x := -length * 0.5
-	var tip_x := length * 0.5
-	var head_base_x := tip_x - head_length
-
-	return PackedVector2Array([
-		center + Vector2(tail_x * horizontal, -shaft_half),
-		center + Vector2(head_base_x * horizontal, -shaft_half),
-		center + Vector2(head_base_x * horizontal, -head_half_height),
-		center + Vector2(tip_x * horizontal, 0.0),
-		center + Vector2(head_base_x * horizontal, head_half_height),
-		center + Vector2(head_base_x * horizontal, shaft_half),
-		center + Vector2(tail_x * horizontal, shaft_half),
+	# Small pointer anchors the floating UI to the actual intersection.
+	var pointer_top := center + Vector2(0.0, radius - 1.0)
+	var pointer_tip := intersection + Vector2(0.0, -5.0)
+	var pointer := PackedVector2Array([
+		pointer_top + Vector2(-MARKER_POINTER_HALF_WIDTH, 0.0),
+		pointer_top + Vector2(MARKER_POINTER_HALF_WIDTH, 0.0),
+		pointer_tip,
 	])
+	draw_colored_polygon(pointer, MARKER_BG)
+	draw_line(
+		pointer_top + Vector2(-MARKER_POINTER_HALF_WIDTH, 0.0),
+		pointer_tip,
+		MARKER_BORDER,
+		1.5,
+		true
+	)
+	draw_line(
+		pointer_tip,
+		pointer_top + Vector2(MARKER_POINTER_HALF_WIDTH, 0.0),
+		MARKER_BORDER,
+		1.5,
+		true
+	)
+
+	_draw_chevron(center, turn)
+
+
+func _draw_chevron(center: Vector2, turn: String) -> void:
+	var direction := 1.0 if turn == "right" else -1.0
+	var tip := center + Vector2(CHEVRON_HALF_WIDTH * direction, 0.0)
+	var upper := center + Vector2(-CHEVRON_HALF_WIDTH * direction, -CHEVRON_HALF_HEIGHT)
+	var lower := center + Vector2(-CHEVRON_HALF_WIDTH * direction, CHEVRON_HALF_HEIGHT)
+
+	# Layer a dark under-stroke beneath the bright chevron for crisp readability.
+	draw_line(upper, tip, Color(0.0, 0.0, 0.0, 0.34), CHEVRON_WIDTH + 3.0, true)
+	draw_line(tip, lower, Color(0.0, 0.0, 0.0, 0.34), CHEVRON_WIDTH + 3.0, true)
+	draw_line(upper, tip, MARKER_ICON, CHEVRON_WIDTH, true)
+	draw_line(tip, lower, MARKER_ICON, CHEVRON_WIDTH, true)
+
+	# Fake round line caps so the icon feels like polished UI, not debug drawing.
+	draw_circle(upper, CHEVRON_WIDTH * 0.5, MARKER_ICON)
+	draw_circle(tip, CHEVRON_WIDTH * 0.5, MARKER_ICON)
+	draw_circle(lower, CHEVRON_WIDTH * 0.5, MARKER_ICON)
