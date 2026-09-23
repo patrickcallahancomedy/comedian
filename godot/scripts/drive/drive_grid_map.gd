@@ -75,6 +75,57 @@ static func gate_faces_outside(
 	return false
 
 
+static func neighborhood_connections(cell: Vector2i) -> Array[Vector2i]:
+	# The neighborhood is a 4x4 road graph:
+	# - four corner cells are turns
+	# - non-corner perimeter cells are T-junctions that connect the outer loop
+	#   to the inner grid
+	# - the four inner cells are four-way intersections
+	# - the fixed gate cell also opens outward to the connector
+	var connections: Array[Vector2i] = []
+
+	var max_x := NEIGHBORHOOD_SIZE.x - 1
+	var max_y := NEIGHBORHOOD_SIZE.y - 1
+
+	if cell == Vector2i(0, 0):
+		connections = [Vector2i.RIGHT, Vector2i.DOWN]
+	elif cell == Vector2i(max_x, 0):
+		connections = [Vector2i.LEFT, Vector2i.DOWN]
+	elif cell == Vector2i(0, max_y):
+		connections = [Vector2i.RIGHT, Vector2i.UP]
+	elif cell == Vector2i(max_x, max_y):
+		connections = [Vector2i.LEFT, Vector2i.UP]
+	elif cell.y == 0:
+		connections = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.DOWN]
+	elif cell.y == max_y:
+		connections = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP]
+	elif cell.x == 0:
+		connections = [Vector2i.UP, Vector2i.DOWN, Vector2i.RIGHT]
+	elif cell.x == max_x:
+		connections = [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT]
+	else:
+		connections = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+
+	if cell == NEIGHBORHOOD_GATE and not connections.has(NEIGHBORHOOD_GATE_SIDE):
+		connections.append(NEIGHBORHOOD_GATE_SIDE)
+
+	return connections
+
+
+static func neighborhood_has_connection(cell: Vector2i, direction: Vector2i) -> bool:
+	return neighborhood_connections(cell).has(direction)
+
+
+static func neighborhood_cells_connect(a: Vector2i, b: Vector2i) -> bool:
+	var delta := b - a
+	if abs(delta.x) + abs(delta.y) != 1:
+		return false
+	return (
+		neighborhood_has_connection(a, delta)
+		and neighborhood_has_connection(b, -delta)
+	)
+
+
 static func neighborhood_cell_center(cell: Vector2i) -> Vector2:
 	return NEIGHBORHOOD_RECT.position + Vector2(
 		(float(cell.x) + 0.5) * NEIGHBORHOOD_CELL,
