@@ -131,6 +131,23 @@ func _run() -> void:
 			"First turn arrow should point right"
 		)
 
+		# Taking the correct turn should clear the completed marker immediately.
+		navigation.displayed_hint = initial_hint
+		navigation.pending_hint = {}
+		navigation.marker_phase = "visible"
+		navigation.marker_alpha = 1.0
+		drive.neighborhood_cell = Vector2i(1, 1)
+		drive.heading = Vector2i.RIGHT
+		navigation._update_marker_state(0.01)
+		_check(
+			navigation.displayed_hint.is_empty(),
+			"Completed turn marker did not clear immediately"
+		)
+		_check(
+			is_zero_approx(navigation.marker_alpha),
+			"Completed turn marker remained visible after correct turn"
+		)
+
 		# Missing that turn should move the hint to the next best intersection.
 		drive.neighborhood_cell = Vector2i(1, 0)
 		drive.heading = Vector2i.UP

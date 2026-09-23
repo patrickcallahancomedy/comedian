@@ -112,23 +112,40 @@ func _update_marker_state(delta: float) -> void:
 	var displayed_key := _hint_key(displayed_hint)
 	var pending_key := _hint_key(pending_hint)
 
-	if target_key != displayed_key and target_key != pending_key:
-		pending_hint = target
-		if displayed_hint.is_empty():
-			_start_pending_hint()
-		elif _displayed_hint_is_current_cell():
-			# A correct turn changes the route while the car is still on the
-			# marked intersection. Clear that completed cue immediately so it
-			# never hangs under/behind the car.
-			displayed_hint = {}
-			marker_phase = "idle"
-			marker_phase_time = 0.0
-			marker_alpha = 0.0
-			marker_scale = 0.86
-			_start_pending_hint()
-		else:
-			marker_phase = "fade_out"
-			marker_phase_time = 0.0
+	if target_key != displayed_key:
+		# An empty target is meaningful: it means the turn was completed and
+		# there is no next turn to display yet. Do not mistake it for the
+		# normal empty pending queue.
+		if target_key.is_empty():
+			pending_hint = {}
+			if displayed_hint.is_empty():
+				_start_pending_hint()
+			elif _displayed_hint_is_current_cell():
+				# Correct turn: remove the completed cue immediately.
+				displayed_hint = {}
+				marker_phase = "idle"
+				marker_phase_time = 0.0
+				marker_alpha = 0.0
+				marker_scale = 0.86
+			else:
+				marker_phase = "fade_out"
+				marker_phase_time = 0.0
+		elif target_key != pending_key:
+			pending_hint = target
+			if displayed_hint.is_empty():
+				_start_pending_hint()
+			elif _displayed_hint_is_current_cell():
+				# Correct turn with another turn already ahead: clear the old
+				# cue immediately, then animate the next cue in.
+				displayed_hint = {}
+				marker_phase = "idle"
+				marker_phase_time = 0.0
+				marker_alpha = 0.0
+				marker_scale = 0.86
+				_start_pending_hint()
+			else:
+				marker_phase = "fade_out"
+				marker_phase_time = 0.0
 
 	marker_phase_time += delta
 
