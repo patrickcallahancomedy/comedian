@@ -23,15 +23,10 @@ const CITY_SPEED_MULTIPLIER := 0.8
 const NEIGHBORHOOD_COLOR := Color(0.30, 0.50, 0.24)
 const NEIGHBORHOOD_SIDEWALK_COLOR := Color(0.72, 0.69, 0.62)
 const NEIGHBORHOOD_ROAD_COLOR := Color(0.18, 0.20, 0.23)
-const NEIGHBORHOOD_HOUSE_COLOR := Color(0.64, 0.39, 0.25)
-const NEIGHBORHOOD_ROOF_COLOR := Color(0.36, 0.24, 0.20)
 const NEIGHBORHOOD_ROAD_WIDTH := 12.0
 const NEIGHBORHOOD_SIDEWALK_WIDTH := 18.0
 const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 2
-const NEIGHBORHOOD_EDGE_COLOR := Color(0.16, 0.28, 0.15)
-const NEIGHBORHOOD_HEDGE_COLOR := Color(0.10, 0.22, 0.10)
-const NEIGHBORHOOD_HEDGE_HIGHLIGHT := Color(0.22, 0.40, 0.18)
-const NEIGHBORHOOD_HEDGE_DEPTH := 6.0
+const NEIGHBORHOOD_EDGE_COLOR := Color(0.22, 0.34, 0.20)
 const CONNECTOR_COLOR := Color(0.93, 0.56, 0.20)
 const HIGHWAY_COLOR := Color(0.72, 0.42, 0.58)
 const CITY_COLOR := Color(0.42, 0.44, 0.48)
@@ -268,7 +263,10 @@ func _begin_next_step() -> void:
 func _begin_neighborhood_step() -> void:
 	var desired := neighborhood_cell + heading
 
-	if _cell_inside(desired, MAP.NEIGHBORHOOD_SIZE):
+	if (
+		_cell_inside(desired, MAP.NEIGHBORHOOD_SIZE)
+		and MAP.neighborhood_cells_connect(neighborhood_cell, desired)
+	):
 		neighborhood_cell = desired
 		move_to = MAP.neighborhood_cell_center(neighborhood_cell)
 		scale_to = MAP.car_scale_for_cell(MAP.NEIGHBORHOOD_CELL)
@@ -444,181 +442,98 @@ func _draw() -> void:
 
 
 func _draw_neighborhood() -> void:
-	# The logical 4x4 neighborhood stays unchanged. The extra visual area now
-	# reads as a boundary instead of more drivable streets.
+	# Draw the 4x4 neighborhood as sixteen actual road blocks.
+	# The car always sits at a block center, so the art and movement graph match.
 	var rect := MAP.NEIGHBORHOOD_RECT
 	var padding := float(MAP.NEIGHBORHOOD_CELL * NEIGHBORHOOD_VISUAL_PADDING_CELLS)
-	var visual_rect := rect.grow(padding)
 
-	# Darker outer landscaping clearly separates the playable neighborhood.
-	_draw_world_rect(visual_rect, NEIGHBORHOOD_EDGE_COLOR)
+	_draw_world_rect(rect.grow(padding), NEIGHBORHOOD_EDGE_COLOR)
 	_draw_world_rect(rect, NEIGHBORHOOD_COLOR)
 
-	# Sidewalks and roads exist only inside the playable rectangle.
-	for x_index in range(MAP.NEIGHBORHOOD_SIZE.x):
-		var center_x := rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
-		_draw_world_rect(
-			Rect2(
-				Vector2(center_x - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5, rect.position.y),
-				Vector2(NEIGHBORHOOD_SIDEWALK_WIDTH, rect.size.y)
-			),
+	for y in range(MAP.NEIGHBORHOOD_SIZE.y):
+		for x in range(MAP.NEIGHBORHOOD_SIZE.x):
+			_draw_neighborhood_cell(Vector2i(x, y))
+
+
+func _draw_neighborhood_cell(cell: Vector2i) -> void:
+	var center := MAP.neighborhood_cell_center(cell)
+	var connections: Array[Vector2i] = MAP.neighborhood_connections(cell)
+
+	# Draw the sidewalk footprint first, then the road on top.
+	for direction in connections:
+		_draw_neighborhood_arm(
+			center,
+			direction,
+			NEIGHBORHOOD_SIDEWALK_WIDTH,
 			NEIGHBORHOOD_SIDEWALK_COLOR
 		)
-		_draw_world_rect(
-			Rect2(
-				Vector2(center_x - NEIGHBORHOOD_ROAD_WIDTH * 0.5, rect.position.y),
-				Vector2(NEIGHBORHOOD_ROAD_WIDTH, rect.size.y)
-			),
+
+	_draw_world_rect(
+		Rect2(
+			center - Vector2.ONE * NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5,
+			Vector2.ONE * NEIGHBORHOOD_SIDEWALK_WIDTH
+		),
+		NEIGHBORHOOD_SIDEWALK_COLOR
+	)
+
+	for direction in connections:
+		_draw_neighborhood_arm(
+			center,
+			direction,
+			NEIGHBORHOOD_ROAD_WIDTH,
 			NEIGHBORHOOD_ROAD_COLOR
 		)
 
-	for y_index in range(MAP.NEIGHBORHOOD_SIZE.y):
-		var center_y := rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
+	_draw_world_rect(
+		Rect2(
+			center - Vector2.ONE * NEIGHBORHOOD_ROAD_WIDTH * 0.5,
+			Vector2.ONE * NEIGHBORHOOD_ROAD_WIDTH
+		),
+		NEIGHBORHOOD_ROAD_COLOR
+	)
+
+
+func _draw_neighborhood_arm(
+	center: Vector2,
+	direction: Vector2i,
+	width: float,
+	color: Color
+) -> void:
+	var half_cell := float(MAP.NEIGHBORHOOD_CELL) * 0.5
+	var half_width := width * 0.5
+
+	if direction == Vector2i.UP:
 		_draw_world_rect(
 			Rect2(
-				Vector2(rect.position.x, center_y - NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5),
-				Vector2(rect.size.x, NEIGHBORHOOD_SIDEWALK_WIDTH)
+				Vector2(center.x - half_width, center.y - half_cell),
+				Vector2(width, half_cell)
 			),
-			NEIGHBORHOOD_SIDEWALK_COLOR
+			color
 		)
+	elif direction == Vector2i.DOWN:
 		_draw_world_rect(
 			Rect2(
-				Vector2(rect.position.x, center_y - NEIGHBORHOOD_ROAD_WIDTH * 0.5),
-				Vector2(rect.size.x, NEIGHBORHOOD_ROAD_WIDTH)
+				Vector2(center.x - half_width, center.y),
+				Vector2(width, half_cell)
 			),
-			NEIGHBORHOOD_ROAD_COLOR
+			color
 		)
-
-	# Simple houses stay inside the playable neighborhood.
-	for lot_y in range(3):
-		for lot_x in range(3):
-			var lot_center := rect.position + Vector2(
-				float(lot_x + 1) * MAP.NEIGHBORHOOD_CELL,
-				float(lot_y + 1) * MAP.NEIGHBORHOOD_CELL
-			)
-			var house_size := Vector2(13.0, 10.0)
-			var house_rect := Rect2(lot_center - house_size * 0.5, house_size)
-			_draw_world_rect(house_rect, NEIGHBORHOOD_HOUSE_COLOR)
-
-			var roof_inset := Vector2(2.0, 2.0)
-			_draw_world_rect(
-				Rect2(
-					house_rect.position + roof_inset,
-					house_rect.size - roof_inset * 2.0
-				),
-				NEIGHBORHOOD_ROOF_COLOR
-			)
-
-	_draw_neighborhood_boundary(visual_rect)
-
-
-func _draw_neighborhood_boundary(_visual_rect: Rect2) -> void:
-	var rect := MAP.NEIGHBORHOOD_RECT
-	var gate_cell := MAP.NEIGHBORHOOD_GATE
-	var gate_side := MAP.NEIGHBORHOOD_GATE_SIDE
-
-	# A compact hedge sits immediately outside the playable area. It makes the
-	# edge read as a real property boundary instead of another stretch of road.
-	var top_hedge := Rect2(
-		Vector2(rect.position.x, rect.position.y - NEIGHBORHOOD_HEDGE_DEPTH),
-		Vector2(rect.size.x, NEIGHBORHOOD_HEDGE_DEPTH)
-	)
-	var bottom_hedge := Rect2(
-		Vector2(rect.position.x, rect.end.y),
-		Vector2(rect.size.x, NEIGHBORHOOD_HEDGE_DEPTH)
-	)
-	var left_hedge := Rect2(
-		Vector2(rect.position.x - NEIGHBORHOOD_HEDGE_DEPTH, rect.position.y),
-		Vector2(NEIGHBORHOOD_HEDGE_DEPTH, rect.size.y)
-	)
-
-	_draw_world_rect(top_hedge, NEIGHBORHOOD_HEDGE_COLOR)
-	_draw_world_rect(bottom_hedge, NEIGHBORHOOD_HEDGE_COLOR)
-	_draw_world_rect(left_hedge, NEIGHBORHOOD_HEDGE_COLOR)
-
-	# The right hedge is split around the one real exit.
-	var gate_top := rect.position.y + gate_cell.y * MAP.NEIGHBORHOOD_CELL
-	var gate_bottom := gate_top + MAP.NEIGHBORHOOD_CELL
-	if gate_side == Vector2i.RIGHT:
+	elif direction == Vector2i.LEFT:
 		_draw_world_rect(
 			Rect2(
-				Vector2(rect.end.x, rect.position.y),
-				Vector2(NEIGHBORHOOD_HEDGE_DEPTH, gate_top - rect.position.y)
+				Vector2(center.x - half_cell, center.y - half_width),
+				Vector2(half_cell, width)
 			),
-			NEIGHBORHOOD_HEDGE_COLOR
+			color
 		)
+	elif direction == Vector2i.RIGHT:
 		_draw_world_rect(
 			Rect2(
-				Vector2(rect.end.x, gate_bottom),
-				Vector2(NEIGHBORHOOD_HEDGE_DEPTH, rect.end.y - gate_bottom)
+				Vector2(center.x, center.y - half_width),
+				Vector2(half_cell, width)
 			),
-			NEIGHBORHOOD_HEDGE_COLOR
+			color
 		)
-	else:
-		_draw_world_rect(
-			Rect2(
-				Vector2(rect.end.x, rect.position.y),
-				Vector2(NEIGHBORHOOD_HEDGE_DEPTH, rect.size.y)
-			),
-			NEIGHBORHOOD_HEDGE_COLOR
-		)
-
-	# One subtle highlight on the neighborhood-facing side gives the hedge depth.
-	_draw_world_line(
-		Vector2(rect.position.x, rect.position.y),
-		Vector2(rect.end.x, rect.position.y),
-		NEIGHBORHOOD_HEDGE_HIGHLIGHT,
-		2.0
-	)
-	_draw_world_line(
-		Vector2(rect.position.x, rect.end.y),
-		Vector2(rect.end.x, rect.end.y),
-		NEIGHBORHOOD_HEDGE_HIGHLIGHT,
-		2.0
-	)
-	_draw_world_line(
-		Vector2(rect.position.x, rect.position.y),
-		Vector2(rect.position.x, rect.end.y),
-		NEIGHBORHOOD_HEDGE_HIGHLIGHT,
-		2.0
-	)
-
-	if gate_side == Vector2i.RIGHT:
-		_draw_world_line(
-			Vector2(rect.end.x, rect.position.y),
-			Vector2(rect.end.x, gate_top),
-			NEIGHBORHOOD_HEDGE_HIGHLIGHT,
-			2.0
-		)
-		_draw_world_line(
-			Vector2(rect.end.x, gate_bottom),
-			Vector2(rect.end.x, rect.end.y),
-			NEIGHBORHOOD_HEDGE_HIGHLIGHT,
-			2.0
-		)
-
-	# Close every non-exit road with a simple curb at the actual gameplay edge.
-	for x_index in range(MAP.NEIGHBORHOOD_SIZE.x):
-		var center_x := rect.position.x + (float(x_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
-		_draw_dead_end_cap(Vector2(center_x, rect.position.y), Vector2.UP)
-		_draw_dead_end_cap(Vector2(center_x, rect.end.y), Vector2.DOWN)
-
-	for y_index in range(MAP.NEIGHBORHOOD_SIZE.y):
-		var center_y := rect.position.y + (float(y_index) + 0.5) * MAP.NEIGHBORHOOD_CELL
-		_draw_dead_end_cap(Vector2(rect.position.x, center_y), Vector2.LEFT)
-		if not (gate_side == Vector2i.RIGHT and gate_cell.y == y_index):
-			_draw_dead_end_cap(Vector2(rect.end.x, center_y), Vector2.RIGHT)
-
-
-func _draw_dead_end_cap(center: Vector2, direction: Vector2) -> void:
-	var half_width := NEIGHBORHOOD_SIDEWALK_WIDTH * 0.5
-	var tangent := Vector2(-direction.y, direction.x)
-	_draw_world_line(
-		center - tangent * half_width,
-		center + tangent * half_width,
-		NEIGHBORHOOD_SIDEWALK_COLOR,
-		3.0
-	)
 
 
 func _draw_grid_zone(rect: Rect2, cell_size: int, color: Color) -> void:
