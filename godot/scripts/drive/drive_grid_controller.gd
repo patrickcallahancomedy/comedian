@@ -60,6 +60,7 @@ var heading := Vector2i.UP
 var highway_column := 0
 var highway_lane := MAP.HIGHWAY_ENTRY_LANE
 var queued_highway_lane := MAP.HIGHWAY_ENTRY_LANE
+var highway_lap := 0
 
 var move_from := Vector2.ZERO
 var move_to := Vector2.ZERO
@@ -114,6 +115,7 @@ func _reset_to_start() -> void:
 	highway_column = 0
 	highway_lane = MAP.HIGHWAY_ENTRY_LANE
 	queued_highway_lane = highway_lane
+	highway_lap = 0
 	visual_world_position = MAP.neighborhood_cell_center(neighborhood_cell)
 	visual_cell_scale = MAP.car_scale_for_cell(MAP.NEIGHBORHOOD_CELL)
 	move_from = visual_world_position
@@ -244,10 +246,9 @@ func _connector_one_progress() -> float:
 
 
 func _connector_two_progress() -> float:
-	var ramp_start := MAP.CONNECTOR_TWO_RECT.position.x
-	var ramp_end := MAP.CONNECTOR_TWO_RECT.end.x
+	var rect := _connector_two_rect()
 	return clampf(
-		inverse_lerp(ramp_start, ramp_end, visual_world_position.x),
+		inverse_lerp(rect.position.x, rect.end.x, visual_world_position.x),
 		0.0,
 		1.0
 	)
@@ -308,11 +309,12 @@ func _begin_highway_step() -> void:
 		highway_column = 0
 		highway_lane = MAP.HIGHWAY_ENTRY_LANE
 		queued_highway_lane = highway_lane
+		highway_lap = 0
 
 	if highway_column >= MAP.HIGHWAY_COLUMNS - 1:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
 			road_kind = "connector_two"
-			move_to = MAP.city_entry_point()
+			move_to = _city_entry_point()
 			# The off-ramp widens to a full city-block width, so the car can
 			# grow smoothly all the way to its city scale before crossing in.
 			scale_to = CITY_CAR_SCALE
@@ -320,23 +322,22 @@ func _begin_highway_step() -> void:
 			status_label.text = "CONNECTOR"
 			return
 
+		# Missing the exit should feel like continuing down the same highway.
+		# Advance the visual highway by one full span instead of teleporting the
+		# player back to the original beginning.
 		missed_turns += 1
+		highway_lap += 1
 		highway_column = 0
 		highway_lane = queued_highway_lane
-		move_from = MAP.highway_cell_center(highway_column, highway_lane)
-		visual_world_position = move_from
-		move_to = MAP.highway_cell_center(1, highway_lane)
-		highway_column = 1
-		scale_from = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
-		scale_to = scale_from
-		visual_cell_scale = scale_from
-		motion_direction = Vector2.RIGHT
-		status_label.text = "MISSED EXIT - LOOP"
+		move_to = _highway_cell_center(highway_column, highway_lane)
+		scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
+		motion_direction = (move_to - move_from).normalized()
+		status_label.text = "HIGHWAY  •  EXIT LANE 4"
 		return
 
 	highway_column += 1
 	highway_lane = queued_highway_lane
-	move_to = MAP.highway_cell_center(highway_column, highway_lane)
+	move_to = _highway_cell_center(highway_column, highway_lane)
 	scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
 	motion_direction = (move_to - move_from).normalized()
 	status_label.text = "HIGHWAY  •  EXIT LANE 4"
@@ -355,7 +356,7 @@ func _begin_city_step() -> void:
 	var desired := city_cell + heading
 	if _cell_inside(desired, MAP.CITY_SIZE):
 		city_cell = desired
-		move_to = MAP.city_cell_center(city_cell)
+		move_to = _city_cell_center(city_cell)
 		scale_to = CITY_CAR_SCALE
 		motion_direction = Vector2(heading)
 		status_label.text = "CITY"
@@ -402,7 +403,7 @@ func _set_highway_lane(requested_lane: int) -> void:
 	# Retarget the active highway segment immediately so the merge begins on tap,
 	# rather than waiting for the next forward grid checkpoint.
 	move_from = visual_world_position
-	move_to = MAP.highway_cell_center(highway_column, new_lane)
+	move_to = _highway_cell_center(highway_column, new_lane)
 	motion_direction = (move_to - visual_world_position).normalized()
 
 
@@ -442,12 +443,13 @@ func _draw() -> void:
 	_draw_highway()
 	_draw_city_connector()
 
+	var city_rect := _city_rect()
 	_draw_grid_zone(
-		MAP.CITY_RECT,
+		city_rect,
 		MAP.CITY_CELL,
 		CITY_COLOR
 	)
-	_draw_world_rect_outline(MAP.CITY_RECT, BORDER_COLOR, 3.0)
+	_draw_world_rect_outline(city_rect, BORDER_COLOR, 3.0)
 
 	_draw_destination()
 	_draw_map_outline()
@@ -601,7 +603,7 @@ func _draw_neighborhood_border_with_gate() -> void:
 func _draw_city_connector() -> void:
 	# The city off-ramp starts at the existing highway-sized width and
 	# widens linearly until its end matches one full city block.
-	var rect := MAP.CONNECTOR_TWO_RECT
+	var rect := _connector_two_rect()
 	var center_y := rect.get_center().y
 	var start_half_width := rect.size.y * 0.5
 	var end_half_width := float(MAP.CITY_CELL) * 0.5
@@ -616,14 +618,20 @@ func _draw_city_connector() -> void:
 
 
 func _draw_highway_surroundings() -> void:
+	for lap in range(maxi(0, highway_lap - 1), highway_lap + 2):
+		_draw_highway_surroundings_for_lap(lap)
+
+
+func _draw_highway_surroundings_for_lap(lap: int) -> void:
+	var highway_rect := _highway_rect_for_lap(lap)
 	var rect := Rect2(
 		Vector2(
-			MAP.HIGHWAY_RECT.position.x,
-			MAP.HIGHWAY_RECT.position.y - HIGHWAY_TERRAIN_PADDING
+			highway_rect.position.x,
+			highway_rect.position.y - HIGHWAY_TERRAIN_PADDING
 		),
 		Vector2(
-			MAP.HIGHWAY_RECT.size.x,
-			MAP.HIGHWAY_RECT.size.y + HIGHWAY_TERRAIN_PADDING * 2.0
+			highway_rect.size.x,
+			highway_rect.size.y + HIGHWAY_TERRAIN_PADDING * 2.0
 		)
 	)
 
@@ -641,7 +649,7 @@ func _draw_highway_surroundings() -> void:
 				minf(HIGHWAY_TERRAIN_CELL, rect.end.y - cell_position.y)
 			)
 			var color := HIGHWAY_TERRAIN_COLOR
-			if (row + column) % 2 == 1:
+			if (row + column + lap) % 2 == 1:
 				color = HIGHWAY_TERRAIN_ALT
 			_draw_world_rect(Rect2(cell_position, cell_size), color)
 
@@ -667,52 +675,55 @@ func _draw_highway_surroundings() -> void:
 
 
 func _draw_highway() -> void:
-	# Alternate very subtle lane bands so the asphalt has depth without
-	# reading like the old grid placeholder.
+	# Draw the current stretch plus the next stretch so missing the exit never
+	# exposes the end of the highway or reveals a reset.
+	for lap in range(maxi(0, highway_lap - 1), highway_lap + 2):
+		_draw_highway_for_lap(lap)
+
+
+func _draw_highway_for_lap(lap: int) -> void:
+	var rect := _highway_rect_for_lap(lap)
+
 	for lane in range(MAP.HIGHWAY_LANES):
 		var lane_rect := Rect2(
 			Vector2(
-				MAP.HIGHWAY_RECT.position.x,
-				MAP.HIGHWAY_RECT.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
+				rect.position.x,
+				rect.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
 			),
-			Vector2(MAP.HIGHWAY_RECT.size.x, MAP.HIGHWAY_LANE_WIDTH)
+			Vector2(rect.size.x, MAP.HIGHWAY_LANE_WIDTH)
 		)
 		var lane_color := HIGHWAY_ASPHALT_COLOR
 		if lane % 2 == 1:
 			lane_color = HIGHWAY_ASPHALT_ALT
 		_draw_world_rect(lane_rect, lane_color)
 
-	# Narrow shoulders live inside the highway footprint so the road remains
-	# the same logical four-lane width.
 	var shoulder_width := 2.2
 	_draw_world_rect(
 		Rect2(
-			MAP.HIGHWAY_RECT.position,
-			Vector2(MAP.HIGHWAY_RECT.size.x, shoulder_width)
+			rect.position,
+			Vector2(rect.size.x, shoulder_width)
 		),
 		HIGHWAY_SHOULDER_COLOR
 	)
 	_draw_world_rect(
 		Rect2(
-			Vector2(MAP.HIGHWAY_RECT.position.x, MAP.HIGHWAY_RECT.end.y - shoulder_width),
-			Vector2(MAP.HIGHWAY_RECT.size.x, shoulder_width)
+			Vector2(rect.position.x, rect.end.y - shoulder_width),
+			Vector2(rect.size.x, shoulder_width)
 		),
 		HIGHWAY_SHOULDER_COLOR
 	)
 
-	# Subtle deterministic asphalt streaks give motion texture without using
-	# an embedded image asset.
 	for column in range(MAP.HIGHWAY_COLUMNS):
-		var column_x := MAP.HIGHWAY_RECT.position.x + float(column) * MAP.HIGHWAY_CELL
+		var column_x := rect.position.x + float(column) * MAP.HIGHWAY_CELL
 		for lane in range(MAP.HIGHWAY_LANES):
 			var lane_center_y := (
-				MAP.HIGHWAY_RECT.position.y
+				rect.position.y
 				+ float(lane) * MAP.HIGHWAY_LANE_WIDTH
 				+ MAP.HIGHWAY_LANE_WIDTH * 0.5
 			)
-			var offset_y := float(((column + lane * 2) % 3) - 1) * 1.15
-			var streak_start := column_x + 3.0 + float((column + lane) % 3)
-			var streak_length := 5.0 + float((column * 2 + lane) % 4)
+			var offset_y := float(((column + lane * 2 + lap) % 3) - 1) * 1.15
+			var streak_start := column_x + 3.0 + float((column + lane + lap) % 3)
+			var streak_length := 5.0 + float((column * 2 + lane + lap) % 4)
 			_draw_world_line(
 				Vector2(streak_start, lane_center_y + offset_y),
 				Vector2(streak_start + streak_length, lane_center_y + offset_y),
@@ -720,12 +731,11 @@ func _draw_highway() -> void:
 				0.65
 			)
 
-	# Dashed lane dividers replace the old full grid lines.
 	for lane in range(1, MAP.HIGHWAY_LANES):
-		var divider_y := MAP.HIGHWAY_RECT.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
-		var dash_x := MAP.HIGHWAY_RECT.position.x + 4.0
-		while dash_x < MAP.HIGHWAY_RECT.end.x:
-			var dash_end := minf(dash_x + 8.0, MAP.HIGHWAY_RECT.end.x)
+		var divider_y := rect.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
+		var dash_x := rect.position.x + 4.0
+		while dash_x < rect.end.x:
+			var dash_end := minf(dash_x + 8.0, rect.end.x)
 			_draw_world_line(
 				Vector2(dash_x, divider_y),
 				Vector2(dash_end, divider_y),
@@ -734,43 +744,77 @@ func _draw_highway() -> void:
 			)
 			dash_x += 16.0
 
-	# Solid outside edge lines make it read as a road rather than a panel.
 	_draw_world_line(
-		Vector2(MAP.HIGHWAY_RECT.position.x, MAP.HIGHWAY_RECT.position.y + shoulder_width),
-		Vector2(MAP.HIGHWAY_RECT.end.x, MAP.HIGHWAY_RECT.position.y + shoulder_width),
+		Vector2(rect.position.x, rect.position.y + shoulder_width),
+		Vector2(rect.end.x, rect.position.y + shoulder_width),
 		HIGHWAY_EDGE_COLOR,
 		1.15
 	)
 	_draw_world_line(
-		Vector2(MAP.HIGHWAY_RECT.position.x, MAP.HIGHWAY_RECT.end.y - shoulder_width),
-		Vector2(MAP.HIGHWAY_RECT.end.x, MAP.HIGHWAY_RECT.end.y - shoulder_width),
+		Vector2(rect.position.x, rect.end.y - shoulder_width),
+		Vector2(rect.end.x, rect.end.y - shoulder_width),
 		HIGHWAY_EDGE_COLOR,
 		1.15
 	)
 
-	# A restrained amber guide in the last stretch hints at the exit without
-	# restoring the old boxed-in exit cell.
 	var exit_edge_y := (
-		MAP.HIGHWAY_RECT.position.y
+		rect.position.y
 		+ MAP.HIGHWAY_EXIT_LANE * MAP.HIGHWAY_LANE_WIDTH
 		+ 1.25
 	)
 	_draw_world_line(
-		Vector2(MAP.HIGHWAY_RECT.end.x - 55.0, exit_edge_y),
-		Vector2(MAP.HIGHWAY_RECT.end.x, exit_edge_y),
+		Vector2(rect.end.x - 55.0, exit_edge_y),
+		Vector2(rect.end.x, exit_edge_y),
 		HIGHWAY_EXIT_GUIDE_COLOR,
 		1.2
 	)
 
 	_draw_world_rect_outline(
-		MAP.HIGHWAY_RECT,
+		rect,
 		Color(0.03, 0.035, 0.045, 0.85),
 		1.0
 	)
 
 
+func _highway_lap_offset(lap: int = highway_lap) -> Vector2:
+	return Vector2(float(lap) * MAP.HIGHWAY_RECT.size.x, 0.0)
+
+
+func _highway_rect_for_lap(lap: int) -> Rect2:
+	return Rect2(
+		MAP.HIGHWAY_RECT.position + _highway_lap_offset(lap),
+		MAP.HIGHWAY_RECT.size
+	)
+
+
+func _highway_cell_center(column: int, lane: int) -> Vector2:
+	return MAP.highway_cell_center(column, lane) + _highway_lap_offset()
+
+
+func _connector_two_rect() -> Rect2:
+	return Rect2(
+		MAP.CONNECTOR_TWO_RECT.position + _highway_lap_offset(),
+		MAP.CONNECTOR_TWO_RECT.size
+	)
+
+
+func _city_rect() -> Rect2:
+	return Rect2(
+		MAP.CITY_RECT.position + _highway_lap_offset(),
+		MAP.CITY_RECT.size
+	)
+
+
+func _city_cell_center(cell: Vector2i) -> Vector2:
+	return MAP.city_cell_center(cell) + _highway_lap_offset()
+
+
+func _city_entry_point() -> Vector2:
+	return MAP.city_entry_point() + _highway_lap_offset()
+
+
 func _draw_destination() -> void:
-	var center := MAP.city_cell_center(MAP.CITY_DESTINATION)
+	var center := _city_cell_center(MAP.CITY_DESTINATION)
 	var half := Vector2.ONE * MAP.CITY_CELL * 0.34
 	var rect := Rect2(center - half, half * 2.0)
 	_draw_world_rect_outline(rect, Color(1.0, 0.92, 0.34), 4.0)

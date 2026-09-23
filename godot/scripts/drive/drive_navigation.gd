@@ -94,7 +94,7 @@ func _draw() -> void:
 		"neighborhood":
 			world_position = MAP.neighborhood_cell_center(cell)
 		"city":
-			world_position = MAP.city_cell_center(cell)
+			world_position = drive._city_cell_center(cell)
 		_:
 			return
 

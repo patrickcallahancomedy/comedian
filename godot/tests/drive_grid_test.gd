@@ -217,20 +217,35 @@ func _run() -> void:
 	_check(drive.queued_highway_lane == lane_before + 1, "Highway lane input did not register")
 	_check(not is_equal_approx(drive.move_to.y, target_y_before), "Highway merge still waits for checkpoint")
 
-	# A missed exit loops instead of trapping the run.
+	# A missed exit continues forward seamlessly instead of visibly resetting.
 	drive.highway_column = MAP.HIGHWAY_COLUMNS - 1
 	drive.highway_lane = 0
 	drive.queued_highway_lane = 0
+	drive.visual_world_position = drive._highway_cell_center(drive.highway_column, 0)
+	drive.move_from = drive.visual_world_position
+	var missed_exit_position: Vector2 = drive.visual_world_position
 	drive._begin_highway_step()
 	_check(drive.missed_turns == 1, "Missed highway exit was not counted")
-	_check(drive.highway_column == 1, "Missed highway exit did not loop to start")
+	_check(drive.highway_lap == 1, "Missed highway exit did not advance the visual highway")
+	_check(drive.highway_column == 0, "Missed highway exit did not begin the next highway span")
 	_check(drive.road_kind == "highway", "Missed exit left highway state")
+	_check(
+		drive.move_to.x > missed_exit_position.x,
+		"Missed highway exit visibly teleports backward"
+	)
+	_check(
+		not drive.status_label.text.contains("LOOP"),
+		"Missed highway exit still exposes the loop in UI text"
+	)
 
-	# Lane four reaches the city connector and scales up.
+	# Lane four reaches the shifted city connector even after a missed exit.
 	drive.highway_column = MAP.HIGHWAY_COLUMNS - 1
 	drive.highway_lane = MAP.HIGHWAY_EXIT_LANE
 	drive.queued_highway_lane = MAP.HIGHWAY_EXIT_LANE
-	drive.visual_world_position = MAP.highway_exit_point()
+	drive.visual_world_position = drive._highway_cell_center(
+		MAP.HIGHWAY_COLUMNS - 1,
+		MAP.HIGHWAY_EXIT_LANE
+	)
 	drive.visual_cell_scale = 0.5
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = 0.5
@@ -239,11 +254,12 @@ func _run() -> void:
 	_check(is_equal_approx(drive.scale_to, 6.0), "City connector should grow smoothly to full city scale")
 
 	# The city connector decelerates from highway speed down to 0.8x neighborhood speed.
-	drive.visual_world_position.x = MAP.CONNECTOR_TWO_RECT.position.x
+	var active_exit_rect: Rect2 = drive._connector_two_rect()
+	drive.visual_world_position.x = active_exit_rect.position.x
 	var exit_start_speed: float = drive._current_world_speed()
-	drive.visual_world_position.x = MAP.CONNECTOR_TWO_RECT.position.x + MAP.CONNECTOR_TWO_RECT.size.x * 0.5
+	drive.visual_world_position.x = active_exit_rect.position.x + active_exit_rect.size.x * 0.5
 	var exit_mid_speed: float = drive._current_world_speed()
-	drive.visual_world_position.x = MAP.CONNECTOR_TWO_RECT.end.x
+	drive.visual_world_position.x = active_exit_rect.end.x
 	var exit_end_speed: float = drive._current_world_speed()
 	_check(exit_mid_speed < exit_start_speed, "City off-ramp does not slow through the middle")
 	_check(exit_end_speed < exit_mid_speed, "City off-ramp does not keep slowing")
@@ -255,7 +271,7 @@ func _run() -> void:
 		"City off-ramp does not reach 0.8x neighborhood speed"
 	)
 
-	drive.visual_world_position = MAP.city_entry_point()
+	drive.visual_world_position = drive._city_entry_point()
 	drive.visual_cell_scale = 6.0
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = 6.0
