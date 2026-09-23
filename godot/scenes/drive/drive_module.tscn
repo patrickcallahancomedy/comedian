@@ -91,11 +91,16 @@ stretch_mode = 5
 
 [node name="TouchControls" type="HBoxContainer" parent="." unique_id=162859420]
 z_index = 4
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 18.0
-offset_top = 684.0
-offset_right = 412.0
-offset_bottom = 748.0
+offset_top = -80.0
+offset_right = -18.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
 theme_override_constants/separation = 12
 
 [node name="LeftButton" type="Button" parent="TouchControls" unique_id=1378762602]
@@ -122,11 +127,18 @@ text = ">"
 [node name="Arrival" type="PanelContainer" parent="." unique_id=1109936761]
 visible = false
 z_index = 5
-layout_mode = 0
-offset_left = 25.0
-offset_top = 230.0
-offset_right = 405.0
-offset_bottom = 515.0
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -190.0
+offset_top = -142.5
+offset_right = 190.0
+offset_bottom = 142.5
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="Layout" type="VBoxContainer" parent="Arrival" unique_id=1996403995]
 layout_mode = 2
