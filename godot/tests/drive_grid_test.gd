@@ -35,6 +35,45 @@ func _run() -> void:
 		"Neighborhood gate does not face outside"
 	)
 
+	# Neighborhood road graph: corners turn, edge cells feed the inner grid,
+	# inner cells are four-way intersections, and only the fixed gate opens out.
+	_check(
+		MAP.neighborhood_connections(Vector2i(0, 0)) == [Vector2i.RIGHT, Vector2i.DOWN],
+		"Top-left neighborhood corner is not a turn"
+	)
+	_check(
+		MAP.neighborhood_connections(Vector2i(3, 0)) == [Vector2i.LEFT, Vector2i.DOWN],
+		"Top-right neighborhood corner is not a turn"
+	)
+	_check(
+		MAP.neighborhood_connections(Vector2i(0, 3)) == [Vector2i.RIGHT, Vector2i.UP],
+		"Bottom-left neighborhood corner is not a turn"
+	)
+	_check(
+		MAP.neighborhood_connections(Vector2i(3, 3)) == [Vector2i.LEFT, Vector2i.UP],
+		"Bottom-right neighborhood corner is not a turn"
+	)
+	_check(
+		MAP.neighborhood_connections(Vector2i(1, 1)).size() == 4,
+		"Inner neighborhood cell is not a four-way intersection"
+	)
+	_check(
+		MAP.neighborhood_connections(Vector2i(1, 0)).size() == 3,
+		"Perimeter neighborhood cell is not a T-junction"
+	)
+	_check(
+		MAP.neighborhood_has_connection(MAP.NEIGHBORHOOD_GATE, MAP.NEIGHBORHOOD_GATE_SIDE),
+		"Neighborhood gate does not visually/logically open to connector"
+	)
+	_check(
+		MAP.neighborhood_cells_connect(Vector2i(1, 3), Vector2i(1, 2)),
+		"Start cell does not connect into the inner grid"
+	)
+	_check(
+		not MAP.neighborhood_has_connection(Vector2i(0, 0), Vector2i.LEFT),
+		"Non-gate corner incorrectly opens outside the neighborhood"
+	)
+
 	_check(
 		is_equal_approx(MAP.car_scale_for_cell(MAP.NEIGHBORHOOD_CELL), 1.0),
 		"Neighborhood car is not 100 percent"
