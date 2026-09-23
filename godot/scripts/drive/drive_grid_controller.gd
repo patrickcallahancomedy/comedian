@@ -46,7 +46,26 @@ const HIGHWAY_TERRAIN_ALT := Color(0.23, 0.32, 0.22)
 const HIGHWAY_TERRAIN_GRID_COLOR := Color(0.08, 0.12, 0.08, 0.24)
 const HIGHWAY_TERRAIN_PADDING := 90.0
 const HIGHWAY_TERRAIN_CELL := 20.0
-const CITY_COLOR := Color(0.42, 0.44, 0.48)
+const CITY_GROUND_COLOR := Color(0.24, 0.255, 0.27)
+const CITY_SIDEWALK_COLOR := Color(0.52, 0.52, 0.50)
+const CITY_SIDEWALK_EDGE := Color(0.68, 0.67, 0.63, 0.55)
+const CITY_ROAD_COLOR := Color(0.105, 0.115, 0.13)
+const CITY_ROAD_ALT := Color(0.12, 0.13, 0.145)
+const CITY_ROAD_WIDTH := 20.0
+const CITY_SIDEWALK_WIDTH := 30.0
+const CITY_MARKING_COLOR := Color(0.91, 0.90, 0.84, 0.72)
+const CITY_BUILDING_COLORS := [
+	Color(0.28, 0.25, 0.23),
+	Color(0.32, 0.30, 0.28),
+	Color(0.25, 0.29, 0.31),
+	Color(0.34, 0.27, 0.24),
+]
+const CITY_ROOF_DETAIL := Color(0.10, 0.11, 0.12, 0.26)
+const VENUE_BUILDING_COLOR := Color(0.18, 0.16, 0.15)
+const VENUE_TRIM_COLOR := Color(0.10, 0.10, 0.105)
+const VENUE_WINDOW_COLOR := Color(0.95, 0.63, 0.24, 0.82)
+const VENUE_AWNING_COLOR := Color(0.42, 0.16, 0.13)
+const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.82)
 const GRID_COLOR := Color(0.08, 0.09, 0.09, 0.45)
 const BORDER_COLOR := Color(0.93, 0.92, 0.86)
 
@@ -452,14 +471,7 @@ func _draw() -> void:
 	_draw_highway()
 	_draw_city_connector()
 
-	var city_rect := _city_rect()
-	_draw_grid_zone(
-		city_rect,
-		MAP.CITY_CELL,
-		CITY_COLOR
-	)
-	_draw_world_rect_outline(city_rect, BORDER_COLOR, 3.0)
-
+	_draw_city()
 	_draw_destination()
 	_draw_map_outline()
 
@@ -559,6 +571,144 @@ func _draw_neighborhood_arm(
 			),
 			color
 		)
+
+
+func _draw_city() -> void:
+	var rect := _city_rect()
+	_draw_world_rect(rect, CITY_GROUND_COLOR)
+
+	# Sidewalk beds first, then asphalt streets. Keeping every street centered
+	# on the existing 4x4 logical cells preserves the driving graph exactly.
+	for column in range(MAP.CITY_SIZE.x):
+		var center_x := rect.position.x + (float(column) + 0.5) * MAP.CITY_CELL
+		_draw_world_rect(
+			Rect2(
+				Vector2(center_x - CITY_SIDEWALK_WIDTH * 0.5, rect.position.y),
+				Vector2(CITY_SIDEWALK_WIDTH, rect.size.y)
+			),
+			CITY_SIDEWALK_COLOR
+		)
+
+	for row in range(MAP.CITY_SIZE.y):
+		var center_y := rect.position.y + (float(row) + 0.5) * MAP.CITY_CELL
+		_draw_world_rect(
+			Rect2(
+				Vector2(rect.position.x, center_y - CITY_SIDEWALK_WIDTH * 0.5),
+				Vector2(rect.size.x, CITY_SIDEWALK_WIDTH)
+			),
+			CITY_SIDEWALK_COLOR
+		)
+
+	_draw_city_buildings(rect)
+
+	for column in range(MAP.CITY_SIZE.x):
+		var center_x := rect.position.x + (float(column) + 0.5) * MAP.CITY_CELL
+		var road_color := CITY_ROAD_COLOR if column % 2 == 0 else CITY_ROAD_ALT
+		_draw_world_rect(
+			Rect2(
+				Vector2(center_x - CITY_ROAD_WIDTH * 0.5, rect.position.y),
+				Vector2(CITY_ROAD_WIDTH, rect.size.y)
+			),
+			road_color
+		)
+
+	for row in range(MAP.CITY_SIZE.y):
+		var center_y := rect.position.y + (float(row) + 0.5) * MAP.CITY_CELL
+		var road_color := CITY_ROAD_ALT if row % 2 == 0 else CITY_ROAD_COLOR
+		_draw_world_rect(
+			Rect2(
+				Vector2(rect.position.x, center_y - CITY_ROAD_WIDTH * 0.5),
+				Vector2(rect.size.x, CITY_ROAD_WIDTH)
+			),
+			road_color
+		)
+
+	_draw_city_lane_markings(rect)
+	_draw_city_crosswalks(rect)
+	_draw_world_rect_outline(rect, Color(0.10, 0.11, 0.12, 0.55), 1.0)
+
+
+func _draw_city_buildings(rect: Rect2) -> void:
+	# Nine simple rooftops fill the spaces between streets. Small deterministic
+	# details keep the city readable without turning it into visual noise.
+	for row in range(MAP.CITY_SIZE.y - 1):
+		for column in range(MAP.CITY_SIZE.x - 1):
+			var left_center := rect.position.x + (float(column) + 0.5) * MAP.CITY_CELL
+			var right_center := left_center + MAP.CITY_CELL
+			var top_center := rect.position.y + (float(row) + 0.5) * MAP.CITY_CELL
+			var bottom_center := top_center + MAP.CITY_CELL
+			var inset := CITY_SIDEWALK_WIDTH * 0.5 + 3.0
+			var building_rect := Rect2(
+				Vector2(left_center + inset, top_center + inset),
+				Vector2(
+					right_center - left_center - inset * 2.0,
+					bottom_center - top_center - inset * 2.0
+				)
+			)
+			var color_index := (row * 3 + column) % CITY_BUILDING_COLORS.size()
+			_draw_world_rect(building_rect, CITY_BUILDING_COLORS[color_index])
+
+			var roof_detail := Rect2(
+				building_rect.position + Vector2(4.0, 4.0),
+				Vector2(
+					maxf(4.0, building_rect.size.x * 0.26),
+					maxf(4.0, building_rect.size.y * 0.20)
+				)
+			)
+			_draw_world_rect(roof_detail, CITY_ROOF_DETAIL)
+
+
+func _draw_city_lane_markings(rect: Rect2) -> void:
+	for column in range(MAP.CITY_SIZE.x):
+		var x := rect.position.x + (float(column) + 0.5) * MAP.CITY_CELL
+		for row in range(MAP.CITY_SIZE.y - 1):
+			var segment_start := rect.position.y + (float(row) + 0.5) * MAP.CITY_CELL + 14.0
+			var segment_end := segment_start + MAP.CITY_CELL - 28.0
+			var y := segment_start
+			while y < segment_end:
+				_draw_world_line(
+					Vector2(x, y),
+					Vector2(x, minf(y + 6.0, segment_end)),
+					CITY_MARKING_COLOR,
+					0.8
+				)
+				y += 12.0
+
+	for row in range(MAP.CITY_SIZE.y):
+		var y := rect.position.y + (float(row) + 0.5) * MAP.CITY_CELL
+		for column in range(MAP.CITY_SIZE.x - 1):
+			var segment_start := rect.position.x + (float(column) + 0.5) * MAP.CITY_CELL + 14.0
+			var segment_end := segment_start + MAP.CITY_CELL - 28.0
+			var x := segment_start
+			while x < segment_end:
+				_draw_world_line(
+					Vector2(x, y),
+					Vector2(minf(x + 6.0, segment_end), y),
+					CITY_MARKING_COLOR,
+					0.8
+				)
+				x += 12.0
+
+
+func _draw_city_crosswalks(rect: Rect2) -> void:
+	# A few restrained crosswalks make the city feel inhabited without
+	# covering every intersection in markings.
+	var cells := [
+		Vector2i(0, 2),
+		Vector2i(1, 1),
+		Vector2i(2, 2),
+		Vector2i(3, 1),
+	]
+	for cell in cells:
+		var center := _city_cell_center(cell)
+		for stripe in range(-2, 3):
+			var offset := float(stripe) * 2.3
+			_draw_world_line(
+				center + Vector2(-7.0, offset),
+				center + Vector2(-3.0, offset),
+				Color(0.90, 0.90, 0.86, 0.55),
+				0.8
+			)
 
 
 func _draw_grid_zone(rect: Rect2, cell_size: int, color: Color) -> void:
@@ -945,11 +1095,89 @@ func _city_entry_point() -> Vector2:
 	return MAP.city_entry_point() + _highway_lap_offset()
 
 
-func _draw_destination() -> void:
+func _parking_space_rect() -> Rect2:
 	var center := _city_cell_center(MAP.CITY_DESTINATION)
-	var half := Vector2.ONE * MAP.CITY_CELL * 0.34
-	var rect := Rect2(center - half, half * 2.0)
-	_draw_world_rect_outline(rect, Color(1.0, 0.92, 0.34), 4.0)
+	return Rect2(
+		center + Vector2(-8.0, -17.0),
+		Vector2(16.0, 34.0)
+	)
+
+
+func _venue_rect() -> Rect2:
+	var city_rect := _city_rect()
+	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
+	return Rect2(
+		Vector2(city_rect.end.x - 16.0, destination_center.y - 27.0),
+		Vector2(15.0, 54.0)
+	)
+
+
+func _draw_destination() -> void:
+	var parking_rect := _parking_space_rect()
+	var venue_rect := _venue_rect()
+	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
+
+	# Faded parallel-parking stall beside the destination curb.
+	_draw_world_line(
+		Vector2(parking_rect.position.x, parking_rect.position.y),
+		Vector2(parking_rect.position.x, parking_rect.end.y),
+		PARKING_LINE_COLOR,
+		0.9
+	)
+	_draw_world_line(
+		Vector2(parking_rect.end.x, parking_rect.position.y),
+		Vector2(parking_rect.end.x, parking_rect.end.y),
+		PARKING_LINE_COLOR,
+		0.9
+	)
+	_draw_world_line(
+		Vector2(parking_rect.position.x, parking_rect.position.y),
+		Vector2(parking_rect.end.x, parking_rect.position.y),
+		PARKING_LINE_COLOR,
+		0.9
+	)
+	_draw_world_line(
+		Vector2(parking_rect.position.x, parking_rect.end.y),
+		Vector2(parking_rect.end.x, parking_rect.end.y),
+		PARKING_LINE_COLOR,
+		0.9
+	)
+
+	# A narrow dark facade on the curb side implies the venue without labeling
+	# it loudly. Warm doorway/window light does the storytelling.
+	_draw_world_rect(venue_rect, VENUE_BUILDING_COLOR)
+	_draw_world_rect(
+		Rect2(
+			Vector2(venue_rect.position.x - 1.5, venue_rect.position.y + 8.0),
+			Vector2(2.0, venue_rect.size.y - 16.0)
+		),
+		VENUE_TRIM_COLOR
+	)
+
+	var door_rect := Rect2(
+		Vector2(venue_rect.position.x + 1.5, destination_center.y - 7.0),
+		Vector2(6.0, 14.0)
+	)
+	_draw_world_rect(door_rect, VENUE_WINDOW_COLOR)
+
+	var poster_top := Rect2(
+		Vector2(venue_rect.position.x + 2.0, venue_rect.position.y + 5.0),
+		Vector2(8.0, 7.0)
+	)
+	var poster_bottom := Rect2(
+		Vector2(venue_rect.position.x + 2.0, venue_rect.end.y - 12.0),
+		Vector2(8.0, 7.0)
+	)
+	_draw_world_rect(poster_top, Color(0.78, 0.54, 0.29, 0.65))
+	_draw_world_rect(poster_bottom, Color(0.72, 0.45, 0.27, 0.55))
+
+	var awning := PackedVector2Array([
+		Vector2(venue_rect.position.x - 2.5, destination_center.y - 11.0),
+		Vector2(venue_rect.position.x + 10.0, destination_center.y - 11.0),
+		Vector2(venue_rect.position.x + 8.0, destination_center.y - 7.5),
+		Vector2(venue_rect.position.x - 2.5, destination_center.y - 7.5),
+	])
+	_draw_world_polygon(awning, VENUE_AWNING_COLOR)
 
 
 func _draw_map_outline() -> void:

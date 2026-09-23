@@ -132,6 +132,22 @@ func _run() -> void:
 			"Off-ramp does not widen toward the city"
 		)
 
+	var parking_rect: Rect2 = drive._parking_space_rect()
+	var venue_rect: Rect2 = drive._venue_rect()
+	var destination_center: Vector2 = drive._city_cell_center(MAP.CITY_DESTINATION)
+	_check(
+		parking_rect.has_point(destination_center),
+		"Destination parking space does not contain the arrival point"
+	)
+	_check(
+		venue_rect.position.x > destination_center.x,
+		"Venue facade is not curbside outside the parking space"
+	)
+	_check(
+		venue_rect.end.x <= drive._city_rect().end.x + 0.01,
+		"Venue facade extends outside the city visual bounds"
+	)
+
 	_check(navigation != null, "Navigation display missing")
 	if navigation != null:
 		_check(navigation.text == "", "Legacy text navigation should be blank")
