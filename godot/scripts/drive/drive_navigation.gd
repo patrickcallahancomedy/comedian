@@ -130,6 +130,15 @@ func _current_road_world_width() -> float:
 func _current_route_world_points() -> PackedVector2Array:
 	match drive.road_kind:
 		"neighborhood", "city":
+			if (
+				drive.road_kind == "city"
+				and drive.parking_maneuver_started
+			):
+				return PackedVector2Array([
+					drive.visual_world_position,
+					drive._parking_stop_point(),
+				])
+
 			var route: Array[Vector3i] = _current_route_states()
 			if route.is_empty():
 				return PackedVector2Array()
@@ -302,6 +311,18 @@ func _current_instruction() -> Dictionary:
 		"neighborhood", "city":
 			var hint: Dictionary = _current_turn_hint()
 			if hint.is_empty():
+				if drive.road_kind == "city":
+					if drive.parking_maneuver_started:
+						return {
+							"turn": "straight",
+							"title": "Park",
+							"subtitle": "Destination",
+						}
+					return {
+						"turn": "right",
+						"title": "Turn right",
+						"subtitle": "Into parking lot",
+					}
 				return {
 					"turn": "straight",
 					"title": "Continue straight",
