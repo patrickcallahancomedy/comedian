@@ -333,18 +333,22 @@ func _current_instruction() -> Dictionary:
 				}
 			var turn := String(hint.get("turn", "straight"))
 			var turn_cell: Vector2i = hint.get("cell", Vector2i.ZERO)
-			var current_cell: Vector2i = (
-				drive.neighborhood_cell
+			var turn_world: Vector2 = (
+				MAP.neighborhood_cell_center(turn_cell)
 				if drive.road_kind == "neighborhood"
-				else drive.city_cell
+				else drive._city_cell_center(turn_cell)
 			)
-			# Count the current road segment as a block too. The previous
-			# Manhattan-distance count consistently read one block too low in play.
+			var block_size: float = (
+				float(MAP.NEIGHBORHOOD_CELL)
+				if drive.road_kind == "neighborhood"
+				else float(MAP.CITY_CELL)
+			)
+			# Logical cells advance as soon as a segment begins, while the car is
+			# still visually travelling through that block. Count from the car's
+			# actual world position so the banner matches what the player sees.
 			var blocks: int = maxi(
 				1,
-				abs(turn_cell.x - current_cell.x)
-				+ abs(turn_cell.y - current_cell.y)
-				+ 1
+				int(ceil(drive.visual_world_position.distance_to(turn_world) / block_size))
 			)
 			return {
 				"turn": turn,
