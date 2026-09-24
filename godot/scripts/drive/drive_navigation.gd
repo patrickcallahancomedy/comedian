@@ -1,199 +1,344 @@
 extends Label
 
-## COMEDIAN DRIVE navigation
-## Intentionally simple: one GPS-style instruction card, no route line.
-## It stays active through neighborhood -> ramp -> highway -> ramp -> city.
+## GPS-style route guidance for the driving microgame.
+## Uses a conventional center route line plus a compact top instruction banner.
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const FEET_PER_WORLD_UNIT := 4.0
-const DISTANCE_ROUNDING_FT := 50
-const CARD_TOP := 18.0
-const CARD_HIDDEN_TOP := -96.0
-const CARD_HEIGHT := 76.0
-const CARD_SIDE_MARGIN := 18.0
-const DROP_SPEED := 700.0
+const ROUTE_SHADOW_COLOR := Color(0.02, 0.08, 0.18, 0.52)
+const ROUTE_LINE_COLOR := Color(0.10, 0.42, 0.96, 0.98)
+const ROUTE_SHADOW_WIDTH_RATIO := 0.48
+const ROUTE_LINE_WIDTH_RATIO := 0.32
+const ROUTE_START_AHEAD_RATIO := 0.02
+
+const BANNER_COLOR := Color(0.05, 0.30, 0.22, 0.97)
+const BANNER_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
+const BANNER_SUBTEXT_COLOR := Color(0.88, 0.96, 0.92, 0.92)
+const BANNER_MARGIN := 16.0
+const BANNER_HEIGHT := 82.0
+const BANNER_RADIUS := 12.0
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
 
-var card_visible := false
+const MISSED_EXIT_NOTICE_SECONDS := 1.6
+
+var last_missed_turns := 0
+var missed_exit_notice_remaining := 0.0
 
 
 func _ready() -> void:
-	z_index = 6
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_theme_font_size_override("font_size", 18)
-	add_theme_color_override("font_color", Color.WHITE)
-	add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.30))
-	add_theme_constant_override("shadow_offset_x", 1)
-	add_theme_constant_override("shadow_offset_y", 1)
-	add_theme_constant_override("outline_size", 0)
-
-	var panel: StyleBoxFlat = StyleBoxFlat.new()
-	panel.bg_color = Color(0.08, 0.10, 0.13, 0.96)
-	panel.corner_radius_top_left = 14
-	panel.corner_radius_top_right = 14
-	panel.corner_radius_bottom_left = 14
-	panel.corner_radius_bottom_right = 14
-	panel.content_margin_left = 18.0
-	panel.content_margin_right = 18.0
-	panel.content_margin_top = 10.0
-	panel.content_margin_bottom = 10.0
-	add_theme_stylebox_override("normal", panel)
-
-	_apply_card_rect(CARD_HIDDEN_TOP)
 	text = ""
-	hide()
+	z_index = 2
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	offset_left = 0.0
+	offset_top = 0.0
+	offset_right = 0.0
+	offset_bottom = 0.0
+	queue_redraw()
 
 
 func _process(delta: float) -> void:
-	if drive == null:
-		return
+	if drive != null:
+		if drive.missed_turns > last_missed_turns:
+			last_missed_turns = drive.missed_turns
+			missed_exit_notice_remaining = MISSED_EXIT_NOTICE_SECONDS
+		elif drive.missed_turns < last_missed_turns:
+			last_missed_turns = drive.missed_turns
 
-	card_visible = drive.started and not drive.drive_complete
+	if missed_exit_notice_remaining > 0.0:
+		missed_exit_notice_remaining = maxf(
+			0.0,
+			missed_exit_notice_remaining - delta
+		)
+
 	_update_status_visibility()
-
-	if not card_visible:
-		text = ""
-		hide()
-		_apply_card_rect(
-			move_toward(offset_top, CARD_HIDDEN_TOP, DROP_SPEED * delta)
-		)
-		return
-
-	show()
-	text = _navigation_text()
-	_apply_card_rect(
-		move_toward(offset_top, CARD_TOP, DROP_SPEED * delta)
-	)
-
-
-func _apply_card_rect(top: float) -> void:
-	var viewport_width: float = size.x
-	if get_parent() is Control:
-		viewport_width = (get_parent() as Control).size.x
-	offset_left = CARD_SIDE_MARGIN
-	offset_right = maxf(CARD_SIDE_MARGIN + 220.0, viewport_width - CARD_SIDE_MARGIN)
-	offset_top = top
-	offset_bottom = top + CARD_HEIGHT
-
-
-func _update_status_visibility() -> void:
-	if status_label == null:
-		return
-	if drive.started and not drive.drive_complete:
-		status_label.hide()
-	else:
-		status_label.show()
-
-
-func _navigation_text() -> String:
-	match drive.road_kind:
-		"neighborhood":
-			return _local_road_instruction(true)
-		"connector_one":
-			return _connector_one_instruction()
-		"highway":
-			return _highway_instruction()
-		"connector_two":
-			return _connector_two_instruction()
-		"city":
-			return _local_road_instruction(false)
-	return "CONTINUE"
-
-
-func _local_road_instruction(neighborhood: bool) -> String:
-	var route: Array[Vector3i] = _current_route_states()
-	if route.is_empty():
-		return "CONTINUE STRAIGHT"
-
-	var final_direction: Vector2i = (
-		MAP.NEIGHBORHOOD_GATE_SIDE
-		if neighborhood
-		else Vector2i.ZERO
-	)
-	var turn_info: Dictionary = _first_turn_on_route(route, final_direction)
-
-	if not turn_info.is_empty():
-		var turn_cell: Vector2i = turn_info.get("cell", Vector2i.ZERO)
-		var turn_name: String = String(turn_info.get("turn", ""))
-		var distance_world: float = _distance_along_route_to_cell(route, turn_cell)
-		return "%s  TURN %s\n%s" % [
-			_turn_symbol(turn_name),
-			turn_name.to_upper(),
-			_format_distance(distance_world),
-		]
-
-	if neighborhood:
-		var gate_distance: float = drive.visual_world_position.distance_to(
-			MAP.neighborhood_gate_outside_point()
-		)
-		return "↑  CONTINUE\nRAMP IN %s" % _format_distance(gate_distance)
-
-	var destination: Vector2 = drive._parking_stop_point()
-	var destination_distance: float = drive.visual_world_position.distance_to(destination)
-	if destination_distance <= 28.0:
-		return "P  PARK ON RIGHT\nDESTINATION"
-	return "↑  CONTINUE\nDESTINATION IN %s" % _format_distance(destination_distance)
-
-
-func _connector_one_instruction() -> String:
-	var distance_world: float = drive.visual_world_position.distance_to(
-		MAP.highway_entry_point()
-	)
-	return "↑  CONTINUE ON RAMP\nHIGHWAY IN %s" % _format_distance(distance_world)
-
-
-func _highway_instruction() -> String:
-	var exit_x: float = drive._highway_rect_for_lap(drive.highway_lap).end.x
-	var distance_world: float = maxf(0.0, exit_x - drive.visual_world_position.x)
-
-	if drive.highway_lane < MAP.HIGHWAY_EXIT_LANE:
-		return "↱  KEEP RIGHT\nEXIT IN %s" % _format_distance(distance_world)
-
-	return "↑  STAY IN RIGHT LANE\nEXIT IN %s" % _format_distance(distance_world)
-
-
-func _connector_two_instruction() -> String:
-	var distance_world: float = drive.visual_world_position.distance_to(
-		drive._city_entry_point()
-	)
-	return "↑  TAKE EXIT RAMP\nCITY IN %s" % _format_distance(distance_world)
-
-
-func _format_distance(world_distance: float) -> String:
-	var feet: int = maxi(0, int(round(world_distance * FEET_PER_WORLD_UNIT)))
-	if feet <= 25:
-		return "NOW"
-	var rounded: int = maxi(
-		DISTANCE_ROUNDING_FT,
-		int(round(float(feet) / DISTANCE_ROUNDING_FT)) * DISTANCE_ROUNDING_FT
-	)
-	if rounded >= 1000:
-		var miles: float = float(rounded) / 5280.0
-		if miles >= 0.2:
-			return "%.1f MI" % miles
-	return "%d FT" % rounded
-
-
-func _turn_symbol(turn_name: String) -> String:
-	if turn_name == "left":
-		return "↰"
-	if turn_name == "right":
-		return "↱"
-	return "↑"
+	queue_redraw()
 
 
 func get_turn_hint() -> Dictionary:
 	if drive == null or not drive.started or drive.drive_complete:
 		return {}
-	if drive.road_kind != "neighborhood" and drive.road_kind != "city":
-		return {}
 	return _current_turn_hint()
+
+
+func _update_status_visibility() -> void:
+	if drive == null or status_label == null:
+		return
+
+	if not drive.started or drive.drive_complete:
+		status_label.show()
+		return
+
+	# The GPS banner is the only driving status UI. This prevents legacy labels
+	# such as "CONNECTOR" from appearing behind the banner.
+	status_label.hide()
+
+
+func _draw() -> void:
+	if drive == null or not drive.started or drive.drive_complete:
+		return
+
+	if drive.road_kind == "neighborhood" or drive.road_kind == "city":
+		_draw_route_line()
+
+	_draw_instruction_banner()
+
+
+func _draw_route_line() -> void:
+	var route := _current_route_states()
+	if route.is_empty():
+		return
+
+	var world_points := _route_world_points(route)
+	if world_points.size() < 2:
+		return
+
+	var road_world_width: float = (
+		drive.NEIGHBORHOOD_ROAD_WIDTH
+		if drive.road_kind == "neighborhood"
+		else drive.CITY_ROAD_WIDTH
+	)
+	var zoom: float = drive._current_world_zoom()
+	var shadow_width: float = road_world_width * zoom * ROUTE_SHADOW_WIDTH_RATIO
+	var line_width: float = road_world_width * zoom * ROUTE_LINE_WIDTH_RATIO
+	var screen_points := PackedVector2Array()
+
+	for index in range(world_points.size()):
+		if index > 0 and not _world_segment_is_local(
+			world_points[index - 1],
+			world_points[index]
+		):
+			break
+		screen_points.append(drive._world_to_screen(world_points[index]))
+
+	if screen_points.size() < 2:
+		return
+
+	screen_points[0] = screen_points[0].lerp(
+		screen_points[1],
+		ROUTE_START_AHEAD_RATIO
+	)
+
+	# Conventional GPS treatment: one solid center route with a darker casing.
+	draw_polyline(screen_points, ROUTE_SHADOW_COLOR, shadow_width, true)
+	draw_polyline(screen_points, ROUTE_LINE_COLOR, line_width, true)
+
+
+func _draw_instruction_banner() -> void:
+	var instruction := _current_instruction()
+	if instruction.is_empty():
+		return
+
+	var banner_width := minf(size.x - BANNER_MARGIN * 2.0, 420.0)
+	var banner_rect := Rect2(
+		Vector2((size.x - banner_width) * 0.5, BANNER_MARGIN),
+		Vector2(banner_width, BANNER_HEIGHT)
+	)
+	draw_style_box(
+		_make_banner_style(),
+		banner_rect
+	)
+
+	var icon_rect := Rect2(
+		banner_rect.position + Vector2(14.0, 14.0),
+		Vector2(48.0, 48.0)
+	)
+	_draw_turn_icon(icon_rect, String(instruction.get("turn", "straight")))
+
+	var font := get_theme_default_font()
+	var title_size := 22
+	var sub_size := 14
+	var text_x := banner_rect.position.x + 76.0
+	var title_y := banner_rect.position.y + 32.0
+	var sub_y := banner_rect.position.y + 57.0
+
+	draw_string(
+		font,
+		Vector2(text_x, title_y),
+		String(instruction.get("title", "Continue")),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		banner_rect.end.x - text_x - 12.0,
+		title_size,
+		BANNER_TEXT_COLOR
+	)
+	draw_string(
+		font,
+		Vector2(text_x, sub_y),
+		String(instruction.get("subtitle", "")),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		banner_rect.end.x - text_x - 12.0,
+		sub_size,
+		BANNER_SUBTEXT_COLOR
+	)
+
+
+func _make_banner_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = BANNER_COLOR
+	style.corner_radius_top_left = int(BANNER_RADIUS)
+	style.corner_radius_top_right = int(BANNER_RADIUS)
+	style.corner_radius_bottom_left = int(BANNER_RADIUS)
+	style.corner_radius_bottom_right = int(BANNER_RADIUS)
+	return style
+
+
+func _draw_turn_icon(rect: Rect2, turn: String) -> void:
+	var center := rect.get_center()
+	var color := BANNER_TEXT_COLOR
+	var width := 5.0
+	var points := PackedVector2Array()
+
+	match turn:
+		"left":
+			points = PackedVector2Array([
+				Vector2(rect.end.x - 8.0, rect.end.y - 8.0),
+				Vector2(rect.end.x - 8.0, center.y),
+				Vector2(rect.position.x + 12.0, center.y),
+			])
+			draw_polyline(points, color, width, true)
+			draw_line(
+				Vector2(rect.position.x + 12.0, center.y),
+				Vector2(rect.position.x + 24.0, center.y - 12.0),
+				color, width, true
+			)
+			draw_line(
+				Vector2(rect.position.x + 12.0, center.y),
+				Vector2(rect.position.x + 24.0, center.y + 12.0),
+				color, width, true
+			)
+		"right":
+			points = PackedVector2Array([
+				Vector2(rect.position.x + 8.0, rect.end.y - 8.0),
+				Vector2(rect.position.x + 8.0, center.y),
+				Vector2(rect.end.x - 12.0, center.y),
+			])
+			draw_polyline(points, color, width, true)
+			draw_line(
+				Vector2(rect.end.x - 12.0, center.y),
+				Vector2(rect.end.x - 24.0, center.y - 12.0),
+				color, width, true
+			)
+			draw_line(
+				Vector2(rect.end.x - 12.0, center.y),
+				Vector2(rect.end.x - 24.0, center.y + 12.0),
+				color, width, true
+			)
+		_:
+			draw_line(
+				Vector2(center.x, rect.end.y - 8.0),
+				Vector2(center.x, rect.position.y + 10.0),
+				color, width, true
+			)
+			draw_line(
+				Vector2(center.x, rect.position.y + 10.0),
+				Vector2(center.x - 11.0, rect.position.y + 21.0),
+				color, width, true
+			)
+			draw_line(
+				Vector2(center.x, rect.position.y + 10.0),
+				Vector2(center.x + 11.0, rect.position.y + 21.0),
+				color, width, true
+			)
+
+
+func _current_instruction() -> Dictionary:
+	if (
+		drive.road_kind == "highway"
+		and missed_exit_notice_remaining > 0.0
+	):
+		return {
+			"turn": "straight",
+			"title": "Missed exit",
+			"subtitle": "Continue ahead — rerouting",
+		}
+
+	match drive.road_kind:
+		"neighborhood", "city":
+			var hint: Dictionary = _current_turn_hint()
+			if hint.is_empty():
+				return {
+					"turn": "straight",
+					"title": "Continue straight",
+					"subtitle": "Follow the blue route",
+				}
+			var turn := String(hint.get("turn", "straight"))
+			var turn_cell: Vector2i = hint.get("cell", Vector2i.ZERO)
+			var current_cell: Vector2i = (
+				drive.neighborhood_cell
+				if drive.road_kind == "neighborhood"
+				else drive.city_cell
+			)
+			var blocks: int = maxi(
+				1,
+				abs(turn_cell.x - current_cell.x)
+				+ abs(turn_cell.y - current_cell.y)
+			)
+			return {
+				"turn": turn,
+				"title": "Turn %s" % turn,
+				"subtitle": "In %d block%s" % [
+					blocks,
+					"" if blocks == 1 else "s",
+				],
+			}
+		"connector_one":
+			return {
+				"turn": "straight",
+				"title": "Merge onto highway",
+				"subtitle": "Continue ahead",
+			}
+		"highway":
+			if drive.highway_lane < MAP.HIGHWAY_EXIT_LANE:
+				return {
+					"turn": "right",
+					"title": "Move right",
+					"subtitle": "Use lane 4 for the exit",
+				}
+			return {
+				"turn": "straight",
+				"title": "Stay in lane 4",
+				"subtitle": "Exit ahead",
+			}
+		"connector_two":
+			return {
+				"turn": "straight",
+				"title": "Take the exit",
+				"subtitle": "Continue into the city",
+			}
+	return {}
+
+
+func _route_world_points(route: Array[Vector3i]) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	points.append(drive.visual_world_position)
+
+	for state in route:
+		var cell := Vector2i(state.x, state.y)
+		var world_position: Vector2 = (
+			MAP.neighborhood_cell_center(cell)
+			if drive.road_kind == "neighborhood"
+			else drive._city_cell_center(cell)
+		)
+		if points[points.size() - 1].distance_to(world_position) > 0.5:
+			points.append(world_position)
+
+	return points
+
+
+func _world_segment_is_local(from_world: Vector2, to_world: Vector2) -> bool:
+	var expected_length: float = (
+		float(MAP.NEIGHBORHOOD_CELL)
+		if drive.road_kind == "neighborhood"
+		else float(MAP.CITY_CELL)
+	)
+	var delta := to_world - from_world
+	var axis_aligned := (
+		is_zero_approx(delta.x)
+		or is_zero_approx(delta.y)
+	)
+	return axis_aligned and delta.length() <= expected_length + 0.5
 
 
 func _current_route_states() -> Array[Vector3i]:
@@ -214,52 +359,8 @@ func _current_route_states() -> Array[Vector3i]:
 				MAP.CITY_SIZE,
 				false
 			)
+
 	return []
-
-
-func _route_world_points(route: Array[Vector3i]) -> PackedVector2Array:
-	var points := PackedVector2Array([drive.visual_world_position])
-	for state in route:
-		var cell: Vector2i = Vector2i(state.x, state.y)
-		var world_position: Vector2 = (
-			MAP.neighborhood_cell_center(cell)
-			if drive.road_kind == "neighborhood"
-			else drive._city_cell_center(cell)
-		)
-		if points[points.size() - 1].distance_to(world_position) > 0.5:
-			points.append(world_position)
-	return points
-
-
-func _distance_along_route_to_cell(
-	route: Array[Vector3i],
-	target_cell: Vector2i
-) -> float:
-	var points := _route_world_points(route)
-	if points.size() < 2:
-		return 0.0
-
-	var distance: float = 0.0
-	var point_index: int = 1
-
-	for state in route:
-		var cell: Vector2i = Vector2i(state.x, state.y)
-		var world_position: Vector2 = (
-			MAP.neighborhood_cell_center(cell)
-			if drive.road_kind == "neighborhood"
-			else drive._city_cell_center(cell)
-		)
-
-		if point_index < points.size():
-			var previous: Vector2 = points[point_index - 1]
-			if previous.distance_to(world_position) > 0.5:
-				distance += previous.distance_to(world_position)
-				point_index += 1
-
-		if cell == target_cell:
-			break
-
-	return distance
 
 
 func _current_turn_hint() -> Dictionary:
@@ -291,11 +392,11 @@ func _find_route_states(
 	var found := false
 
 	while queue_index < queue.size():
-		var state: Vector3i = queue[queue_index]
+		var state := queue[queue_index]
 		queue_index += 1
 
-		var cell: Vector2i = Vector2i(state.x, state.y)
-		var state_heading: Vector2i = _direction_from_index(state.z)
+		var cell := Vector2i(state.x, state.y)
+		var state_heading := _direction_from_index(state.z)
 
 		if cell == goal_cell:
 			goal_state = state
@@ -303,7 +404,7 @@ func _find_route_states(
 			break
 
 		for next_heading in _ordered_directions(state_heading):
-			var next_cell: Vector2i = cell + next_heading
+			var next_cell := cell + next_heading
 			if not _cell_inside(next_cell, grid_size):
 				continue
 			if (
@@ -312,7 +413,7 @@ func _find_route_states(
 			):
 				continue
 
-			var next_state: Vector3i = Vector3i(
+			var next_state := Vector3i(
 				next_cell.x,
 				next_cell.y,
 				_direction_index(next_heading)
@@ -327,12 +428,14 @@ func _find_route_states(
 		return []
 
 	var route: Array[Vector3i] = []
-	var cursor: Vector3i = goal_state
+	var cursor := goal_state
+
 	while true:
 		route.push_front(cursor)
 		if cursor == start_state:
 			break
 		cursor = parent[cursor]
+
 	return route
 
 
@@ -344,14 +447,14 @@ func _first_turn_on_route(
 		return {}
 
 	for index in range(route.size() - 1):
-		var state: Vector3i = route[index]
-		var next_state: Vector3i = route[index + 1]
-		var cell: Vector2i = Vector2i(state.x, state.y)
-		var heading: Vector2i = _direction_from_index(state.z)
-		var next_cell: Vector2i = Vector2i(next_state.x, next_state.y)
-		var next_heading: Vector2i = next_cell - cell
-		var turn: String = _relative_turn(heading, next_heading)
+		var state := route[index]
+		var next_state := route[index + 1]
+		var cell := Vector2i(state.x, state.y)
+		var heading := _direction_from_index(state.z)
+		var next_cell := Vector2i(next_state.x, next_state.y)
+		var next_heading := next_cell - cell
 
+		var turn := _relative_turn(heading, next_heading)
 		if not turn.is_empty():
 			return {
 				"cell": cell,
@@ -360,14 +463,16 @@ func _first_turn_on_route(
 
 	if final_direction != Vector2i.ZERO:
 		var final_state: Vector3i = route.back()
-		var final_cell: Vector2i = Vector2i(final_state.x, final_state.y)
-		var final_heading: Vector2i = _direction_from_index(final_state.z)
-		var final_turn: String = _relative_turn(final_heading, final_direction)
+		var final_cell := Vector2i(final_state.x, final_state.y)
+		var final_heading := _direction_from_index(final_state.z)
+		var final_turn := _relative_turn(final_heading, final_direction)
+
 		if not final_turn.is_empty():
 			return {
 				"cell": final_cell,
 				"turn": final_turn,
 			}
+
 	return {}
 
 
