@@ -85,7 +85,9 @@ func _draw() -> void:
 
 
 func _draw_route_line() -> void:
-	if drive.road_kind == "highway":
+	# Blue route is only useful on the street grids. Keep ramps, highway,
+	# and the parking lot visually clean.
+	if drive.road_kind != "neighborhood" and drive.road_kind != "city":
 		return
 
 	var world_points: PackedVector2Array = _current_route_world_points()
@@ -312,12 +314,6 @@ func _current_instruction() -> Dictionary:
 			var hint: Dictionary = _current_turn_hint()
 			if hint.is_empty():
 				if drive.road_kind == "city":
-					if drive.parking_maneuver_started:
-						return {
-							"turn": "right",
-							"title": "Park on right",
-							"subtitle": "Destination",
-						}
 					return {
 						"turn": "right",
 						"title": "Turn right",
@@ -371,6 +367,18 @@ func _current_instruction() -> Dictionary:
 				"turn": "straight",
 				"title": "Take the exit",
 				"subtitle": "Continue into the city",
+			}
+		"parking":
+			if drive.parking_phase == 0:
+				return {
+					"turn": "straight",
+					"title": "Choose an open spot",
+					"subtitle": "Left or right",
+				}
+			return {
+				"turn": "right",
+				"title": "Park",
+				"subtitle": "Open space selected",
 			}
 	return {}
 
