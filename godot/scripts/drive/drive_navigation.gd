@@ -144,21 +144,16 @@ func _current_route_world_points() -> PackedVector2Array:
 				return PackedVector2Array()
 			var points := _route_world_points(route)
 
-			# While still in the neighborhood, let the route visibly continue
-			# into the mouth of the on-ramp. Once road_kind becomes connector_one
-			# the line disappears, so the connector never carries a blue overlay.
+			# Lead the blue route exactly to the connector mouth, but never
+			# draw it over the connector itself.
 			var connector_rect := MAP.CONNECTOR_ONE_RECT
 			var gate_center := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE)
-			var ramp_preview := Vector2(
-				connector_rect.position.x + connector_rect.size.x * 0.28,
-				lerpf(
-					gate_center.y,
-					MAP.highway_entry_point().y,
-					0.28
-				)
+			var connector_mouth := Vector2(
+				connector_rect.position.x,
+				gate_center.y
 			)
-			if points[points.size() - 1].distance_to(ramp_preview) > 0.5:
-				points.append(ramp_preview)
+			if points[points.size() - 1].distance_to(connector_mouth) > 0.5:
+				points.append(connector_mouth)
 			return points
 
 		"city":
@@ -377,7 +372,7 @@ func _current_instruction() -> Dictionary:
 			# actual world position so the banner matches what the player sees.
 			var blocks: int = maxi(
 				1,
-				int(ceil(drive.visual_world_position.distance_to(turn_world) / block_size)) + 1
+				int(ceil(drive.visual_world_position.distance_to(turn_world) / block_size))
 			)
 			return {
 				"turn": turn,
