@@ -554,7 +554,20 @@ func _run() -> void:
 	drive.visual_world_position = drive._city_cell_center(MAP.CITY_DESTINATION)
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = drive.CITY_CAR_SCALE
+	if navigation != null:
+		var lot_instruction: Dictionary = navigation._current_instruction()
+		_check(
+			lot_instruction.get("title", "") == "Turn right"
+			and lot_instruction.get("subtitle", "") == "Into parking lot",
+			"GPS does not direct the final turn into the parking lot"
+		)
 	drive._begin_city_step()
+	if navigation != null:
+		var park_instruction: Dictionary = navigation._current_instruction()
+		_check(
+			park_instruction.get("title", "") == "Park on right",
+			"GPS does not finish with Park on right"
+		)
 	_check(drive.parking_maneuver_started, "Destination did not start parking-lot entry")
 	_check(drive.heading == Vector2i.RIGHT, "Parking maneuver does not turn right into the lot")
 	_check(
@@ -566,7 +579,7 @@ func _run() -> void:
 	drive.visual_world_position = drive.move_to
 	drive.move_from = drive.visual_world_position
 	drive._begin_city_step()
-	_check(drive.drive_complete, "Drive did not complete after curbside parking")
+	_check(drive.drive_complete, "Drive did not complete after parking-lot arrival")
 
 	scene.free()
 	_finish()
