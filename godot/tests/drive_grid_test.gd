@@ -196,6 +196,10 @@ func _run() -> void:
 		drive.HIGHWAY_PLAYER_VISUAL_MULTIPLIER > 1.0,
 		"Highway player car is not visually enlarged"
 	)
+	_check(
+		drive.HIGHWAY_PLAYER_HEIGHT_MULTIPLIER < 1.0,
+		"Highway player car is still too long vertically"
+	)
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
 
 	drive._start_drive()
@@ -340,6 +344,15 @@ func _run() -> void:
 		_check(drive._collision_speed_multiplier() < 1.0, "Traffic collision does not temporarily reduce speed")
 		drive._check_highway_traffic_collisions()
 		_check(drive.bump_count == 1, "Same traffic car counted multiple bumps")
+
+		# A second, different traffic car must trigger a second independent hit.
+		if drive.highway_traffic.size() > 1:
+			var second_position: Vector2 = drive.highway_traffic[1]["position"]
+			drive.visual_world_position = second_position
+			drive.move_from = second_position
+			drive._check_highway_traffic_collisions()
+			_check(drive.bump_count == 2, "Second traffic car did not trigger its own collision")
+			_check(bool(drive.highway_traffic[1]["hit"]), "Second traffic car was not marked hit")
 
 	# A missed exit continues forward seamlessly instead of visibly resetting.
 	drive.highway_column = MAP.HIGHWAY_COLUMNS - 1

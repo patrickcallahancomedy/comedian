@@ -20,6 +20,7 @@ const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
 const CITY_WORLD_ZOOM := WORLD_ZOOM * 0.72
 const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
 const HIGHWAY_PLAYER_VISUAL_MULTIPLIER := 1.55
+const HIGHWAY_PLAYER_HEIGHT_MULTIPLIER := 0.82
 const CITY_CAR_SCALE := 1.5
 const CITY_SPEED_MULTIPLIER := 0.8
 
@@ -71,8 +72,7 @@ const VENUE_SIGN_COLOR := Color(0.78, 0.47, 0.22)
 const VENUE_SIDEWALK_COLOR := Color(0.48, 0.48, 0.46)
 const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.50)
 const TRAFFIC_CAR_SCREEN_SIZE := Vector2(62.0, 72.0)
-const TRAFFIC_COLLISION_X := 8.0
-const TRAFFIC_COLLISION_Y := 4.5
+const TRAFFIC_COLLISION_INSET := Vector2(7.0, 8.0)
 const BUMP_SHAKE_SECONDS := 0.30
 const BUMP_SHAKE_PIXELS := 10.0
 const COLLISION_RECOVERY_SECONDS := 0.65
@@ -571,16 +571,28 @@ func _check_highway_traffic_collisions() -> void:
 	if road_kind != "highway" or highway_traffic.is_empty():
 		return
 
+	var player_size := _highway_player_collision_size()
+	var player_rect := Rect2(
+		player_screen_center - player_size * 0.5,
+		player_size
+	)
+
 	for index in range(highway_traffic.size()):
 		var traffic: Dictionary = highway_traffic[index]
 		if bool(traffic["hit"]):
 			continue
 
 		var position: Vector2 = traffic["position"]
-		if (
-			absf(position.x - visual_world_position.x) <= TRAFFIC_COLLISION_X
-			and absf(position.y - visual_world_position.y) <= TRAFFIC_COLLISION_Y
-		):
+		var traffic_size: Vector2 = traffic.get("size", TRAFFIC_CAR_SCREEN_SIZE)
+		var traffic_screen := _world_to_screen(position)
+		var traffic_rect := Rect2(
+			traffic_screen - traffic_size * 0.5 + TRAFFIC_COLLISION_INSET,
+			traffic_size - TRAFFIC_COLLISION_INSET * 2.0
+		)
+
+		# Match collision to visible sprite overlap so a second car can never be
+		# visibly inside Darren without triggering its own impact.
+		if player_rect.intersects(traffic_rect):
 			var impact := float(traffic.get("impact", 1.0))
 			traffic["hit"] = true
 			traffic["position"] = position + Vector2(18.0 + 7.0 * impact, 0.0)
@@ -597,6 +609,18 @@ func _check_highway_traffic_collisions() -> void:
 			visual_world_position.x -= 2.5 + 2.0 * impact
 			move_from = visual_world_position
 			return
+
+
+func _highway_player_collision_size() -> Vector2:
+	var base_scale := (
+		CAR_REFERENCE_SCALE
+		* visual_cell_scale
+		* HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+	)
+	return Vector2(
+		player_car.size.x * base_scale,
+		player_car.size.y * base_scale * HIGHWAY_PLAYER_HEIGHT_MULTIPLIER
+	)
 
 
 func _update_bump_feedback(delta: float) -> void:
@@ -644,10 +668,12 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 func _update_car_visual() -> void:
 	player_car.position = car_base_position + bump_shake_offset
 	var visual_multiplier := 1.0
+	var aspect_multiplier := Vector2.ONE
 	if road_kind == "highway":
 		visual_multiplier = HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+		aspect_multiplier.y = HIGHWAY_PLAYER_HEIGHT_MULTIPLIER
 	player_car.scale = (
-		Vector2.ONE
+		aspect_multiplier
 		* CAR_REFERENCE_SCALE
 		* visual_cell_scale
 		* visual_multiplier
