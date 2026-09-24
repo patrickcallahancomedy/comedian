@@ -247,7 +247,7 @@ func _run() -> void:
 			initial_hint.get("turn") == "right",
 			"First turn guidance should point right"
 		)
-		var neighborhood_route_points := navigation._current_route_world_points()
+		var neighborhood_route_points: PackedVector2Array = navigation._current_route_world_points()
 		_check(
 			neighborhood_route_points.size() >= 2,
 			"Blue GPS route is missing in neighborhood"
@@ -597,7 +597,7 @@ func _run() -> void:
 		"Parking entrance pulls the car sideways instead of forward"
 	)
 	if navigation != null:
-		var parking_route_points := navigation._current_route_world_points()
+		var parking_route_points: PackedVector2Array = navigation._current_route_world_points()
 		_check(
 			parking_route_points[parking_route_points.size() - 1]
 				== drive._parking_entry_point(),
