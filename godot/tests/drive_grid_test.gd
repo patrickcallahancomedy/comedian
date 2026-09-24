@@ -195,7 +195,7 @@ func _run() -> void:
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
 	_check(MAP.NEIGHBORHOOD_CELL == 80, "Neighborhood blocks are not doubled")
 	_check(MAP.HIGHWAY_CELL == 40, "Highway columns are not doubled")
-	_check(MAP.HIGHWAY_LANE_WIDTH == 20, "Highway lanes are not doubled")
+	_check(MAP.HIGHWAY_LANE_WIDTH == 10, "Highway lanes should stay skinny while road length is doubled")
 	_check(MAP.CITY_CELL == 120, "City blocks are not doubled")
 	_check(
 		is_equal_approx(drive.NEIGHBORHOOD_WORLD_SPEED, 40.0),

@@ -27,8 +27,8 @@ const CITY_WORLD_SPEED := 32.0
 const NEIGHBORHOOD_COLOR := Color(0.27, 0.43, 0.23)
 const NEIGHBORHOOD_SIDEWALK_COLOR := Color(0.70, 0.67, 0.60)
 const NEIGHBORHOOD_ROAD_COLOR := Color(0.16, 0.18, 0.22)
-const NEIGHBORHOOD_ROAD_WIDTH := 26.0
-const NEIGHBORHOOD_SIDEWALK_WIDTH := 34.0
+const NEIGHBORHOOD_ROAD_WIDTH := 13.0
+const NEIGHBORHOOD_SIDEWALK_WIDTH := 17.0
 const NEIGHBORHOOD_VISUAL_PADDING_CELLS := 1.5
 const NEIGHBORHOOD_EDGE_COLOR := Color(0.24, 0.36, 0.20)
 const RAMP_ASPHALT_COLOR := Color(0.12, 0.13, 0.15)
@@ -37,7 +37,7 @@ const RAMP_SHOULDER_COLOR := Color(0.23, 0.24, 0.24)
 const RAMP_EDGE_COLOR := Color(0.95, 0.94, 0.88, 0.92)
 const RAMP_GUIDE_COLOR := Color(1.0, 0.78, 0.24, 0.90)
 const RAMP_TEXTURE_COLOR := Color(0.04, 0.045, 0.055, 0.26)
-const RAMP_TERRAIN_PADDING := 144.0
+const RAMP_TERRAIN_PADDING := 72.0
 const HIGHWAY_ASPHALT_COLOR := Color(0.115, 0.125, 0.145)
 const HIGHWAY_ASPHALT_ALT := Color(0.135, 0.145, 0.165)
 const HIGHWAY_TEXTURE_COLOR := Color(0.04, 0.045, 0.055, 0.22)
@@ -48,14 +48,14 @@ const HIGHWAY_EXIT_GUIDE_COLOR := Color(1.0, 0.78, 0.24, 0.90)
 const HIGHWAY_TERRAIN_COLOR := Color(0.20, 0.29, 0.20)
 const HIGHWAY_TERRAIN_ALT := Color(0.23, 0.32, 0.22)
 const HIGHWAY_TERRAIN_GRID_COLOR := Color(0.08, 0.12, 0.08, 0.24)
-const HIGHWAY_TERRAIN_PADDING := 180.0
-const HIGHWAY_TERRAIN_CELL := 40.0
+const HIGHWAY_TERRAIN_PADDING := 90.0
+const HIGHWAY_TERRAIN_CELL := 20.0
 const CITY_GROUND_COLOR := Color(0.24, 0.255, 0.27)
 const CITY_SIDEWALK_COLOR := Color(0.52, 0.52, 0.50)
 const CITY_SIDEWALK_EDGE := Color(0.68, 0.67, 0.63, 0.55)
 const CITY_ROAD_COLOR := Color(0.105, 0.115, 0.13)
-const CITY_ROAD_WIDTH := 40.0
-const CITY_SIDEWALK_WIDTH := 60.0
+const CITY_ROAD_WIDTH := 20.0
+const CITY_SIDEWALK_WIDTH := 30.0
 const CITY_BUILDING_COLORS := [
 	Color(0.28, 0.25, 0.23),
 	Color(0.32, 0.30, 0.28),
@@ -953,7 +953,7 @@ func _connector_one_points(extra_width: float = 0.0) -> PackedVector2Array:
 	var start_center_y := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).y
 	var end_center_y := MAP.highway_entry_point().y
 	var start_half_width := NEIGHBORHOOD_ROAD_WIDTH * 0.5 + extra_width
-	var end_half_width := 28.0 + extra_width
+	var end_half_width := 14.0 + extra_width
 
 	return PackedVector2Array([
 		Vector2(rect.position.x, start_center_y - start_half_width),
@@ -971,7 +971,7 @@ func _connector_two_points(extra_width: float = 0.0) -> PackedVector2Array:
 	).y
 	var end_center_y := _city_entry_point().y
 	var start_half_width := MAP.HIGHWAY_LANE_WIDTH * 0.5 + extra_width
-	var end_half_width := 44.0 + extra_width
+	var end_half_width := 22.0 + extra_width
 
 	return PackedVector2Array([
 		Vector2(rect.position.x, start_center_y - start_half_width),
