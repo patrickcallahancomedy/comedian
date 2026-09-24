@@ -1,17 +1,22 @@
 extends Label
 
-## Subtle in-world route guidance for the driving microgame.
-## Draws only a restrained road-center route line. There are no turn arrows,
-## badges, chevrons, pulses, or marker animations.
+## GPS-style route guidance for the driving microgame.
+## Uses a conventional center route line plus a compact top instruction banner.
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ROUTE_TINT_COLOR := Color(1.0, 0.80, 0.30, 0.18)
-const ROUTE_SOFT_COLOR := Color(1.0, 0.88, 0.50, 0.055)
-const ROUTE_TINT_WIDTH_RATIO := 0.98
-const ROUTE_SOFT_WIDTH_RATIO := 0.82
-const ROUTE_START_AHEAD_RATIO := 0.08
-const ROUTE_LOOKAHEAD_CELLS := 1.35
+const ROUTE_SHADOW_COLOR := Color(0.02, 0.08, 0.18, 0.52)
+const ROUTE_LINE_COLOR := Color(0.10, 0.42, 0.96, 0.98)
+const ROUTE_SHADOW_WIDTH_RATIO := 0.48
+const ROUTE_LINE_WIDTH_RATIO := 0.32
+const ROUTE_START_AHEAD_RATIO := 0.02
+
+const BANNER_COLOR := Color(0.05, 0.30, 0.22, 0.97)
+const BANNER_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
+const BANNER_SUBTEXT_COLOR := Color(0.88, 0.96, 0.92, 0.92)
+const BANNER_MARGIN := 16.0
+const BANNER_HEIGHT := 82.0
+const BANNER_RADIUS := 12.0
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -59,15 +64,19 @@ func _update_status_visibility() -> void:
 func _draw() -> void:
 	if drive == null or not drive.started or drive.drive_complete:
 		return
-	if drive.road_kind != "neighborhood" and drive.road_kind != "city":
-		return
 
+	if drive.road_kind == "neighborhood" or drive.road_kind == "city":
+		_draw_route_line()
+
+	_draw_instruction_banner()
+
+
+func _draw_route_line() -> void:
 	var route := _current_route_states()
 	if route.is_empty():
 		return
 
 	var world_points := _route_world_points(route)
-	world_points = _limited_route_world_points(world_points)
 	if world_points.size() < 2:
 		return
 
@@ -77,25 +86,203 @@ func _draw() -> void:
 		else drive.CITY_ROAD_WIDTH
 	)
 	var zoom: float = drive._current_world_zoom()
-	var tint_width: float = road_world_width * zoom * ROUTE_TINT_WIDTH_RATIO
-	var soft_width: float = road_world_width * zoom * ROUTE_SOFT_WIDTH_RATIO
+	var shadow_width: float = road_world_width * zoom * ROUTE_SHADOW_WIDTH_RATIO
+	var line_width: float = road_world_width * zoom * ROUTE_LINE_WIDTH_RATIO
 	var screen_points := PackedVector2Array()
 
-	for world_point in world_points:
-		screen_points.append(drive._world_to_screen(world_point))
+	for index in range(world_points.size()):
+		if index > 0 and not _world_segment_is_local(
+			world_points[index - 1],
+			world_points[index]
+		):
+			break
+		screen_points.append(drive._world_to_screen(world_points[index]))
 
-	# Start just in front of the car so the road reads as lit ahead of Darren,
-	# not as a marker painted underneath the car.
+	if screen_points.size() < 2:
+		return
+
 	screen_points[0] = screen_points[0].lerp(
 		screen_points[1],
 		ROUTE_START_AHEAD_RATIO
 	)
 
-	# Draw the route as one continuous road-width wash. This avoids the round
-	# endpoint blobs and overlapping per-segment rectangles that made turns look
-	# like blocks or caused the old line to appear to split across the map.
-	draw_polyline(screen_points, ROUTE_TINT_COLOR, tint_width, true)
-	draw_polyline(screen_points, ROUTE_SOFT_COLOR, soft_width, true)
+	# Conventional GPS treatment: one solid center route with a darker casing.
+	draw_polyline(screen_points, ROUTE_SHADOW_COLOR, shadow_width, true)
+	draw_polyline(screen_points, ROUTE_LINE_COLOR, line_width, true)
+
+
+func _draw_instruction_banner() -> void:
+	var instruction := _current_instruction()
+	if instruction.is_empty():
+		return
+
+	var banner_width := minf(size.x - BANNER_MARGIN * 2.0, 420.0)
+	var banner_rect := Rect2(
+		Vector2((size.x - banner_width) * 0.5, BANNER_MARGIN),
+		Vector2(banner_width, BANNER_HEIGHT)
+	)
+	draw_style_box(
+		_make_banner_style(),
+		banner_rect
+	)
+
+	var icon_rect := Rect2(
+		banner_rect.position + Vector2(14.0, 14.0),
+		Vector2(48.0, 48.0)
+	)
+	_draw_turn_icon(icon_rect, String(instruction.get("turn", "straight")))
+
+	var font := get_theme_default_font()
+	var title_size := 22
+	var sub_size := 14
+	var text_x := banner_rect.position.x + 76.0
+	var title_y := banner_rect.position.y + 32.0
+	var sub_y := banner_rect.position.y + 57.0
+
+	draw_string(
+		font,
+		Vector2(text_x, title_y),
+		String(instruction.get("title", "Continue")),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		banner_rect.end.x - text_x - 12.0,
+		title_size,
+		BANNER_TEXT_COLOR
+	)
+	draw_string(
+		font,
+		Vector2(text_x, sub_y),
+		String(instruction.get("subtitle", "")),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		banner_rect.end.x - text_x - 12.0,
+		sub_size,
+		BANNER_SUBTEXT_COLOR
+	)
+
+
+func _make_banner_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = BANNER_COLOR
+	style.corner_radius_top_left = int(BANNER_RADIUS)
+	style.corner_radius_top_right = int(BANNER_RADIUS)
+	style.corner_radius_bottom_left = int(BANNER_RADIUS)
+	style.corner_radius_bottom_right = int(BANNER_RADIUS)
+	return style
+
+
+func _draw_turn_icon(rect: Rect2, turn: String) -> void:
+	var center := rect.get_center()
+	var color := BANNER_TEXT_COLOR
+	var width := 5.0
+	var points := PackedVector2Array()
+
+	match turn:
+		"left":
+			points = PackedVector2Array([
+				Vector2(rect.end.x - 8.0, rect.end.y - 8.0),
+				Vector2(rect.end.x - 8.0, center.y),
+				Vector2(rect.position.x + 12.0, center.y),
+			])
+			draw_polyline(points, color, width, true)
+			draw_line(
+				Vector2(rect.position.x + 12.0, center.y),
+				Vector2(rect.position.x + 24.0, center.y - 12.0),
+				color, width, true
+			)
+			draw_line(
+				Vector2(rect.position.x + 12.0, center.y),
+				Vector2(rect.position.x + 24.0, center.y + 12.0),
+				color, width, true
+			)
+		"right":
+			points = PackedVector2Array([
+				Vector2(rect.position.x + 8.0, rect.end.y - 8.0),
+				Vector2(rect.position.x + 8.0, center.y),
+				Vector2(rect.end.x - 12.0, center.y),
+			])
+			draw_polyline(points, color, width, true)
+			draw_line(
+				Vector2(rect.end.x - 12.0, center.y),
+				Vector2(rect.end.x - 24.0, center.y - 12.0),
+				color, width, true
+			)
+			draw_line(
+				Vector2(rect.end.x - 12.0, center.y),
+				Vector2(rect.end.x - 24.0, center.y + 12.0),
+				color, width, true
+			)
+		_:
+			draw_line(
+				Vector2(center.x, rect.end.y - 8.0),
+				Vector2(center.x, rect.position.y + 10.0),
+				color, width, true
+			)
+			draw_line(
+				Vector2(center.x, rect.position.y + 10.0),
+				Vector2(center.x - 11.0, rect.position.y + 21.0),
+				color, width, true
+			)
+			draw_line(
+				Vector2(center.x, rect.position.y + 10.0),
+				Vector2(center.x + 11.0, rect.position.y + 21.0),
+				color, width, true
+			)
+
+
+func _current_instruction() -> Dictionary:
+	match drive.road_kind:
+		"neighborhood", "city":
+			var hint := _current_turn_hint()
+			if hint.is_empty():
+				return {
+					"turn": "straight",
+					"title": "Continue straight",
+					"subtitle": "Follow the blue route",
+				}
+			var turn := String(hint.get("turn", "straight"))
+			var turn_cell := hint.get("cell", Vector2i.ZERO)
+			var current_cell := (
+				drive.neighborhood_cell
+				if drive.road_kind == "neighborhood"
+				else drive.city_cell
+			)
+			var blocks := maxi(
+				1,
+				abs(turn_cell.x - current_cell.x)
+				+ abs(turn_cell.y - current_cell.y)
+			)
+			return {
+				"turn": turn,
+				"title": "Turn %s" % turn,
+				"subtitle": "In %d block%s" % [
+					blocks,
+					"" if blocks == 1 else "s",
+				],
+			}
+		"connector_one":
+			return {
+				"turn": "straight",
+				"title": "Merge onto highway",
+				"subtitle": "Continue ahead",
+			}
+		"highway":
+			if drive.highway_lane < MAP.HIGHWAY_EXIT_LANE:
+				return {
+					"turn": "right",
+					"title": "Move right",
+					"subtitle": "Use lane 4 for the exit",
+				}
+			return {
+				"turn": "straight",
+				"title": "Stay in lane 4",
+				"subtitle": "Exit ahead",
+			}
+		"connector_two":
+			return {
+				"turn": "straight",
+				"title": "Take the exit",
+				"subtitle": "Continue into the city",
+			}
+	return {}
 
 
 func _route_world_points(route: Array[Vector3i]) -> PackedVector2Array:
@@ -113,46 +300,6 @@ func _route_world_points(route: Array[Vector3i]) -> PackedVector2Array:
 			points.append(world_position)
 
 	return points
-
-
-func _limited_route_world_points(
-	world_points: PackedVector2Array
-) -> PackedVector2Array:
-	if world_points.size() < 2:
-		return world_points
-
-	var cell_size: float = (
-		float(MAP.NEIGHBORHOOD_CELL)
-		if drive.road_kind == "neighborhood"
-		else float(MAP.CITY_CELL)
-	)
-	var remaining := cell_size * ROUTE_LOOKAHEAD_CELLS
-	var limited := PackedVector2Array([world_points[0]])
-
-	for index in range(world_points.size() - 1):
-		var from_world := world_points[index]
-		var to_world := world_points[index + 1]
-		var segment := to_world - from_world
-		var segment_length := segment.length()
-
-		if segment_length <= 0.001:
-			continue
-
-		# Never bridge a non-local jump. Route tint may only follow an actual
-		# adjacent road segment.
-		if not _world_segment_is_local(from_world, to_world):
-			break
-
-		if segment_length <= remaining + 0.001:
-			limited.append(to_world)
-			remaining -= segment_length
-			if remaining <= 0.001:
-				break
-		else:
-			limited.append(from_world + segment.normalized() * remaining)
-			break
-
-	return limited
 
 
 func _world_segment_is_local(from_world: Vector2, to_world: Vector2) -> bool:
