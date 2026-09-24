@@ -236,8 +236,8 @@ func _run() -> void:
 			"GPS instruction banner does not show the first turn"
 		)
 		_check(
-			String(initial_instruction.get("subtitle", "")).begins_with("In "),
-			"GPS instruction banner does not show turn distance"
+			String(initial_instruction.get("subtitle", "")) == "In 3 blocks",
+			"GPS instruction banner block count is off by one"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
