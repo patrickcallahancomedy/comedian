@@ -286,6 +286,7 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "highway", "Connector did not enter highway")
+	_check(not drive.status_label.visible, "Highway status banner should stay hidden")
 	_check(drive.highway_traffic.size() == 3, "Highway traffic did not spawn")
 	if drive.highway_traffic.size() == 3:
 		_check(
@@ -296,6 +297,18 @@ func _run() -> void:
 		_check(
 			first_traffic_position.x - drive.visual_world_position.x <= 35.0,
 			"First traffic car starts too far ahead to be visible on mobile"
+		)
+		_check(
+			String(drive.highway_traffic[0]["profile"]) != String(drive.highway_traffic[1]["profile"]),
+			"Traffic profiles should not all be identical"
+		)
+		_check(
+			float(drive.highway_traffic[2]["impact"]) > float(drive.highway_traffic[0]["impact"]),
+			"Heavy traffic should have a stronger collision effect"
+		)
+		_check(
+			Vector2(drive.highway_traffic[2]["size"]).y > Vector2(drive.highway_traffic[0]["size"]).y,
+			"Traffic silhouettes should have distinct sizes"
 		)
 	_check(
 		is_equal_approx(
@@ -318,9 +331,13 @@ func _run() -> void:
 		drive.visual_world_position = traffic_position
 		drive.bump_count = 0
 		drive.bump_shake_remaining = 0.0
+		var before_collision_x := drive.visual_world_position.x
 		drive._check_highway_traffic_collisions()
 		_check(drive.bump_count == 1, "Traffic collision did not count a bump")
 		_check(drive.bump_shake_remaining > 0.0, "Traffic collision has no bump feedback")
+		_check(drive.collision_recovery_remaining > 0.0, "Traffic collision does not slow recovery")
+		_check(drive.visual_world_position.x < before_collision_x, "Traffic collision does not knock the player back")
+		_check(drive._collision_speed_multiplier() < 1.0, "Traffic collision does not temporarily reduce speed")
 		drive._check_highway_traffic_collisions()
 		_check(drive.bump_count == 1, "Same traffic car counted multiple bumps")
 
