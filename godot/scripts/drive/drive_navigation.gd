@@ -338,10 +338,13 @@ func _current_instruction() -> Dictionary:
 				if drive.road_kind == "neighborhood"
 				else drive.city_cell
 			)
+			# Count the current road segment as a block too. The previous
+			# Manhattan-distance count consistently read one block too low in play.
 			var blocks: int = maxi(
 				1,
 				abs(turn_cell.x - current_cell.x)
 				+ abs(turn_cell.y - current_cell.y)
+				+ 1
 			)
 			return {
 				"turn": turn,
