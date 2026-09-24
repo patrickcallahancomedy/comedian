@@ -284,6 +284,11 @@ func _run() -> void:
 			int(drive.highway_traffic[0]["lane"]) == MAP.HIGHWAY_ENTRY_LANE,
 			"First traffic car should force an early lane decision"
 		)
+		var first_traffic_position: Vector2 = drive.highway_traffic[0]["position"]
+		_check(
+			first_traffic_position.x - drive.visual_world_position.x <= 35.0,
+			"First traffic car starts too far ahead to be visible on mobile"
+		)
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),

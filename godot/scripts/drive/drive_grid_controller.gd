@@ -69,7 +69,7 @@ const VENUE_AWNING_COLOR := Color(0.42, 0.16, 0.13)
 const VENUE_SIGN_COLOR := Color(0.78, 0.47, 0.22)
 const VENUE_SIDEWALK_COLOR := Color(0.48, 0.48, 0.46)
 const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.50)
-const TRAFFIC_CAR_SCREEN_SIZE := Vector2(30.0, 30.0)
+const TRAFFIC_CAR_SCREEN_SIZE := Vector2(42.0, 42.0)
 const TRAFFIC_COLLISION_X := 8.0
 const TRAFFIC_COLLISION_Y := 4.5
 const BUMP_SHAKE_SECONDS := 0.28
@@ -479,9 +479,13 @@ func _spawn_highway_traffic(lap: int) -> void:
 
 	var rect := _highway_rect_for_lap(lap)
 	var specs: Array[Dictionary] = [
-		{"lane": MAP.HIGHWAY_ENTRY_LANE, "progress": 0.28, "speed": 22.0},
-		{"lane": 1, "progress": 0.50, "speed": 28.0},
-		{"lane": MAP.HIGHWAY_EXIT_LANE, "progress": 0.70, "speed": 20.0},
+		# The first car is deliberately inside the phone view as soon as the
+		# player merges. Later cars enter the frame naturally as the player
+		# catches them, creating a readable dodge sequence instead of hidden
+		# off-screen traffic.
+		{"lane": MAP.HIGHWAY_ENTRY_LANE, "progress": 0.14, "speed": 55.0},
+		{"lane": 1, "progress": 0.27, "speed": 45.0},
+		{"lane": MAP.HIGHWAY_EXIT_LANE, "progress": 0.42, "speed": 52.0},
 	]
 
 	for index in range(specs.size()):
