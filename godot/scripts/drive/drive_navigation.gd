@@ -70,16 +70,13 @@ func _update_status_visibility() -> void:
 	if drive == null or status_label == null:
 		return
 
-	# Keep the start/arrival state and highway lane guidance. Neighborhood and
-	# city turn instructions are replaced completely by the in-world arrow.
+	# The driving view should stay clean. Keep only the start/arrival message;
+	# route and lane information belongs in the world, not as a banner.
 	if not drive.started or drive.drive_complete:
 		status_label.show()
 		return
 
-	if drive.road_kind == "highway" or drive.road_kind.begins_with("connector"):
-		status_label.show()
-	else:
-		status_label.hide()
+	status_label.hide()
 
 
 func _draw() -> void:

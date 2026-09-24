@@ -19,6 +19,7 @@ const WORLD_SCALE := 2.0
 const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
 const CITY_WORLD_ZOOM := WORLD_ZOOM * 0.72
 const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
+const HIGHWAY_PLAYER_VISUAL_MULTIPLIER := 1.55
 const CITY_CAR_SCALE := 1.5
 const CITY_SPEED_MULTIPLIER := 0.8
 
@@ -69,15 +70,15 @@ const VENUE_AWNING_COLOR := Color(0.42, 0.16, 0.13)
 const VENUE_SIGN_COLOR := Color(0.78, 0.47, 0.22)
 const VENUE_SIDEWALK_COLOR := Color(0.48, 0.48, 0.46)
 const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.50)
-const TRAFFIC_CAR_SCREEN_SIZE := Vector2(42.0, 42.0)
+const TRAFFIC_CAR_SCREEN_SIZE := Vector2(62.0, 62.0)
 const TRAFFIC_COLLISION_X := 8.0
 const TRAFFIC_COLLISION_Y := 4.5
 const BUMP_SHAKE_SECONDS := 0.28
 const BUMP_SHAKE_PIXELS := 9.0
 const TRAFFIC_COLORS := [
-	Color(0.86, 0.90, 0.95),
-	Color(0.94, 0.62, 0.56),
-	Color(0.62, 0.72, 0.88),
+	Color(1.0, 0.82, 0.42),
+	Color(0.95, 0.46, 0.38),
+	Color(0.42, 0.70, 1.0),
 ]
 const GRID_COLOR := Color(0.08, 0.09, 0.09, 0.45)
 const BORDER_COLOR := Color(0.93, 0.92, 0.86)
@@ -574,7 +575,15 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 
 func _update_car_visual() -> void:
 	player_car.position = car_base_position + bump_shake_offset
-	player_car.scale = Vector2.ONE * CAR_REFERENCE_SCALE * visual_cell_scale
+	var visual_multiplier := 1.0
+	if road_kind == "highway":
+		visual_multiplier = HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+	player_car.scale = (
+		Vector2.ONE
+		* CAR_REFERENCE_SCALE
+		* visual_cell_scale
+		* visual_multiplier
+	)
 
 	# The car stays visually upright while steering rotates the world. A bump
 	# adds one quick wobble without changing any driving state.
