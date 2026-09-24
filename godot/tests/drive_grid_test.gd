@@ -217,34 +217,26 @@ func _run() -> void:
 			"Navigation illumination is not anchored to the visual car position"
 		)
 		_check(
-			navigation.ROUTE_TINT_WIDTH_RATIO >= 0.95
-			and navigation.ROUTE_TINT_WIDTH_RATIO <= 1.0,
-			"Navigation illumination does not cover the road width"
+			navigation.ROUTE_LINE_WIDTH_RATIO >= 0.28
+			and navigation.ROUTE_LINE_WIDTH_RATIO <= 0.36,
+			"GPS route line width is not conventional"
 		)
 		_check(
-			navigation.ROUTE_TINT_COLOR.a >= 0.15
-			and navigation.ROUTE_TINT_COLOR.a <= 0.20,
-			"Navigation illumination is not a subtle road tint"
+			navigation.ROUTE_LINE_COLOR.a >= 0.95,
+			"GPS route line is not solid enough"
 		)
 		_check(
-			navigation.ROUTE_START_AHEAD_RATIO >= 0.05
-			and navigation.ROUTE_START_AHEAD_RATIO <= 0.10,
-			"Navigation illumination does not begin just ahead of the car"
+			navigation.ROUTE_START_AHEAD_RATIO <= 0.05,
+			"GPS route does not begin at the car"
+		)
+		var initial_instruction: Dictionary = navigation._current_instruction()
+		_check(
+			initial_instruction.get("title") == "Turn right",
+			"GPS instruction banner does not show the first turn"
 		)
 		_check(
-			navigation.ROUTE_LOOKAHEAD_CELLS >= 1.2
-			and navigation.ROUTE_LOOKAHEAD_CELLS <= 1.5,
-			"Navigation illumination extends too far ahead"
-		)
-		var limited_route: PackedVector2Array = navigation._limited_route_world_points(route_world_points)
-		var limited_distance := 0.0
-		for route_index in range(limited_route.size() - 1):
-			limited_distance += limited_route[route_index].distance_to(
-				limited_route[route_index + 1]
-			)
-		_check(
-			limited_distance <= float(MAP.NEIGHBORHOOD_CELL) * 1.5,
-			"Navigation illumination lookahead exceeds the local road horizon"
+			String(initial_instruction.get("subtitle", "")).begins_with("In "),
+			"GPS instruction banner does not show turn distance"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
