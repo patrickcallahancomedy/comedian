@@ -166,29 +166,28 @@ func _run() -> void:
 	)
 
 	var parking_lot: Rect2 = drive._parking_lot_rect()
-	var parking_rect: Rect2 = drive._parking_space_rect()
 	var venue_rect: Rect2 = drive._venue_rect()
 	var destination_center: Vector2 = drive._city_cell_center(MAP.CITY_DESTINATION)
-	var parking_stop: Vector2 = drive._parking_stop_point()
+	var aisle_entry: Vector2 = drive._parking_aisle_point()
 	_check(
-		parking_lot.has_point(parking_stop),
-		"Destination stop is not inside the parking lot"
+		parking_lot.has_point(aisle_entry),
+		"Parking aisle entry is not inside the parking lot"
 	)
 	_check(
-		parking_rect.has_point(parking_stop),
-		"Destination parking space does not contain the stop point"
+		aisle_entry.x > destination_center.x,
+		"Parking lot is not reached by turning right off the street"
 	)
 	_check(
-		parking_stop.x > destination_center.x,
-		"Final parking stop is not reached by turning right off the street"
+		parking_lot.has_point(drive._parking_space_center(-1, 1)),
+		"Upper open parking space is not inside the lot"
+	)
+	_check(
+		parking_lot.has_point(drive._parking_space_center(1, -1)),
+		"Lower open parking space is not inside the lot"
 	)
 	_check(
 		venue_rect.position.x >= parking_lot.end.x,
 		"Venue is not positioned beside the parking lot"
-	)
-	_check(
-		venue_rect.position.x - parking_stop.x < 32.0,
-		"Venue is too far from the parking space to read on mobile"
 	)
 
 	_check(navigation != null, "Navigation display missing")
