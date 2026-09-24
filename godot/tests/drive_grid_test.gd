@@ -331,7 +331,7 @@ func _run() -> void:
 		drive.visual_world_position = traffic_position
 		drive.bump_count = 0
 		drive.bump_shake_remaining = 0.0
-		var before_collision_x := drive.visual_world_position.x
+		var before_collision_x: float = drive.visual_world_position.x
 		drive._check_highway_traffic_collisions()
 		_check(drive.bump_count == 1, "Traffic collision did not count a bump")
 		_check(drive.bump_shake_remaining > 0.0, "Traffic collision has no bump feedback")
