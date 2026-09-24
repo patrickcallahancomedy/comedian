@@ -74,7 +74,8 @@ const CAR_STEERING_PIVOT_Y_RATIO := 0.28
 const CAMERA_COUNTER_NUDGE_PIXELS := 5.0
 const STEERING_FEEDBACK_DECAY := 5.5
 const CAMERA_NUDGE_DECAY := 7.0
-const TURN_OVERSHOOT_STRENGTH := 0.80
+const DRIFT_TAIL_START := 0.62
+const DRIFT_TAIL_END := 1.0
 const GRID_COLOR := Color(0.08, 0.09, 0.09, 0.45)
 const BORDER_COLOR := Color(0.93, 0.92, 0.86)
 
@@ -86,6 +87,7 @@ var parking_maneuver_started := false
 var drive_time := 0.0
 var missed_turns := 0
 var steering_feedback := 0.0
+var turn_drift_direction := 0.0
 var camera_nudge := Vector2.ZERO
 
 var road_kind := "neighborhood"
@@ -150,6 +152,7 @@ func _reset_to_start() -> void:
 	drive_time = 0.0
 	missed_turns = 0
 	steering_feedback = 0.0
+	turn_drift_direction = 0.0
 	camera_nudge = Vector2.ZERO
 	road_kind = "neighborhood"
 	neighborhood_cell = MAP.NEIGHBORHOOD_START
@@ -203,10 +206,15 @@ func _process(delta: float) -> void:
 		map_rotation = lerp_angle(
 			map_rotation_from,
 			map_rotation_to,
-			_ease_turn_with_overshoot(turn_t)
+			_ease_turn_in_out(turn_t)
 		)
+		if absf(turn_drift_direction) > 0.001:
+			steering_feedback = _late_fishtail_amount(turn_t) * turn_drift_direction
 	else:
 		map_rotation = map_rotation_to
+		if absf(turn_drift_direction) > 0.001:
+			turn_drift_direction = 0.0
+			steering_feedback = 0.0
 
 	_advance_continuous_motion(delta)
 
@@ -339,6 +347,7 @@ func _begin_neighborhood_step() -> void:
 		and heading == MAP.NEIGHBORHOOD_GATE_SIDE
 	):
 		road_kind = "connector_one"
+		_stabilize_for_connector()
 		move_to = MAP.highway_entry_point()
 		scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
 		motion_direction = (move_to - move_from).normalized()
@@ -362,6 +371,7 @@ func _begin_highway_step() -> void:
 	if highway_column >= MAP.HIGHWAY_COLUMNS - 1:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
 			road_kind = "connector_two"
+			_stabilize_for_connector()
 			move_to = _city_entry_point()
 			# The off-ramp widens to a full city-block width, so the car can
 			# grow smoothly all the way to its city scale before crossing in.
@@ -434,7 +444,7 @@ func _turn_left() -> void:
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
-		_trigger_steering_feedback(-1.0)
+		turn_drift_direction = -1.0
 		_set_heading(Vector2i(heading.y, -heading.x))
 
 
@@ -448,7 +458,7 @@ func _turn_right() -> void:
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
-		_trigger_steering_feedback(1.0)
+		turn_drift_direction = 1.0
 		_set_heading(Vector2i(-heading.y, heading.x))
 
 
@@ -487,11 +497,25 @@ func _update_game_feel(delta: float) -> void:
 	)
 
 
-func _ease_turn_with_overshoot(t: float) -> float:
-	var x := clampf(t, 0.0, 1.0) - 1.0
-	var c1 := TURN_OVERSHOOT_STRENGTH
-	var c3 := c1 + 1.0
-	return 1.0 + c3 * x * x * x + c1 * x * x
+func _stabilize_for_connector() -> void:
+	steering_feedback = 0.0
+	turn_drift_direction = 0.0
+	camera_nudge = Vector2.ZERO
+	player_car.rotation = 0.0
+
+
+func _ease_turn_in_out(t: float) -> float:
+	var x := clampf(t, 0.0, 1.0)
+	# Smootherstep: zero angular velocity at both ends, fastest in the middle.
+	return x * x * x * (x * (x * 6.0 - 15.0) + 10.0)
+
+
+func _late_fishtail_amount(t: float) -> float:
+	if t <= DRIFT_TAIL_START or t >= DRIFT_TAIL_END:
+		return 0.0
+	var phase := inverse_lerp(DRIFT_TAIL_START, DRIFT_TAIL_END, t)
+	# One clean rear-end kick near the end of the turn, then settle to center.
+	return sin(phase * PI)
 
 
 func _set_heading(new_heading: Vector2i) -> void:
@@ -514,13 +538,17 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 
 
 func _update_car_visual() -> void:
+	var visual_feedback := steering_feedback
+	if road_kind.begins_with("connector"):
+		visual_feedback = 0.0
+
 	var sway := Vector2(
-		steering_feedback * STEERING_SWAY_PIXELS,
+		visual_feedback * STEERING_SWAY_PIXELS,
 		0.0
 	)
 	player_car.position = car_base_position + sway
 	player_car.scale = Vector2.ONE * CAR_REFERENCE_SCALE * visual_cell_scale
-	player_car.rotation = steering_feedback * STEERING_LEAN_RADIANS
+	player_car.rotation = visual_feedback * STEERING_LEAN_RADIANS
 
 
 func _draw() -> void:

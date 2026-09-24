@@ -279,6 +279,15 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "highway", "Connector did not enter highway")
+	drive.road_kind = "connector_one"
+	drive.steering_feedback = 1.0
+	drive.turn_drift_direction = 1.0
+	drive.camera_nudge = Vector2(5.0, 0.0)
+	drive._stabilize_for_connector()
+	_check(is_equal_approx(drive.steering_feedback, 0.0), "Connector keeps steering wobble")
+	_check(is_equal_approx(drive.turn_drift_direction, 0.0), "Connector keeps drift state")
+	_check(drive.camera_nudge == Vector2.ZERO, "Connector keeps camera wobble")
+	drive.road_kind = "highway"
 	if navigation != null:
 		navigation._update_status_visibility()
 		_check(not drive.status_label.visible, "Highway status text should be hidden")
@@ -306,8 +315,24 @@ func _run() -> void:
 		"Steering pivot ratio changed from front-axle fishtail setup"
 	)
 	_check(
-		drive._ease_turn_with_overshoot(0.80) > 1.0,
-		"Turn easing does not overshoot before settling"
+		drive._ease_turn_in_out(0.1) < 0.1,
+		"Turn does not ease in"
+	)
+	_check(
+		drive._ease_turn_in_out(0.9) > 0.9,
+		"Turn does not ease out"
+	)
+	_check(
+		is_equal_approx(drive._late_fishtail_amount(0.4), 0.0),
+		"Fishtail starts too early"
+	)
+	_check(
+		drive._late_fishtail_amount(0.8) > 0.8,
+		"Fishtail does not peak near the end of the turn"
+	)
+	_check(
+		is_equal_approx(drive._late_fishtail_amount(1.0), 0.0),
+		"Fishtail does not settle at turn completion"
 	)
 
 	# A missed exit continues forward seamlessly instead of visibly resetting.
