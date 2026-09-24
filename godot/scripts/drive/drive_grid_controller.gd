@@ -10,6 +10,7 @@ extends Control
 signal trip_finished(result: Dictionary)
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
+const TRAFFIC_CAR_TEXTURE = preload("res://assets/car/player_car_top.png")
 
 const STEP_SECONDS := 1.0
 const TURN_SECONDS := 0.20
@@ -68,6 +69,16 @@ const VENUE_AWNING_COLOR := Color(0.42, 0.16, 0.13)
 const VENUE_SIGN_COLOR := Color(0.78, 0.47, 0.22)
 const VENUE_SIDEWALK_COLOR := Color(0.48, 0.48, 0.46)
 const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.50)
+const TRAFFIC_CAR_SCREEN_SIZE := Vector2(30.0, 30.0)
+const TRAFFIC_COLLISION_X := 8.0
+const TRAFFIC_COLLISION_Y := 4.5
+const BUMP_SHAKE_SECONDS := 0.28
+const BUMP_SHAKE_PIXELS := 9.0
+const TRAFFIC_COLORS := [
+	Color(0.86, 0.90, 0.95),
+	Color(0.94, 0.62, 0.56),
+	Color(0.62, 0.72, 0.88),
+]
 const GRID_COLOR := Color(0.08, 0.09, 0.09, 0.45)
 const BORDER_COLOR := Color(0.93, 0.92, 0.86)
 
@@ -78,6 +89,11 @@ var drive_complete := false
 var parking_maneuver_started := false
 var drive_time := 0.0
 var missed_turns := 0
+var bump_count := 0
+var highway_traffic: Array[Dictionary] = []
+var traffic_spawned_lap := -1
+var bump_shake_remaining := 0.0
+var bump_shake_offset := Vector2.ZERO
 
 var road_kind := "neighborhood"
 
@@ -137,6 +153,11 @@ func _reset_to_start() -> void:
 	parking_maneuver_started = false
 	drive_time = 0.0
 	missed_turns = 0
+	bump_count = 0
+	highway_traffic.clear()
+	traffic_spawned_lap = -1
+	bump_shake_remaining = 0.0
+	bump_shake_offset = Vector2.ZERO
 	road_kind = "neighborhood"
 	neighborhood_cell = MAP.NEIGHBORHOOD_START
 	city_cell = MAP.CITY_ENTRY
@@ -182,6 +203,8 @@ func _process(delta: float) -> void:
 
 	drive_time += delta
 	turn_elapsed += delta
+	_update_bump_feedback(delta)
+	_advance_highway_traffic(delta)
 
 	if turn_elapsed < TURN_SECONDS:
 		var turn_t := clampf(turn_elapsed / TURN_SECONDS, 0.0, 1.0)
@@ -190,6 +213,7 @@ func _process(delta: float) -> void:
 		map_rotation = map_rotation_to
 
 	_advance_continuous_motion(delta)
+	_check_highway_traffic_collisions()
 
 	_update_car_visual()
 	queue_redraw()
@@ -339,6 +363,7 @@ func _begin_highway_step() -> void:
 		highway_lane = MAP.HIGHWAY_ENTRY_LANE
 		queued_highway_lane = highway_lane
 		highway_lap = 0
+		_spawn_highway_traffic(highway_lap)
 
 	if highway_column >= MAP.HIGHWAY_COLUMNS - 1:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
@@ -356,6 +381,7 @@ func _begin_highway_step() -> void:
 		# player back to the original beginning.
 		missed_turns += 1
 		highway_lap += 1
+		_spawn_highway_traffic(highway_lap)
 		highway_column = 0
 		highway_lane = queued_highway_lane
 		move_to = _highway_cell_center(highway_column, highway_lane)
@@ -444,6 +470,85 @@ func _set_highway_lane(requested_lane: int) -> void:
 	motion_direction = (move_to - visual_world_position).normalized()
 
 
+func _spawn_highway_traffic(lap: int) -> void:
+	if traffic_spawned_lap == lap:
+		return
+
+	traffic_spawned_lap = lap
+	highway_traffic.clear()
+
+	var rect := _highway_rect_for_lap(lap)
+	var specs: Array[Dictionary] = [
+		{"lane": MAP.HIGHWAY_ENTRY_LANE, "progress": 0.28, "speed": 22.0},
+		{"lane": 1, "progress": 0.50, "speed": 28.0},
+		{"lane": MAP.HIGHWAY_EXIT_LANE, "progress": 0.70, "speed": 20.0},
+	]
+
+	for index in range(specs.size()):
+		var spec: Dictionary = specs[index]
+		var lane := int(spec["lane"])
+		var position := Vector2(
+			rect.position.x + rect.size.x * float(spec["progress"]),
+			rect.position.y + float(lane) * MAP.HIGHWAY_LANE_WIDTH
+				+ MAP.HIGHWAY_LANE_WIDTH * 0.5
+		)
+		highway_traffic.append({
+			"position": position,
+			"lane": lane,
+			"speed": float(spec["speed"]),
+			"hit": false,
+			"color_index": index,
+		})
+
+
+func _advance_highway_traffic(delta: float) -> void:
+	if road_kind != "highway" or highway_traffic.is_empty():
+		return
+
+	for index in range(highway_traffic.size()):
+		var traffic: Dictionary = highway_traffic[index]
+		var position: Vector2 = traffic["position"]
+		position.x += float(traffic["speed"]) * delta
+		traffic["position"] = position
+		highway_traffic[index] = traffic
+
+
+func _check_highway_traffic_collisions() -> void:
+	if road_kind != "highway" or highway_traffic.is_empty():
+		return
+
+	for index in range(highway_traffic.size()):
+		var traffic: Dictionary = highway_traffic[index]
+		if bool(traffic["hit"]):
+			continue
+
+		var position: Vector2 = traffic["position"]
+		if (
+			absf(position.x - visual_world_position.x) <= TRAFFIC_COLLISION_X
+			and absf(position.y - visual_world_position.y) <= TRAFFIC_COLLISION_Y
+		):
+			traffic["hit"] = true
+			traffic["position"] = position + Vector2(18.0, 0.0)
+			highway_traffic[index] = traffic
+			bump_count += 1
+			bump_shake_remaining = BUMP_SHAKE_SECONDS
+			return
+
+
+func _update_bump_feedback(delta: float) -> void:
+	if bump_shake_remaining <= 0.0:
+		bump_shake_offset = Vector2.ZERO
+		return
+
+	bump_shake_remaining = maxf(0.0, bump_shake_remaining - delta)
+	var intensity := bump_shake_remaining / BUMP_SHAKE_SECONDS
+	var phase := drive_time * 72.0
+	bump_shake_offset = Vector2(
+		sin(phase),
+		cos(phase * 0.83)
+	) * BUMP_SHAKE_PIXELS * intensity
+
+
 func _set_heading(new_heading: Vector2i) -> void:
 	heading = new_heading
 	map_rotation_from = map_rotation
@@ -464,10 +569,15 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 
 
 func _update_car_visual() -> void:
-	player_car.position = car_base_position
+	player_car.position = car_base_position + bump_shake_offset
 	player_car.scale = Vector2.ONE * CAR_REFERENCE_SCALE * visual_cell_scale
-	# The car stays visually upright; steering rotates the world around it.
-	player_car.rotation = 0.0
+
+	# The car stays visually upright while steering rotates the world. A bump
+	# adds one quick wobble without changing any driving state.
+	var bump_intensity := 0.0
+	if bump_shake_remaining > 0.0:
+		bump_intensity = bump_shake_remaining / BUMP_SHAKE_SECONDS
+	player_car.rotation = sin(drive_time * 58.0) * 0.07 * bump_intensity
 
 
 func _draw() -> void:
@@ -481,6 +591,7 @@ func _draw() -> void:
 	_draw_highway_surroundings()
 	_draw_connector_one()
 	_draw_highway()
+	_draw_highway_traffic()
 	_draw_city_connector()
 
 	_draw_city()
@@ -1004,6 +1115,38 @@ func _draw_highway() -> void:
 		_draw_highway_for_lap(lap)
 
 
+func _draw_highway_traffic() -> void:
+	if road_kind != "highway" or highway_traffic.is_empty():
+		return
+
+	for traffic in highway_traffic:
+		var world_position: Vector2 = traffic["position"]
+		var screen_position := _world_to_screen(world_position)
+		var half_size := TRAFFIC_CAR_SCREEN_SIZE * 0.5
+
+		# Skip cars well outside the phone frame. They continue moving in world
+		# space, so entering/leaving the frame never affects collision logic.
+		if (
+			screen_position.x < -half_size.x * 2.0
+			or screen_position.x > size.x + half_size.x * 2.0
+			or screen_position.y < -half_size.y * 2.0
+			or screen_position.y > size.y + half_size.y * 2.0
+		):
+			continue
+
+		var color_index := int(traffic["color_index"]) % TRAFFIC_COLORS.size()
+		var tint: Color = TRAFFIC_COLORS[color_index]
+		if bool(traffic["hit"]):
+			tint.a = 0.70
+
+		draw_texture_rect(
+			TRAFFIC_CAR_TEXTURE,
+			Rect2(screen_position - half_size, TRAFFIC_CAR_SCREEN_SIZE),
+			false,
+			tint
+		)
+
+
 func _draw_highway_for_lap(lap: int) -> void:
 	var rect := _highway_rect_for_lap(lap)
 
@@ -1303,7 +1446,7 @@ func _current_world_zoom() -> float:
 func _world_to_screen(world_point: Vector2) -> Vector2:
 	var offset := (world_point - visual_world_position) * _current_world_zoom()
 	offset = offset.rotated(map_rotation)
-	return player_screen_center + offset
+	return player_screen_center + offset + bump_shake_offset
 
 
 func _finish_drive() -> void:
@@ -1320,7 +1463,7 @@ func _finish_drive() -> void:
 		"real_drive_seconds": snappedf(drive_time, 0.1),
 		"missed_turns": missed_turns,
 		"wrong_way_tickets": 0,
-		"bumps": 0,
+		"bumps": bump_count,
 		"seed": world_seed,
 	})
 
