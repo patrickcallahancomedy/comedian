@@ -537,6 +537,31 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 	)
 
 
+func _rendered_car_section_scale() -> float:
+	var highway_scale := (
+		MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
+		* HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+	)
+
+	match road_kind:
+		"highway":
+			return visual_cell_scale * HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+		"connector_one":
+			return lerpf(
+				MAP.car_scale_for_cell(MAP.NEIGHBORHOOD_CELL),
+				highway_scale,
+				_connector_one_progress()
+			)
+		"connector_two":
+			return lerpf(
+				highway_scale,
+				CITY_CAR_SCALE,
+				_connector_two_progress()
+			)
+		_:
+			return visual_cell_scale
+
+
 func _update_car_visual() -> void:
 	var visual_feedback := steering_feedback
 	if road_kind.begins_with("connector"):
@@ -547,10 +572,11 @@ func _update_car_visual() -> void:
 		0.0
 	)
 	player_car.position = car_base_position + sway
-	var section_scale := visual_cell_scale
-	if road_kind == "highway":
-		section_scale *= HIGHWAY_PLAYER_VISUAL_MULTIPLIER
-	player_car.scale = Vector2.ONE * CAR_REFERENCE_SCALE * section_scale
+	player_car.scale = (
+		Vector2.ONE
+		* CAR_REFERENCE_SCALE
+		* _rendered_car_section_scale()
+	)
 	player_car.rotation = visual_feedback * STEERING_LEAN_RADIANS
 
 

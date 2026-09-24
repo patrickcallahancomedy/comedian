@@ -432,6 +432,40 @@ func _run() -> void:
 		"Highway player car scale multiplier is not applied"
 	)
 
+	var highway_effective_scale := (
+		MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
+		* drive.HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+	)
+
+	drive.road_kind = "connector_one"
+	drive.visual_world_position = Vector2(
+		MAP.CONNECTOR_ONE_RECT.end.x,
+		MAP.highway_entry_point().y
+	)
+	_check(
+		is_equal_approx(
+			drive._rendered_car_section_scale(),
+			highway_effective_scale
+		),
+		"On-ramp does not finish at the highway car size"
+	)
+
+	drive.road_kind = "connector_two"
+	drive.visual_world_position = Vector2(
+		drive._connector_two_rect().position.x,
+		drive._highway_cell_center(
+			MAP.HIGHWAY_COLUMNS - 1,
+			MAP.HIGHWAY_EXIT_LANE
+		).y
+	)
+	_check(
+		is_equal_approx(
+			drive._rendered_car_section_scale(),
+			highway_effective_scale
+		),
+		"Off-ramp does not start at the highway car size"
+	)
+
 	# Reaching the destination performs one short curbside parking move before
 	# the trip completes.
 	drive.road_kind = "city"
