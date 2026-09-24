@@ -19,6 +19,7 @@ const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
 const CITY_WORLD_ZOOM := WORLD_ZOOM * 0.72
 const CAR_REFERENCE_SCALE := 0.65 * DISPLAY_SCALE
 const CITY_CAR_SCALE := 1.5
+const HIGHWAY_PLAYER_VISUAL_MULTIPLIER := 1.5
 const CITY_SPEED_MULTIPLIER := 0.8
 const NEIGHBORHOOD_WORLD_SPEED := 40.0
 const HIGHWAY_WORLD_SPEED := 80.0
@@ -546,7 +547,10 @@ func _update_car_visual() -> void:
 		0.0
 	)
 	player_car.position = car_base_position + sway
-	player_car.scale = Vector2.ONE * CAR_REFERENCE_SCALE * visual_cell_scale
+	var section_scale := visual_cell_scale
+	if road_kind == "highway":
+		section_scale *= HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+	player_car.scale = Vector2.ONE * CAR_REFERENCE_SCALE * section_scale
 	player_car.rotation = visual_feedback * STEERING_LEAN_RADIANS
 
 

@@ -408,6 +408,17 @@ func _run() -> void:
 		"Rendered city car scale does not match the 1.5x city target"
 	)
 
+	drive.road_kind = "highway"
+	drive.visual_cell_scale = 1.0
+	drive._update_car_visual()
+	_check(
+		is_equal_approx(
+			drive.player_car.scale.x,
+			drive.CAR_REFERENCE_SCALE * drive.HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+		),
+		"Highway player car is not 50 percent larger"
+	)
+
 	# Reaching the destination performs one short curbside parking move before
 	# the trip completes.
 	drive.road_kind = "city"
