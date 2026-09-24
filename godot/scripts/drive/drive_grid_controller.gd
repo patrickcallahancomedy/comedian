@@ -37,10 +37,10 @@ const RAMP_EDGE_COLOR := Color(0.95, 0.94, 0.88, 0.92)
 const RAMP_GUIDE_COLOR := Color(1.0, 0.78, 0.24, 0.90)
 const RAMP_TEXTURE_COLOR := Color(0.04, 0.045, 0.055, 0.26)
 const RAMP_TERRAIN_PADDING := 72.0
-const HIGHWAY_ASPHALT_COLOR := Color(0.17, 0.18, 0.20)
-const HIGHWAY_ASPHALT_ALT := Color(0.19, 0.20, 0.22)
-const HIGHWAY_TEXTURE_COLOR := Color(0.04, 0.045, 0.055, 0.16)
-const HIGHWAY_SHOULDER_COLOR := Color(0.27, 0.28, 0.29)
+const HIGHWAY_ASPHALT_COLOR := Color(0.115, 0.125, 0.145)
+const HIGHWAY_ASPHALT_ALT := Color(0.135, 0.145, 0.165)
+const HIGHWAY_TEXTURE_COLOR := Color(0.04, 0.045, 0.055, 0.22)
+const HIGHWAY_SHOULDER_COLOR := Color(0.20, 0.21, 0.22)
 const HIGHWAY_MARKING_COLOR := Color(0.93, 0.92, 0.86, 0.92)
 const HIGHWAY_EDGE_COLOR := Color(0.97, 0.96, 0.90, 0.96)
 const HIGHWAY_EXIT_GUIDE_COLOR := Color(1.0, 0.78, 0.24, 0.90)
@@ -70,13 +70,11 @@ const VENUE_AWNING_COLOR := Color(0.42, 0.16, 0.13)
 const VENUE_SIGN_COLOR := Color(0.78, 0.47, 0.22)
 const VENUE_SIDEWALK_COLOR := Color(0.48, 0.48, 0.46)
 const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.50)
-const TRAFFIC_CAR_SCREEN_SIZE := Vector2(62.0, 72.0)
+const TRAFFIC_CAR_SCREEN_SIZE := Vector2(62.0, 62.0)
 const TRAFFIC_COLLISION_X := 8.0
 const TRAFFIC_COLLISION_Y := 4.5
-const BUMP_SHAKE_SECONDS := 0.30
-const BUMP_SHAKE_PIXELS := 10.0
-const COLLISION_RECOVERY_SECONDS := 0.65
-const COLLISION_MIN_SPEED_MULTIPLIER := 0.42
+const BUMP_SHAKE_SECONDS := 0.28
+const BUMP_SHAKE_PIXELS := 9.0
 const TRAFFIC_COLORS := [
 	Color(1.0, 0.82, 0.42),
 	Color(0.95, 0.46, 0.38),
@@ -97,9 +95,6 @@ var highway_traffic: Array[Dictionary] = []
 var traffic_spawned_lap := -1
 var bump_shake_remaining := 0.0
 var bump_shake_offset := Vector2.ZERO
-var bump_strength := 1.0
-var collision_recovery_remaining := 0.0
-var collision_recovery_duration := COLLISION_RECOVERY_SECONDS
 
 var road_kind := "neighborhood"
 
@@ -164,9 +159,6 @@ func _reset_to_start() -> void:
 	traffic_spawned_lap = -1
 	bump_shake_remaining = 0.0
 	bump_shake_offset = Vector2.ZERO
-	bump_strength = 1.0
-	collision_recovery_remaining = 0.0
-	collision_recovery_duration = COLLISION_RECOVERY_SECONDS
 	road_kind = "neighborhood"
 	neighborhood_cell = MAP.NEIGHBORHOOD_START
 	city_cell = MAP.CITY_ENTRY
@@ -187,7 +179,6 @@ func _reset_to_start() -> void:
 	map_rotation_to = 0.0
 	turn_elapsed = TURN_SECONDS
 	status_label.text = "TAP START"
-	status_label.show()
 	forward_button.show()
 	left_button.disabled = false
 	right_button.disabled = false
@@ -198,7 +189,7 @@ func _start_drive() -> void:
 		return
 	started = true
 	forward_button.hide()
-	status_label.hide()
+	status_label.text = "NEIGHBORHOOD"
 	_begin_next_step()
 
 
@@ -214,7 +205,6 @@ func _process(delta: float) -> void:
 	drive_time += delta
 	turn_elapsed += delta
 	_update_bump_feedback(delta)
-	_update_collision_recovery(delta)
 	_advance_highway_traffic(delta)
 
 	if turn_elapsed < TURN_SECONDS:
@@ -277,8 +267,7 @@ func _current_world_speed() -> float:
 		"neighborhood":
 			return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
 		"highway":
-			var highway_speed := float(MAP.HIGHWAY_CELL) * 4.0 / STEP_SECONDS
-			return highway_speed * _collision_speed_multiplier()
+			return float(MAP.HIGHWAY_CELL) * 4.0 / STEP_SECONDS
 		"city":
 			return float(MAP.NEIGHBORHOOD_CELL) * CITY_SPEED_MULTIPLIER / STEP_SECONDS
 		"connector_one":
@@ -298,22 +287,6 @@ func _current_world_speed() -> float:
 				_connector_two_progress()
 			)
 	return float(MAP.NEIGHBORHOOD_CELL) / STEP_SECONDS
-
-
-func _collision_speed_multiplier() -> float:
-	if collision_recovery_remaining <= 0.0:
-		return 1.0
-
-	var recovery_progress := 1.0 - clampf(
-		collision_recovery_remaining / maxf(collision_recovery_duration, 0.001),
-		0.0,
-		1.0
-	)
-	return lerpf(
-		COLLISION_MIN_SPEED_MULTIPLIER,
-		1.0,
-		smoothstep(0.0, 1.0, recovery_progress)
-	)
 
 
 func _connector_one_progress() -> float:
@@ -507,32 +480,13 @@ func _spawn_highway_traffic(lap: int) -> void:
 
 	var rect := _highway_rect_for_lap(lap)
 	var specs: Array[Dictionary] = [
-		# Distinct traffic profiles make each dodge/collision read differently:
-		# compact = nimble/light, sedan = medium, van = heavy.
-		{
-			"lane": MAP.HIGHWAY_ENTRY_LANE,
-			"progress": 0.14,
-			"speed": 55.0,
-			"profile": "compact",
-			"impact": 0.70,
-			"size": Vector2(50.0, 62.0),
-		},
-		{
-			"lane": 1,
-			"progress": 0.27,
-			"speed": 45.0,
-			"profile": "sedan",
-			"impact": 1.00,
-			"size": Vector2(62.0, 74.0),
-		},
-		{
-			"lane": MAP.HIGHWAY_EXIT_LANE,
-			"progress": 0.42,
-			"speed": 52.0,
-			"profile": "van",
-			"impact": 1.35,
-			"size": Vector2(72.0, 88.0),
-		},
+		# The first car is deliberately inside the phone view as soon as the
+		# player merges. Later cars enter the frame naturally as the player
+		# catches them, creating a readable dodge sequence instead of hidden
+		# off-screen traffic.
+		{"lane": MAP.HIGHWAY_ENTRY_LANE, "progress": 0.14, "speed": 55.0},
+		{"lane": 1, "progress": 0.27, "speed": 45.0},
+		{"lane": MAP.HIGHWAY_EXIT_LANE, "progress": 0.42, "speed": 52.0},
 	]
 
 	for index in range(specs.size()):
@@ -547,9 +501,6 @@ func _spawn_highway_traffic(lap: int) -> void:
 			"position": position,
 			"lane": lane,
 			"speed": float(spec["speed"]),
-			"profile": String(spec["profile"]),
-			"impact": float(spec["impact"]),
-			"size": spec["size"],
 			"hit": false,
 			"color_index": index,
 		})
@@ -581,45 +532,26 @@ func _check_highway_traffic_collisions() -> void:
 			absf(position.x - visual_world_position.x) <= TRAFFIC_COLLISION_X
 			and absf(position.y - visual_world_position.y) <= TRAFFIC_COLLISION_Y
 		):
-			var impact := float(traffic.get("impact", 1.0))
 			traffic["hit"] = true
-			traffic["position"] = position + Vector2(18.0 + 7.0 * impact, 0.0)
+			traffic["position"] = position + Vector2(18.0, 0.0)
 			highway_traffic[index] = traffic
 			bump_count += 1
-			bump_strength = impact
-			bump_shake_remaining = BUMP_SHAKE_SECONDS * impact
-			collision_recovery_duration = COLLISION_RECOVERY_SECONDS * impact
-			collision_recovery_remaining = collision_recovery_duration
-
-			# A hit should feel physical rather than allowing both cars to ghost
-			# straight through one another. Push Darren back slightly; the normal
-			# forward target remains intact so control resumes automatically.
-			visual_world_position.x -= 2.5 + 2.0 * impact
-			move_from = visual_world_position
+			bump_shake_remaining = BUMP_SHAKE_SECONDS
 			return
 
 
 func _update_bump_feedback(delta: float) -> void:
 	if bump_shake_remaining <= 0.0:
 		bump_shake_offset = Vector2.ZERO
-		bump_strength = 1.0
 		return
 
 	bump_shake_remaining = maxf(0.0, bump_shake_remaining - delta)
-	var max_shake_time := maxf(BUMP_SHAKE_SECONDS * bump_strength, 0.001)
-	var intensity := bump_shake_remaining / max_shake_time
+	var intensity := bump_shake_remaining / BUMP_SHAKE_SECONDS
 	var phase := drive_time * 72.0
 	bump_shake_offset = Vector2(
 		sin(phase),
 		cos(phase * 0.83)
-	) * BUMP_SHAKE_PIXELS * bump_strength * intensity
-
-
-func _update_collision_recovery(delta: float) -> void:
-	if collision_recovery_remaining <= 0.0:
-		collision_recovery_remaining = 0.0
-		return
-	collision_recovery_remaining = maxf(0.0, collision_recovery_remaining - delta)
+	) * BUMP_SHAKE_PIXELS * intensity
 
 
 func _set_heading(new_heading: Vector2i) -> void:
@@ -1203,8 +1135,7 @@ func _draw_highway_traffic() -> void:
 	for traffic in highway_traffic:
 		var world_position: Vector2 = traffic["position"]
 		var screen_position := _world_to_screen(world_position)
-		var car_size: Vector2 = traffic.get("size", TRAFFIC_CAR_SCREEN_SIZE)
-		var half_size := car_size * 0.5
+		var half_size := TRAFFIC_CAR_SCREEN_SIZE * 0.5
 
 		# Skip cars well outside the phone frame. They continue moving in world
 		# space, so entering/leaving the frame never affects collision logic.
@@ -1221,19 +1152,9 @@ func _draw_highway_traffic() -> void:
 		if bool(traffic["hit"]):
 			tint.a = 0.70
 
-		# A light backing silhouette keeps traffic readable against the asphalt,
-		# while the three aspect ratios make compact/sedan/van distinct at a glance.
-		draw_rect(
-			Rect2(
-				screen_position - half_size - Vector2(3.0, 3.0),
-				car_size + Vector2(6.0, 6.0)
-			),
-			Color(1.0, 1.0, 1.0, 0.10),
-			true
-		)
 		draw_texture_rect(
 			TRAFFIC_CAR_TEXTURE,
-			Rect2(screen_position - half_size, car_size),
+			Rect2(screen_position - half_size, TRAFFIC_CAR_SCREEN_SIZE),
 			false,
 			tint
 		)
@@ -1548,7 +1469,6 @@ func _finish_drive() -> void:
 	drive_complete = true
 	started = false
 	status_label.text = "ARRIVED"
-	status_label.show()
 	left_button.disabled = true
 	right_button.disabled = true
 	trip_finished.emit({
