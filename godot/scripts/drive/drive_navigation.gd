@@ -11,7 +11,7 @@ const ROUTE_SHADOW_WIDTH_RATIO := 0.48
 const ROUTE_LINE_WIDTH_RATIO := 0.32
 const ROUTE_START_AHEAD_RATIO := 0.02
 
-const BANNER_COLOR := Color(0.05, 0.30, 0.22, 0.97)
+const BANNER_COLOR := Color(0.10, 0.14, 0.19, 0.96)
 const BANNER_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
 const BANNER_SUBTEXT_COLOR := Color(0.88, 0.96, 0.92, 0.92)
 const BANNER_MARGIN := 16.0
