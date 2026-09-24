@@ -416,6 +416,14 @@ func _begin_city_step() -> void:
 		road_kind = "city"
 		city_cell = MAP.CITY_ENTRY
 		heading = Vector2i.RIGHT
+		map_rotation_from = map_rotation
+		map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
+		turn_elapsed = 0.0
+		move_to = _city_entry_center_point()
+		scale_to = CITY_CAR_SCALE
+		motion_direction = (move_to - move_from).normalized()
+		status_label.text = "CITY"
+		return
 
 	if city_cell == MAP.CITY_DESTINATION:
 		if not parking_maneuver_started:
@@ -423,19 +431,23 @@ func _begin_city_step() -> void:
 			parking_target_index = -1
 			parking_lane_choice = 0
 			parking_phase = 0
-			road_kind = "parking"
-			# Turn into the aisle first. The player then chooses an open space.
+			# Drive to the driveway mouth while still in city mode. The blue
+			# route remains visible up to the entrance, then disappears inside.
 			heading = Vector2i.RIGHT
 			map_rotation_from = map_rotation
 			map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
 			turn_elapsed = 0.0
-			move_to = _parking_aisle_point()
+			move_to = _parking_entry_point()
 			scale_to = CITY_CAR_SCALE
 			motion_direction = (move_to - move_from).normalized()
 			status_label.text = "PARKING LOT"
 			return
 
-		_finish_drive()
+		road_kind = "parking"
+		move_to = _parking_aisle_point()
+		scale_to = CITY_CAR_SCALE
+		motion_direction = (move_to - move_from).normalized()
+		status_label.text = "ENTER PARKING LOT"
 		return
 
 	var desired := city_cell + heading
@@ -1270,7 +1282,13 @@ func _city_cell_center(cell: Vector2i) -> Vector2:
 
 
 func _city_entry_point() -> Vector2:
-	return MAP.city_entry_point() + _highway_lap_offset()
+	var city_rect := _city_rect()
+	var entry_center := _city_cell_center(MAP.CITY_ENTRY)
+	return Vector2(city_rect.position.x, entry_center.y)
+
+
+func _city_entry_center_point() -> Vector2:
+	return _city_cell_center(MAP.CITY_ENTRY)
 
 
 func _parking_lot_rect() -> Rect2:
@@ -1278,31 +1296,37 @@ func _parking_lot_rect() -> Rect2:
 	return Rect2(
 		Vector2(
 			destination_center.x + CITY_ROAD_WIDTH * 0.5 + 2.0,
-			destination_center.y - 62.0
+			destination_center.y - 41.0
 		),
-		Vector2(88.0, 140.0)
+		Vector2(54.0, 82.0)
+	)
+
+
+func _parking_entry_point() -> Vector2:
+	var lot := _parking_lot_rect()
+	return Vector2(
+		lot.position.x,
+		_city_cell_center(MAP.CITY_DESTINATION).y
 	)
 
 
 func _parking_aisle_point() -> Vector2:
 	var lot := _parking_lot_rect()
 	return Vector2(
-		lot.position.x + 18.0,
+		lot.position.x + 27.0,
 		_city_cell_center(MAP.CITY_DESTINATION).y
 	)
 
 
 func _parking_lane_point(lane_choice: int) -> Vector2:
 	var lot := _parking_lot_rect()
-	var lane_y := lot.position.y + 38.0 if lane_choice < 0 else lot.end.y - 38.0
-	return Vector2(lot.position.x + 44.0, lane_y)
+	var lane_y := lot.position.y + 22.0 if lane_choice < 0 else lot.end.y - 22.0
+	return Vector2(_parking_aisle_point().x, lane_y)
 
 
 func _parking_space_center(lane_choice: int, turn_choice: int) -> Vector2:
 	var lane_point := _parking_lane_point(lane_choice)
-	# Once inside an aisle, a second left/right input chooses a bay on either
-	# side of that aisle rather than parking automatically.
-	var x_offset := -28.0 if turn_choice < 0 else 28.0
+	var x_offset := -15.0 if turn_choice < 0 else 15.0
 	return lane_point + Vector2(x_offset, 0.0)
 
 
@@ -1315,8 +1339,8 @@ func _parking_stop_point() -> Vector2:
 func _parking_space_rect(lane_choice: int, turn_choice: int) -> Rect2:
 	var center := _parking_space_center(lane_choice, turn_choice)
 	return Rect2(
-		center + Vector2(-11.0, -9.0),
-		Vector2(22.0, 18.0)
+		center + Vector2(-5.0, -7.0),
+		Vector2(10.0, 14.0)
 	)
 
 
@@ -1433,19 +1457,18 @@ func _draw_destination() -> void:
 		1.0
 	)
 
-	# Each aisle has visible parking rows on both sides. The center bay on one
-	# side is blocked by a parked car, while the opposite center bay is open.
+	# Compact rows make the lot read at the same scale as the player car.
 	for lane_choice in [-1, 1]:
 		var lane_point := _parking_lane_point(lane_choice)
 		for turn_choice in [-1, 1]:
-			for row_offset in [-18.0, 0.0, 18.0]:
+			for row_offset in [-14.0, 0.0, 14.0]:
 				var stall_center := Vector2(
-					lane_point.x + (-28.0 if turn_choice < 0 else 28.0),
+					lane_point.x + (-15.0 if turn_choice < 0 else 15.0),
 					lane_point.y + row_offset
 				)
 				var stall := Rect2(
-					stall_center + Vector2(-11.0, -8.0),
-					Vector2(22.0, 16.0)
+					stall_center + Vector2(-5.0, -6.0),
+					Vector2(10.0, 12.0)
 				)
 				_draw_world_rect_outline(stall, Color(PARKING_LINE_COLOR, 0.48), 0.7)
 
@@ -1456,8 +1479,8 @@ func _draw_destination() -> void:
 				)
 				if should_occupy:
 					var parked_car := Rect2(
-						stall.position + Vector2(3.0, 2.0),
-						stall.size - Vector2(6.0, 4.0)
+						stall.position + Vector2(2.0, 1.5),
+						stall.size - Vector2(4.0, 3.0)
 					)
 					var car_color := Color(0.40, 0.43, 0.48)
 					if lane_choice > 0:
