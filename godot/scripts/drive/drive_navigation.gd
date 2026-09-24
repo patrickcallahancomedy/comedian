@@ -6,10 +6,11 @@ extends Label
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ROUTE_LINE_COLOR := Color(0.95, 0.73, 0.28, 0.14)
-const ROUTE_LINE_UNDERLAY := Color(0.02, 0.025, 0.03, 0.04)
-const ROUTE_WIDTH_RATIO := 0.48
-const ROUTE_START_AHEAD_RATIO := 0.58
+const ROUTE_GLOW_COLOR := Color(0.98, 0.78, 0.30, 0.055)
+const ROUTE_LIGHT_COLOR := Color(1.0, 0.82, 0.34, 0.13)
+const ROUTE_GLOW_WIDTH_RATIO := 1.04
+const ROUTE_LIGHT_WIDTH_RATIO := 0.90
+const ROUTE_START_AHEAD_RATIO := 0.18
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -61,42 +62,11 @@ func _draw() -> void:
 		return
 
 	var route := _current_route_states()
-	if route.size() < 2:
+	if route.is_empty():
 		return
 
-	var points := PackedVector2Array()
-	var next_state: Vector3i = route[1]
-	var next_cell := Vector2i(next_state.x, next_state.y)
-	var next_world: Vector2 = (
-		MAP.neighborhood_cell_center(next_cell)
-		if drive.road_kind == "neighborhood"
-		else drive._city_cell_center(next_cell)
-	)
-	var next_screen: Vector2 = drive._world_to_screen(next_world)
-
-	# Leave a clear gap around the car. The overlay begins over halfway to
-	# the next intersection so it reads like navigation ahead, not paint
-	# sitting underneath the player sprite.
-	points.append(
-		drive.player_screen_center.lerp(
-			next_screen,
-			ROUTE_START_AHEAD_RATIO
-		)
-	)
-
-	for index in range(1, route.size()):
-		var state: Vector3i = route[index]
-		var cell := Vector2i(state.x, state.y)
-		var world_position: Vector2 = (
-			MAP.neighborhood_cell_center(cell)
-			if drive.road_kind == "neighborhood"
-			else drive._city_cell_center(cell)
-		)
-		var screen_point: Vector2 = drive._world_to_screen(world_position)
-		if points[points.size() - 1].distance_to(screen_point) > 1.0:
-			points.append(screen_point)
-
-	if points.size() < 2:
+	var world_points := _route_world_points(route)
+	if world_points.size() < 2:
 		return
 
 	var road_world_width: float = (
@@ -104,24 +74,71 @@ func _draw() -> void:
 		if drive.road_kind == "neighborhood"
 		else drive.CITY_ROAD_WIDTH
 	)
-	var route_width: float = (
-		road_world_width
-		* drive._current_world_zoom()
-		* ROUTE_WIDTH_RATIO
-	)
+	var zoom: float = drive._current_world_zoom()
+	var glow_width: float = road_world_width * zoom * ROUTE_GLOW_WIDTH_RATIO
+	var light_width: float = road_world_width * zoom * ROUTE_LIGHT_WIDTH_RATIO
 
-	draw_polyline(
-		points,
-		ROUTE_LINE_UNDERLAY,
-		route_width + 3.0,
-		true
+	for index in range(world_points.size() - 1):
+		var from_world: Vector2 = world_points[index]
+		var to_world: Vector2 = world_points[index + 1]
+
+		if index > 0 and not _world_segment_is_local(from_world, to_world):
+			continue
+
+		var from_screen: Vector2 = drive._world_to_screen(from_world)
+		var to_screen: Vector2 = drive._world_to_screen(to_world)
+
+		if index == 0:
+			from_screen = from_screen.lerp(to_screen, ROUTE_START_AHEAD_RATIO)
+
+		_draw_illuminated_segment(
+			from_screen,
+			to_screen,
+			glow_width,
+			light_width
+		)
+
+
+func _route_world_points(route: Array[Vector3i]) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	points.append(drive.visual_world_position)
+
+	for state in route:
+		var cell := Vector2i(state.x, state.y)
+		var world_position: Vector2 = (
+			MAP.neighborhood_cell_center(cell)
+			if drive.road_kind == "neighborhood"
+			else drive._city_cell_center(cell)
+		)
+		if points[points.size() - 1].distance_to(world_position) > 0.5:
+			points.append(world_position)
+
+	return points
+
+
+func _world_segment_is_local(from_world: Vector2, to_world: Vector2) -> bool:
+	var expected_length: float = (
+		float(MAP.NEIGHBORHOOD_CELL)
+		if drive.road_kind == "neighborhood"
+		else float(MAP.CITY_CELL)
 	)
-	draw_polyline(
-		points,
-		ROUTE_LINE_COLOR,
-		route_width,
-		true
+	var delta := to_world - from_world
+	var axis_aligned := (
+		is_zero_approx(delta.x)
+		or is_zero_approx(delta.y)
 	)
+	return axis_aligned and delta.length() <= expected_length + 0.5
+
+
+func _draw_illuminated_segment(
+	from_screen: Vector2,
+	to_screen: Vector2,
+	glow_width: float,
+	light_width: float
+) -> void:
+	draw_line(from_screen, to_screen, ROUTE_GLOW_COLOR, glow_width, true)
+	draw_line(from_screen, to_screen, ROUTE_LIGHT_COLOR, light_width, true)
+	draw_circle(to_screen, light_width * 0.5, ROUTE_LIGHT_COLOR)
 
 
 func _current_route_states() -> Array[Vector3i]:
