@@ -84,10 +84,17 @@ func _draw() -> void:
 	_draw_instruction_banner()
 
 
+func _should_draw_route_line() -> bool:
+	return (
+		drive != null
+		and (drive.road_kind == "neighborhood" or drive.road_kind == "city")
+	)
+
+
 func _draw_route_line() -> void:
 	# Blue route is only useful on the street grids. Keep ramps, highway,
 	# and the parking lot visually clean.
-	if drive.road_kind != "neighborhood" and drive.road_kind != "city":
+	if not _should_draw_route_line():
 		return
 
 	var world_points: PackedVector2Array = _current_route_world_points()
