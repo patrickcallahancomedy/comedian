@@ -217,19 +217,34 @@ func _run() -> void:
 			"Navigation illumination is not anchored to the visual car position"
 		)
 		_check(
-			navigation.ROUTE_LIGHT_WIDTH_RATIO >= 0.95
-			and navigation.ROUTE_LIGHT_WIDTH_RATIO <= 1.05,
+			navigation.ROUTE_TINT_WIDTH_RATIO >= 0.95
+			and navigation.ROUTE_TINT_WIDTH_RATIO <= 1.0,
 			"Navigation illumination does not cover the road width"
 		)
 		_check(
-			navigation.ROUTE_LIGHT_COLOR.a >= 0.18
-			and navigation.ROUTE_LIGHT_COLOR.a <= 0.25,
-			"Navigation illumination is not visibly subtle"
+			navigation.ROUTE_TINT_COLOR.a >= 0.15
+			and navigation.ROUTE_TINT_COLOR.a <= 0.20,
+			"Navigation illumination is not a subtle road tint"
 		)
 		_check(
-			navigation.ROUTE_START_AHEAD_RATIO >= 0.08
-			and navigation.ROUTE_START_AHEAD_RATIO <= 0.15,
+			navigation.ROUTE_START_AHEAD_RATIO >= 0.05
+			and navigation.ROUTE_START_AHEAD_RATIO <= 0.10,
 			"Navigation illumination does not begin just ahead of the car"
+		)
+		_check(
+			navigation.ROUTE_LOOKAHEAD_CELLS >= 1.2
+			and navigation.ROUTE_LOOKAHEAD_CELLS <= 1.5,
+			"Navigation illumination extends too far ahead"
+		)
+		var limited_route := navigation._limited_route_world_points(route_world_points)
+		var limited_distance := 0.0
+		for route_index in range(limited_route.size() - 1):
+			limited_distance += limited_route[route_index].distance_to(
+				limited_route[route_index + 1]
+			)
+		_check(
+			limited_distance <= float(MAP.NEIGHBORHOOD_CELL) * 1.5,
+			"Navigation illumination lookahead exceeds the local road horizon"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
