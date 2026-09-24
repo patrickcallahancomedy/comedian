@@ -314,8 +314,8 @@ func _current_instruction() -> Dictionary:
 				if drive.road_kind == "city":
 					if drive.parking_maneuver_started:
 						return {
-							"turn": "straight",
-							"title": "Park",
+							"turn": "right",
+							"title": "Park on right",
 							"subtitle": "Destination",
 						}
 					return {
