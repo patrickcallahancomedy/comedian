@@ -258,28 +258,29 @@ func _run() -> void:
 		drive.road_kind = "connector_one"
 		drive.visual_world_position = MAP.CONNECTOR_ONE_RECT.get_center()
 		_check(
-			navigation._current_route_world_points().size() >= 2,
-			"Blue GPS route is missing on connector one"
+			not navigation._should_draw_route_line(),
+			"Blue GPS route should be hidden on connector one"
 		)
 		drive.road_kind = "highway"
 		drive.highway_lane = 1
 		drive.visual_world_position = drive._highway_cell_center(5, 1)
 		_check(
-			navigation._current_route_world_points().size() >= 2,
-			"Highway navigation route data is missing"
+			not navigation._should_draw_route_line(),
+			"Blue GPS route should be hidden on highway"
 		)
 		drive.road_kind = "connector_two"
 		drive.visual_world_position = drive._connector_two_rect().get_center()
 		_check(
-			navigation._current_route_world_points().size() >= 2,
-			"Blue GPS route is missing on connector two"
+			not navigation._should_draw_route_line(),
+			"Blue GPS route should be hidden on connector two"
 		)
 		drive.road_kind = "city"
 		drive.city_cell = MAP.CITY_ENTRY
 		drive.heading = Vector2i.RIGHT
 		drive.visual_world_position = drive._city_cell_center(MAP.CITY_ENTRY)
 		_check(
-			navigation._current_route_world_points().size() >= 2,
+			navigation._should_draw_route_line()
+			and navigation._current_route_world_points().size() >= 2,
 			"Blue GPS route is missing in city"
 		)
 		drive.road_kind = saved_kind_for_line
@@ -545,11 +546,20 @@ func _run() -> void:
 		"Off-ramp does not start at the highway car size"
 	)
 
-	# Reaching the destination performs one short right turn into the venue
-	# parking lot before the trip completes.
+	# Reaching the destination now enters the lot, stops in the aisle, and waits
+	# for the player to choose one of two open spaces.
+	_check(is_equal_approx(drive.CITY_WORLD_SPEED, 36.0), "City speed was not increased slightly")
+	_check(drive._parking_space_is_open(1), "Upper parking choice should be open")
+	_check(drive._parking_space_is_open(3), "Lower parking choice should be open")
+	_check(not drive._parking_space_is_open(0), "Occupied parking space 0 should not be selectable")
+	_check(not drive._parking_space_is_open(2), "Occupied parking space 2 should not be selectable")
+	_check(not drive._parking_space_is_open(4), "Occupied parking space 4 should not be selectable")
+
 	drive.road_kind = "city"
 	drive.city_cell = MAP.CITY_DESTINATION
 	drive.parking_maneuver_started = false
+	drive.parking_target_index = -1
+	drive.parking_phase = 0
 	drive.drive_complete = false
 	drive.visual_world_position = drive._city_cell_center(MAP.CITY_DESTINATION)
 	drive.move_from = drive.visual_world_position
@@ -562,24 +572,37 @@ func _run() -> void:
 			"GPS does not direct the final turn into the parking lot"
 		)
 	drive._begin_city_step()
-	if navigation != null:
-		var park_instruction: Dictionary = navigation._current_instruction()
-		_check(
-			park_instruction.get("title", "") == "Park on right",
-			"GPS does not finish with Park on right"
-		)
-	_check(drive.parking_maneuver_started, "Destination did not start parking-lot entry")
-	_check(drive.heading == Vector2i.RIGHT, "Parking maneuver does not turn right into the lot")
-	_check(
-		drive.move_to == drive._parking_stop_point(),
-		"Parking maneuver does not target the parking-lot stop point"
-	)
-	_check(not drive.drive_complete, "Drive completed before parking-lot maneuver finished")
+	_check(drive.road_kind == "parking", "Destination did not enter parking mode")
+	_check(drive.move_to == drive._parking_aisle_point(), "Parking entry does not target the aisle")
 
 	drive.visual_world_position = drive.move_to
 	drive.move_from = drive.visual_world_position
-	drive._begin_city_step()
-	_check(drive.drive_complete, "Drive did not complete after parking-lot arrival")
+	drive._begin_parking_step()
+	_check(drive.blocked_this_step, "Car should wait in the aisle for a parking choice")
+	if navigation != null:
+		var choose_instruction: Dictionary = navigation._current_instruction()
+		_check(
+			choose_instruction.get("title", "") == "Choose an open spot",
+			"GPS does not ask the player to choose a parking space"
+		)
+
+	drive._choose_parking_space(1)
+	_check(drive.parking_target_index == 1, "Left parking choice did not select the upper open space")
+	_check(not drive.blocked_this_step, "Parking choice did not resume movement")
+	_check(drive.parking_phase == 2, "Parking choice did not begin aisle alignment")
+
+	drive.visual_world_position = drive.move_to
+	drive.move_from = drive.visual_world_position
+	drive._begin_parking_step()
+	_check(
+		drive.move_to == drive._parking_space_center(1),
+		"Parking maneuver does not target the selected open space"
+	)
+
+	drive.visual_world_position = drive.move_to
+	drive.move_from = drive.visual_world_position
+	drive._begin_parking_step()
+	_check(drive.drive_complete, "Drive did not complete after parking in an open space")
 
 	scene.free()
 	_finish()
