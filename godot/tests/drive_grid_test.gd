@@ -278,6 +278,9 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "highway", "Connector did not enter highway")
+	if navigation != null:
+		navigation._update_status_visibility()
+		_check(not drive.status_label.visible, "Highway status text should be hidden")
 	_check(drive.highway_traffic.size() == 3, "Highway traffic did not spawn")
 	if drive.highway_traffic.size() == 3:
 		_check(

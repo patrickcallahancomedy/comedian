@@ -76,7 +76,9 @@ func _update_status_visibility() -> void:
 		status_label.show()
 		return
 
-	if drive.road_kind == "highway" or drive.road_kind.begins_with("connector"):
+	if drive.road_kind == "highway":
+		status_label.hide()
+	elif drive.road_kind.begins_with("connector"):
 		status_label.show()
 	else:
 		status_label.hide()
