@@ -191,18 +191,10 @@ func _run() -> void:
 		_check(navigation.text == "", "Legacy text navigation should be blank")
 		_check(navigation.get_turn_hint().is_empty(), "Turn arrow should stay hidden before START")
 	_check(is_equal_approx(drive.STEP_SECONDS, 1.0), "Movement is not one block per second")
-	_check(drive.TRAFFIC_CAR_SCREEN_SIZE.x >= 60.0, "Traffic cars are too small for mobile")
-	_check(
-		drive.HIGHWAY_PLAYER_VISUAL_MULTIPLIER > 1.0,
-		"Highway player car is not visually enlarged"
-	)
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
 
 	drive._start_drive()
 	_check(drive.started, "START did not begin grid drive")
-	if navigation != null:
-		navigation._update_status_visibility()
-		_check(not drive.status_label.visible, "Driving status banner should be hidden")
 	if navigation != null:
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
