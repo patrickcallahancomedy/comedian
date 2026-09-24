@@ -12,7 +12,7 @@ signal trip_finished(result: Dictionary)
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
 const STEP_SECONDS := 1.0
-const TURN_SECONDS := 0.20
+const TURN_SECONDS := 0.34
 const DISPLAY_SCALE := 1.0
 const WORLD_SCALE := 2.0
 const WORLD_ZOOM := 4.5 * DISPLAY_SCALE * WORLD_SCALE
@@ -518,11 +518,7 @@ func _update_car_visual() -> void:
 		steering_feedback * STEERING_SWAY_PIXELS,
 		0.0
 	)
-	var highway_bob := 0.0
-	if road_kind == "highway":
-		highway_bob = sin(drive_time * 15.0) * 0.45
-
-	player_car.position = car_base_position + sway + Vector2(0.0, highway_bob)
+	player_car.position = car_base_position + sway
 	player_car.scale = Vector2.ONE * CAR_REFERENCE_SCALE * visual_cell_scale
 	player_car.rotation = steering_feedback * STEERING_LEAN_RADIANS
 

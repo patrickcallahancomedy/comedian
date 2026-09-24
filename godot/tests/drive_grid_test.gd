@@ -191,6 +191,7 @@ func _run() -> void:
 		_check(navigation.text == "", "Legacy text navigation should be blank")
 		_check(navigation.get_turn_hint().is_empty(), "Turn arrow should stay hidden before START")
 	_check(is_equal_approx(drive.STEP_SECONDS, 1.0), "Movement is not one block per second")
+	_check(is_equal_approx(drive.TURN_SECONDS, 0.34), "Turn timing changed")
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
 
 	drive._start_drive()
