@@ -190,9 +190,17 @@ func _run() -> void:
 	if navigation != null:
 		_check(navigation.text == "", "Legacy text navigation should be blank")
 		_check(navigation.get_turn_hint().is_empty(), "Turn route guidance should stay hidden before START")
-	_check(is_equal_approx(drive.STEP_SECONDS, 2.0), "Movement is not using the enlarged two-second block cadence")
+	_check(is_equal_approx(drive.STEP_SECONDS, 1.0), "Base timing constant changed")
 	_check(is_equal_approx(drive.TURN_SECONDS, 0.34), "Turn timing changed")
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
+	_check(MAP.NEIGHBORHOOD_CELL == 80, "Neighborhood blocks are not doubled")
+	_check(MAP.HIGHWAY_CELL == 40, "Highway columns are not doubled")
+	_check(MAP.HIGHWAY_LANE_WIDTH == 20, "Highway lanes are not doubled")
+	_check(MAP.CITY_CELL == 120, "City blocks are not doubled")
+	_check(
+		is_equal_approx(drive.NEIGHBORHOOD_WORLD_SPEED, 40.0),
+		"Neighborhood car speed was changed instead of enlarging the world"
+	)
 
 	drive._start_drive()
 	_check(drive.started, "START did not begin grid drive")
@@ -284,7 +292,7 @@ func _run() -> void:
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
-			float(MAP.HIGHWAY_CELL) * 4.0 / drive.STEP_SECONDS
+			drive.HIGHWAY_WORLD_SPEED
 		),
 		"Highway is not running at the faster speed"
 	)

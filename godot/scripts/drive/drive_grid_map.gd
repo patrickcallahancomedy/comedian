@@ -5,19 +5,19 @@ extends RefCounted
 ## One modular logical board. Every module snaps to MASTER_UNIT so layouts can
 ## be rearranged like Lego without hand-tuned coordinates.
 
-const MAP_SIZE := Vector2i(880, 800)
+const MAP_SIZE := Vector2i(1760, 1600)
 const MASTER_UNIT := 10
 
-const NEIGHBORHOOD_CELL := 40
-const HIGHWAY_CELL := 20
-const HIGHWAY_LANE_WIDTH := 10
-const CITY_CELL := 60
+const NEIGHBORHOOD_CELL := 80
+const HIGHWAY_CELL := 40
+const HIGHWAY_LANE_WIDTH := 20
+const CITY_CELL := 120
 
-const NEIGHBORHOOD_RECT := Rect2(10, 310, 160, 160)
-const CONNECTOR_ONE_RECT := Rect2(170, 360, 80, 20)
-const HIGHWAY_RECT := Rect2(250, 350, 300, 40)
-const CONNECTOR_TWO_RECT := Rect2(550, 380, 80, 20)
-const CITY_RECT := Rect2(630, 240, 240, 240)
+const NEIGHBORHOOD_RECT := Rect2(20, 620, 320, 320)
+const CONNECTOR_ONE_RECT := Rect2(340, 720, 160, 40)
+const HIGHWAY_RECT := Rect2(500, 700, 600, 80)
+const CONNECTOR_TWO_RECT := Rect2(1100, 760, 160, 40)
+const CITY_RECT := Rect2(1260, 480, 480, 480)
 
 const NEIGHBORHOOD_SIZE := Vector2i(4, 4)
 const CITY_SIZE := Vector2i(4, 4)
