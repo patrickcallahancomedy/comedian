@@ -348,7 +348,7 @@ func _current_instruction() -> Dictionary:
 			# actual world position so the banner matches what the player sees.
 			var blocks: int = maxi(
 				1,
-				int(ceil(drive.visual_world_position.distance_to(turn_world) / block_size))
+				int(ceil(drive.visual_world_position.distance_to(turn_world) / block_size)) + 1
 			)
 			return {
 				"turn": turn,
