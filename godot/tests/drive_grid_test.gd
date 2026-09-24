@@ -189,7 +189,7 @@ func _run() -> void:
 	_check(navigation != null, "Navigation display missing")
 	if navigation != null:
 		_check(navigation.text == "", "Legacy text navigation should be blank")
-		_check(navigation.get_turn_hint().is_empty(), "Turn arrow should stay hidden before START")
+		_check(navigation.get_turn_hint().is_empty(), "Turn route guidance should stay hidden before START")
 	_check(is_equal_approx(drive.STEP_SECONDS, 1.0), "Movement is not one block per second")
 	_check(is_equal_approx(drive.TURN_SECONDS, 0.34), "Turn timing changed")
 	_check(drive.road_kind == "neighborhood", "Drive does not start in neighborhood")
@@ -206,29 +206,13 @@ func _run() -> void:
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
 			initial_hint.get("cell") == Vector2i(1, 1),
-			"First turn arrow is not anchored to the expected intersection"
+			"First turn guidance is not anchored to the expected intersection"
 		)
 		_check(
 			initial_hint.get("turn") == "right",
-			"First turn arrow should point right"
+			"First turn guidance should point right"
 		)
 
-		# Taking the correct turn should clear the completed marker immediately.
-		navigation.displayed_hint = initial_hint
-		navigation.pending_hint = {}
-		navigation.marker_phase = "visible"
-		navigation.marker_alpha = 1.0
-		drive.neighborhood_cell = Vector2i(1, 1)
-		drive.heading = Vector2i.RIGHT
-		navigation._update_marker_state(0.01)
-		_check(
-			navigation.displayed_hint.is_empty(),
-			"Completed turn marker did not clear immediately"
-		)
-		_check(
-			is_zero_approx(navigation.marker_alpha),
-			"Completed turn marker remained visible after correct turn"
-		)
 
 		# Missing that turn should move the hint to the next best intersection.
 		drive.neighborhood_cell = Vector2i(1, 0)
@@ -236,11 +220,11 @@ func _run() -> void:
 		var reroute_hint: Dictionary = navigation.get_turn_hint()
 		_check(
 			reroute_hint.get("cell") == Vector2i(1, 0),
-			"Missed turn did not move the arrow to the next intersection"
+			"Missed turn did not move the route guidance to the next intersection"
 		)
 		_check(
 			reroute_hint.get("turn") == "right",
-			"Rerouted turn arrow should point right"
+			"Rerouted turn guidance should point right"
 		)
 
 	# Prove the only way out is the perimeter gate.

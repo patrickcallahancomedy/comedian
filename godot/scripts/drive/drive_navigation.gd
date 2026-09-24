@@ -1,51 +1,21 @@
 extends Label
 
 ## Subtle in-world route guidance for the driving microgame.
-## Pathfinding remains dynamic, but the visible guidance is now a restrained
-## road-center route line instead of turn-arrow badges.
+## Draws only a restrained road-center route line. There are no turn arrows,
+## badges, chevrons, pulses, or marker animations.
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ROUTE_LINE_COLOR := Color(0.95, 0.73, 0.28, 0.42)
-const ROUTE_LINE_UNDERLAY := Color(0.02, 0.025, 0.03, 0.20)
-const ROUTE_LINE_WIDTH := 2.4
-const ROUTE_LINE_UNDERLAY_WIDTH := 5.0
-
-const MARKER_BG := Color(0.055, 0.062, 0.072, 0.90)
-const MARKER_INNER := Color(0.11, 0.12, 0.135, 0.92)
-const MARKER_BORDER := Color(1.0, 1.0, 1.0, 0.14)
-const MARKER_ACCENT := Color(1.0, 0.82, 0.28, 0.96)
-const MARKER_ICON := Color(0.99, 0.99, 0.985, 1.0)
-const MARKER_SHADOW := Color(0.0, 0.0, 0.0, 0.26)
-const MARKER_HALO := Color(1.0, 0.82, 0.28, 0.12)
-
-const MARKER_RADIUS := 21.0
-const MARKER_NEAR_CAR_DISTANCE := 76.0
-const MARKER_LIFT := 50.0
-const CHEVRON_WIDTH := 3.8
-const CHEVRON_HALF_WIDTH := 6.8
-const CHEVRON_HALF_HEIGHT := 9.5
-
-const MARKER_FADE_OUT_SECONDS := 0.11
-const MARKER_FADE_IN_SECONDS := 0.18
-const MARKER_ATTENTION_SECONDS := 0.70
+const ROUTE_LINE_COLOR := Color(0.95, 0.73, 0.28, 0.34)
+const ROUTE_LINE_UNDERLAY := Color(0.02, 0.025, 0.03, 0.16)
+const ROUTE_LINE_WIDTH := 2.0
+const ROUTE_LINE_UNDERLAY_WIDTH := 4.0
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
 
-var ui_time := 0.0
-var displayed_hint: Dictionary = {}
-var pending_hint: Dictionary = {}
-var marker_phase := "idle"
-var marker_phase_time := 0.0
-var marker_attention_time := MARKER_ATTENTION_SECONDS
-var marker_alpha := 0.0
-var marker_scale := 0.86
-
 
 func _ready() -> void:
-	# Reuse the existing Navigation node as a full-screen, non-interactive
-	# drawing layer. No new embedded assets are needed.
 	text = ""
 	z_index = 2
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -57,8 +27,7 @@ func _ready() -> void:
 	queue_redraw()
 
 
-func _process(delta: float) -> void:
-	ui_time += delta
+func _process(_delta: float) -> void:
 	_update_status_visibility()
 	queue_redraw()
 
@@ -73,8 +42,6 @@ func _update_status_visibility() -> void:
 	if drive == null or status_label == null:
 		return
 
-	# Keep the start/arrival state and highway lane guidance. Neighborhood and
-	# city turn instructions are replaced completely by the in-world arrow.
 	if not drive.started or drive.drive_complete:
 		status_label.show()
 		return
@@ -90,28 +57,26 @@ func _update_status_visibility() -> void:
 func _draw() -> void:
 	if drive == null or not drive.started or drive.drive_complete:
 		return
+	if drive.road_kind != "neighborhood" and drive.road_kind != "city":
+		return
 
 	var route := _current_route_states()
 	if route.size() < 2:
 		return
 
 	var points := PackedVector2Array()
-	points.append(drive._world_to_screen(drive.visual_world_position))
+	points.append(drive.player_screen_center)
 
 	for state in route:
 		var cell := Vector2i(state.x, state.y)
 		var world_position := Vector2.ZERO
-
-		match drive.road_kind:
-			"neighborhood":
-				world_position = MAP.neighborhood_cell_center(cell)
-			"city":
-				world_position = drive._city_cell_center(cell)
-			_:
-				return
+		if drive.road_kind == "neighborhood":
+			world_position = MAP.neighborhood_cell_center(cell)
+		else:
+			world_position = drive._city_cell_center(cell)
 
 		var screen_point: Vector2 = drive._world_to_screen(world_position)
-		if points.is_empty() or points[points.size() - 1].distance_to(screen_point) > 0.5:
+		if points[points.size() - 1].distance_to(screen_point) > 1.0:
 			points.append(screen_point)
 
 	if points.size() < 2:
@@ -129,122 +94,6 @@ func _draw() -> void:
 		ROUTE_LINE_WIDTH,
 		true
 	)
-
-
-func _update_marker_state(delta: float) -> void:
-	var target: Dictionary = get_turn_hint()
-	var target_key := _hint_key(target)
-	var displayed_key := _hint_key(displayed_hint)
-	var pending_key := _hint_key(pending_hint)
-
-	if target_key != displayed_key:
-		# An empty target is meaningful: it means the turn was completed and
-		# there is no next turn to display yet. Do not mistake it for the
-		# normal empty pending queue.
-		if target_key.is_empty():
-			pending_hint = {}
-			if displayed_hint.is_empty():
-				_start_pending_hint()
-			elif _displayed_hint_is_current_cell():
-				# Correct turn: remove the completed cue immediately.
-				displayed_hint = {}
-				marker_phase = "idle"
-				marker_phase_time = 0.0
-				marker_alpha = 0.0
-				marker_scale = 0.86
-			else:
-				marker_phase = "fade_out"
-				marker_phase_time = 0.0
-		elif target_key != pending_key:
-			pending_hint = target
-			if displayed_hint.is_empty():
-				_start_pending_hint()
-			elif _displayed_hint_is_current_cell():
-				# Correct turn with another turn already ahead: clear the old
-				# cue immediately, then animate the next cue in.
-				displayed_hint = {}
-				marker_phase = "idle"
-				marker_phase_time = 0.0
-				marker_alpha = 0.0
-				marker_scale = 0.86
-				_start_pending_hint()
-			else:
-				marker_phase = "fade_out"
-				marker_phase_time = 0.0
-
-	marker_phase_time += delta
-
-	match marker_phase:
-		"fade_out":
-			var fade_t := clampf(
-				marker_phase_time / MARKER_FADE_OUT_SECONDS,
-				0.0,
-				1.0
-			)
-			marker_alpha = 1.0 - smoothstep(0.0, 1.0, fade_t)
-			marker_scale = lerpf(1.0, 0.95, fade_t)
-			if fade_t >= 1.0:
-				displayed_hint = {}
-				_start_pending_hint()
-		"fade_in":
-			var appear_t := clampf(
-				marker_phase_time / MARKER_FADE_IN_SECONDS,
-				0.0,
-				1.0
-			)
-			var eased := 1.0 - pow(1.0 - appear_t, 3.0)
-			marker_alpha = eased
-			marker_scale = lerpf(0.86, 1.0, eased)
-			if appear_t >= 1.0:
-				marker_phase = "visible"
-				marker_phase_time = 0.0
-		"visible":
-			marker_alpha = 1.0
-			marker_scale = 1.0
-			marker_attention_time += delta
-		_:
-			marker_alpha = 0.0
-			marker_scale = 0.86
-
-
-func _displayed_hint_is_current_cell() -> bool:
-	if drive == null or displayed_hint.is_empty():
-		return false
-
-	var cell: Vector2i = displayed_hint.get("cell", Vector2i(-99, -99))
-	match drive.road_kind:
-		"neighborhood":
-			return cell == drive.neighborhood_cell
-		"city":
-			return cell == drive.city_cell
-
-	return false
-
-
-func _start_pending_hint() -> void:
-	if pending_hint.is_empty():
-		displayed_hint = {}
-		marker_phase = "idle"
-		marker_phase_time = 0.0
-		marker_alpha = 0.0
-		marker_scale = 0.86
-		return
-
-	displayed_hint = pending_hint
-	pending_hint = {}
-	marker_phase = "fade_in"
-	marker_phase_time = 0.0
-	marker_attention_time = 0.0
-	marker_alpha = 0.0
-	marker_scale = 0.86
-
-
-func _hint_key(hint: Dictionary) -> String:
-	if hint.is_empty():
-		return ""
-	var cell: Vector2i = hint.get("cell", Vector2i(-99, -99))
-	var turn: String = hint.get("turn", "")
-	return "%d:%d:%s" % [cell.x, cell.y, turn]
 
 
 func _current_route_states() -> Array[Vector3i]:
@@ -273,13 +122,9 @@ func _current_turn_hint() -> Dictionary:
 	var states := _current_route_states()
 	match drive.road_kind:
 		"neighborhood":
-			return _first_turn_on_route(
-				states,
-				MAP.NEIGHBORHOOD_GATE_SIDE
-			)
+			return _first_turn_on_route(states, MAP.NEIGHBORHOOD_GATE_SIDE)
 		"city":
 			return _first_turn_on_route(states, Vector2i.ZERO)
-
 	return {}
 
 
@@ -371,8 +216,6 @@ func _first_turn_on_route(
 				"turn": turn,
 			}
 
-	# The neighborhood gate has one final outward movement that is not a grid
-	# cell. Mark the gate itself when that exit requires a turn.
 	if final_direction != Vector2i.ZERO:
 		var final_state: Vector3i = route.back()
 		var final_cell := Vector2i(final_state.x, final_state.y)
@@ -389,8 +232,6 @@ func _first_turn_on_route(
 
 
 func _ordered_directions(current_heading: Vector2i) -> Array[Vector2i]:
-	# Never route by asking for a U-turn. Prefer staying straight, then choose
-	# the shortest reachable left/right route from the current state.
 	return [
 		current_heading,
 		Vector2i(current_heading.y, -current_heading.x),
@@ -438,98 +279,3 @@ func _cell_inside(cell: Vector2i, grid_size: Vector2i) -> bool:
 		and cell.x < grid_size.x
 		and cell.y < grid_size.y
 	)
-
-
-func _draw_turn_marker(
-	intersection: Vector2,
-	turn: String,
-	alpha: float,
-	scale_value: float
-) -> void:
-	var center := intersection
-	var distance_to_car := intersection.distance_to(drive.player_screen_center)
-
-	# Keep the badge directly on the intersection until the car is almost on it,
-	# then lift it just enough to avoid covering the vehicle.
-	if distance_to_car < MARKER_NEAR_CAR_DISTANCE:
-		center += Vector2(0.0, -MARKER_LIFT)
-
-	var attention_left := clampf(
-		1.0 - marker_attention_time / MARKER_ATTENTION_SECONDS,
-		0.0,
-		1.0
-	)
-	var attention_pulse := sin(marker_attention_time * PI * 5.0) * 0.018 * attention_left
-	var final_scale := scale_value * (1.0 + attention_pulse)
-	var radius := MARKER_RADIUS * final_scale
-
-	# Compact glass badge: subtle depth, very thin edge, and a restrained accent.
-	draw_circle(
-		center + Vector2(0.0, 3.0),
-		radius + 2.0,
-		_color_alpha(MARKER_SHADOW, alpha)
-	)
-	if attention_left > 0.0:
-		draw_circle(
-			center,
-			radius + 4.0 * attention_left,
-			_color_alpha(MARKER_HALO, alpha * attention_left)
-		)
-	draw_circle(center, radius + 1.0, _color_alpha(MARKER_BORDER, alpha))
-	draw_circle(center, radius, _color_alpha(MARKER_BG, alpha))
-	draw_circle(
-		center + Vector2(0.0, -1.0 * final_scale),
-		radius - 4.0 * final_scale,
-		_color_alpha(MARKER_INNER, alpha)
-	)
-
-	# Thin partial ring instead of a heavy progress-style circle.
-	draw_arc(
-		center,
-		radius - 0.8,
-		-PI * 0.72,
-		PI * 0.22,
-		22,
-		_color_alpha(MARKER_ACCENT, alpha),
-		1.35,
-		true
-	)
-
-	_draw_chevron(center, turn, alpha, final_scale)
-
-
-func _color_alpha(color: Color, alpha: float) -> Color:
-	return Color(color.r, color.g, color.b, color.a * alpha)
-
-
-func _draw_chevron(
-	center: Vector2,
-	turn: String,
-	alpha: float,
-	scale_value: float
-) -> void:
-	var direction := 1.0 if turn == "right" else -1.0
-	var half_width := CHEVRON_HALF_WIDTH * scale_value
-	var half_height := CHEVRON_HALF_HEIGHT * scale_value
-	var width := CHEVRON_WIDTH * scale_value
-	var tip := center + Vector2(half_width * direction, 0.0)
-	var upper := center + Vector2(-half_width * direction, -half_height)
-	var lower := center + Vector2(-half_width * direction, half_height)
-
-	# Narrow, sharp chevron with a restrained under-stroke.
-	draw_line(
-		upper,
-		tip,
-		Color(0.0, 0.0, 0.0, 0.28 * alpha),
-		width + 1.8,
-		true
-	)
-	draw_line(
-		tip,
-		lower,
-		Color(0.0, 0.0, 0.0, 0.28 * alpha),
-		width + 1.8,
-		true
-	)
-	draw_line(upper, tip, _color_alpha(MARKER_ICON, alpha), width, true)
-	draw_line(tip, lower, _color_alpha(MARKER_ICON, alpha), width, true)
