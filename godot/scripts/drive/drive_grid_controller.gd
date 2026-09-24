@@ -1081,7 +1081,7 @@ func _draw_highway_speed_feedback() -> void:
 
 		for side in [-1.0, 1.0]:
 			for offset in side_offsets:
-				var x := center_x + side * offset
+				var x: float = center_x + float(side) * float(offset)
 				draw_line(
 					Vector2(x, y - HIGHWAY_STREAK_LENGTH * 0.5),
 					Vector2(x, y + HIGHWAY_STREAK_LENGTH * 0.5),
