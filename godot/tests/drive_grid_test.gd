@@ -165,25 +165,30 @@ func _run() -> void:
 		"City camera does not zoom out enough to show its tile layout"
 	)
 
+	var parking_lot: Rect2 = drive._parking_lot_rect()
 	var parking_rect: Rect2 = drive._parking_space_rect()
 	var venue_rect: Rect2 = drive._venue_rect()
 	var destination_center: Vector2 = drive._city_cell_center(MAP.CITY_DESTINATION)
 	var parking_stop: Vector2 = drive._parking_stop_point()
 	_check(
+		parking_lot.has_point(parking_stop),
+		"Destination stop is not inside the parking lot"
+	)
+	_check(
 		parking_rect.has_point(parking_stop),
-		"Destination parking space does not contain the curbside stop point"
+		"Destination parking space does not contain the stop point"
 	)
 	_check(
 		parking_stop.x > destination_center.x,
-		"Final parking stop is not shifted toward the venue curb"
+		"Final parking stop is not reached by turning right off the street"
 	)
 	_check(
-		venue_rect.position.x > destination_center.x,
-		"Venue should sit outside the road beside the parked car"
+		venue_rect.position.x >= parking_lot.end.x,
+		"Venue is not positioned beside the parking lot"
 	)
 	_check(
-		venue_rect.position.x - parking_stop.x < 28.0,
-		"Venue is too far from the parked car to read on mobile"
+		venue_rect.position.x - parking_stop.x < 32.0,
+		"Venue is too far from the parking space to read on mobile"
 	)
 
 	_check(navigation != null, "Navigation display missing")
@@ -540,8 +545,8 @@ func _run() -> void:
 		"Off-ramp does not start at the highway car size"
 	)
 
-	# Reaching the destination performs one short curbside parking move before
-	# the trip completes.
+	# Reaching the destination performs one short right turn into the venue
+	# parking lot before the trip completes.
 	drive.road_kind = "city"
 	drive.city_cell = MAP.CITY_DESTINATION
 	drive.parking_maneuver_started = false
@@ -550,12 +555,13 @@ func _run() -> void:
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = drive.CITY_CAR_SCALE
 	drive._begin_city_step()
-	_check(drive.parking_maneuver_started, "Destination did not start curbside parking")
+	_check(drive.parking_maneuver_started, "Destination did not start parking-lot entry")
+	_check(drive.heading == Vector2i.RIGHT, "Parking maneuver does not turn right into the lot")
 	_check(
 		drive.move_to == drive._parking_stop_point(),
-		"Parking maneuver does not target the curbside stop point"
+		"Parking maneuver does not target the parking-lot stop point"
 	)
-	_check(not drive.drive_complete, "Drive completed before curbside parking finished")
+	_check(not drive.drive_complete, "Drive completed before parking-lot maneuver finished")
 
 	drive.visual_world_position = drive.move_to
 	drive.move_from = drive.visual_world_position
