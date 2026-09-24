@@ -67,7 +67,7 @@ func _draw() -> void:
 	var points := PackedVector2Array()
 	var next_state: Vector3i = route[1]
 	var next_cell := Vector2i(next_state.x, next_state.y)
-	var next_world := (
+	var next_world: Vector2 = (
 		MAP.neighborhood_cell_center(next_cell)
 		if drive.road_kind == "neighborhood"
 		else drive._city_cell_center(next_cell)
@@ -85,7 +85,7 @@ func _draw() -> void:
 	for index in range(1, route.size()):
 		var state: Vector3i = route[index]
 		var cell := Vector2i(state.x, state.y)
-		var world_position := (
+		var world_position: Vector2 = (
 			MAP.neighborhood_cell_center(cell)
 			if drive.road_kind == "neighborhood"
 			else drive._city_cell_center(cell)
@@ -97,7 +97,7 @@ func _draw() -> void:
 	if points.size() < 2:
 		return
 
-	var road_world_width := (
+	var road_world_width: float = (
 		drive.NEIGHBORHOOD_ROAD_WIDTH
 		if drive.road_kind == "neighborhood"
 		else drive.CITY_ROAD_WIDTH
