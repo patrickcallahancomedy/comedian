@@ -247,9 +247,15 @@ func _run() -> void:
 			initial_hint.get("turn") == "right",
 			"First turn guidance should point right"
 		)
+		var neighborhood_route_points := navigation._current_route_world_points()
 		_check(
-			navigation._current_route_world_points().size() >= 2,
+			neighborhood_route_points.size() >= 2,
 			"Blue GPS route is missing in neighborhood"
+		)
+		_check(
+			neighborhood_route_points[neighborhood_route_points.size() - 1].x
+				> MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).x,
+			"Neighborhood route does not lead into the connector entrance"
 		)
 		var saved_kind_for_line: String = drive.road_kind
 		var saved_position_for_line: Vector2 = drive.visual_world_position
@@ -481,6 +487,14 @@ func _run() -> void:
 	drive.scale_from = drive.CITY_CAR_SCALE
 	drive._begin_city_step()
 	_check(drive.road_kind == "city", "Second connector did not enter city")
+	_check(
+		drive.move_to == drive._city_entry_center_point(),
+		"Off-ramp does not drive forward into the first city block"
+	)
+	_check(
+		is_equal_approx(drive.move_to.y, drive.visual_world_position.y),
+		"Off-ramp city handoff drags the car sideways"
+	)
 	_check(is_equal_approx(drive.visual_cell_scale, 1.5), "City entry should preserve the smoothly-grown city size")
 	_check(
 		is_equal_approx(
@@ -573,8 +587,32 @@ func _run() -> void:
 		)
 
 	drive._begin_city_step()
-	_check(drive.road_kind == "parking", "Destination did not enter parking mode")
-	_check(drive.move_to == drive._parking_aisle_point(), "Parking entry does not target the aisle entrance")
+	_check(drive.road_kind == "city", "Parking turn leaves city mode before reaching the driveway")
+	_check(
+		drive.move_to == drive._parking_entry_point(),
+		"City route does not lead to the parking-lot entrance"
+	)
+	_check(
+		is_equal_approx(drive.move_to.y, drive.visual_world_position.y),
+		"Parking entrance pulls the car sideways instead of forward"
+	)
+	if navigation != null:
+		var parking_route_points := navigation._current_route_world_points()
+		_check(
+			parking_route_points[parking_route_points.size() - 1]
+				== drive._parking_entry_point(),
+			"Blue city route does not finish at the parking-lot entrance"
+		)
+
+	drive.visual_world_position = drive.move_to
+	drive.move_from = drive.visual_world_position
+	drive._begin_city_step()
+	_check(drive.road_kind == "parking", "Parking entrance did not switch to parking mode")
+	_check(drive.move_to == drive._parking_aisle_point(), "Parking entry does not drive into the aisle")
+	_check(
+		is_equal_approx(drive.move_to.y, drive.visual_world_position.y),
+		"Parking-lot entry drags the car sideways"
+	)
 
 	drive.visual_world_position = drive.move_to
 	drive.move_from = drive.visual_world_position
@@ -594,6 +632,10 @@ func _run() -> void:
 	_check(
 		drive.move_to == drive._parking_lane_point(-1),
 		"Choosing an aisle does not target the aisle lane"
+	)
+	_check(
+		is_equal_approx(drive.move_to.x, drive.visual_world_position.x),
+		"Choosing an aisle drags sideways instead of following the turn"
 	)
 	_check(not drive.drive_complete, "Choosing an aisle completed parking too early")
 
@@ -621,6 +663,10 @@ func _run() -> void:
 	_check(
 		drive.move_to == drive._parking_space_center(-1, 1),
 		"Final parking move does not target the selected open space"
+	)
+	_check(
+		is_equal_approx(drive.move_to.y, drive.visual_world_position.y),
+		"Final parking turn drags sideways instead of entering the space"
 	)
 
 	drive.visual_world_position = drive.move_to
