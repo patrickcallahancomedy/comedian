@@ -6,10 +6,10 @@ extends Label
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ROUTE_LINE_COLOR := Color(0.95, 0.73, 0.28, 0.34)
-const ROUTE_LINE_UNDERLAY := Color(0.02, 0.025, 0.03, 0.16)
-const ROUTE_LINE_WIDTH := 2.0
-const ROUTE_LINE_UNDERLAY_WIDTH := 4.0
+const ROUTE_LINE_COLOR := Color(0.95, 0.73, 0.28, 0.12)
+const ROUTE_LINE_UNDERLAY := Color(0.02, 0.025, 0.03, 0.06)
+const ROUTE_WIDTH_RATIO := 0.82
+const ROUTE_START_AHEAD_RATIO := 0.28
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -65,16 +65,31 @@ func _draw() -> void:
 		return
 
 	var points := PackedVector2Array()
-	points.append(drive.player_screen_center)
+	var next_state: Vector3i = route[1]
+	var next_cell := Vector2i(next_state.x, next_state.y)
+	var next_world := (
+		MAP.neighborhood_cell_center(next_cell)
+		if drive.road_kind == "neighborhood"
+		else drive._city_cell_center(next_cell)
+	)
+	var next_screen: Vector2 = drive._world_to_screen(next_world)
 
-	for state in route:
+	# Leave a clean gap around the car, then begin the guidance overlay ahead.
+	points.append(
+		drive.player_screen_center.lerp(
+			next_screen,
+			ROUTE_START_AHEAD_RATIO
+		)
+	)
+
+	for index in range(1, route.size()):
+		var state: Vector3i = route[index]
 		var cell := Vector2i(state.x, state.y)
-		var world_position := Vector2.ZERO
-		if drive.road_kind == "neighborhood":
-			world_position = MAP.neighborhood_cell_center(cell)
-		else:
-			world_position = drive._city_cell_center(cell)
-
+		var world_position := (
+			MAP.neighborhood_cell_center(cell)
+			if drive.road_kind == "neighborhood"
+			else drive._city_cell_center(cell)
+		)
 		var screen_point: Vector2 = drive._world_to_screen(world_position)
 		if points[points.size() - 1].distance_to(screen_point) > 1.0:
 			points.append(screen_point)
@@ -82,16 +97,27 @@ func _draw() -> void:
 	if points.size() < 2:
 		return
 
+	var road_world_width := (
+		drive.NEIGHBORHOOD_ROAD_WIDTH
+		if drive.road_kind == "neighborhood"
+		else drive.CITY_ROAD_WIDTH
+	)
+	var route_width: float = (
+		road_world_width
+		* drive._current_world_zoom()
+		* ROUTE_WIDTH_RATIO
+	)
+
 	draw_polyline(
 		points,
 		ROUTE_LINE_UNDERLAY,
-		ROUTE_LINE_UNDERLAY_WIDTH,
+		route_width + 3.0,
 		true
 	)
 	draw_polyline(
 		points,
 		ROUTE_LINE_COLOR,
-		ROUTE_LINE_WIDTH,
+		route_width,
 		true
 	)
 

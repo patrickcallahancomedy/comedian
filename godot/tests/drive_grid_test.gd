@@ -208,8 +208,17 @@ func _run() -> void:
 		var initial_route: Array[Vector3i] = navigation._current_route_states()
 		_check(initial_route.size() >= 2, "Navigation route line has no usable path")
 		_check(
-			navigation.ROUTE_LINE_WIDTH < 3.0,
-			"Navigation route line is not subtle"
+			navigation.ROUTE_WIDTH_RATIO > 0.75
+			and navigation.ROUTE_WIDTH_RATIO < 0.9,
+			"Navigation overlay is not approximately lane width"
+		)
+		_check(
+			navigation.ROUTE_LINE_COLOR.a <= 0.15,
+			"Navigation overlay is not subtle"
+		)
+		_check(
+			navigation.ROUTE_START_AHEAD_RATIO >= 0.25,
+			"Navigation overlay starts too close to the car"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
@@ -412,11 +421,15 @@ func _run() -> void:
 	drive.visual_cell_scale = 1.0
 	drive._update_car_visual()
 	_check(
+		drive.HIGHWAY_PLAYER_VISUAL_MULTIPLIER >= 2.5,
+		"Highway car is still too small relative to the lane"
+	)
+	_check(
 		is_equal_approx(
 			drive.player_car.scale.x,
 			drive.CAR_REFERENCE_SCALE * drive.HIGHWAY_PLAYER_VISUAL_MULTIPLIER
 		),
-		"Highway player car is not 50 percent larger"
+		"Highway player car scale multiplier is not applied"
 	)
 
 	# Reaching the destination performs one short curbside parking move before
