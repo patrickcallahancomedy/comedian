@@ -177,7 +177,7 @@ func _current_route_world_points() -> PackedVector2Array:
 
 			# Carry the city route through the destination intersection to the
 			# driveway mouth, then remove it as soon as parking mode begins.
-			var lot_entry := drive._parking_entry_point()
+			var lot_entry: Vector2 = drive._parking_entry_point()
 			if points[points.size() - 1].distance_to(lot_entry) > 0.5:
 				points.append(lot_entry)
 			return points
