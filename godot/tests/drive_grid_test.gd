@@ -217,18 +217,19 @@ func _run() -> void:
 			"Navigation illumination is not anchored to the visual car position"
 		)
 		_check(
-			navigation.ROUTE_LIGHT_WIDTH_RATIO >= 0.85
-			and navigation.ROUTE_LIGHT_WIDTH_RATIO <= 0.95,
-			"Navigation illumination does not cover most of the road"
+			navigation.ROUTE_LIGHT_WIDTH_RATIO >= 0.95
+			and navigation.ROUTE_LIGHT_WIDTH_RATIO <= 1.05,
+			"Navigation illumination does not cover the road width"
 		)
 		_check(
-			navigation.ROUTE_LIGHT_COLOR.a <= 0.15,
-			"Navigation illumination is not subtle"
+			navigation.ROUTE_LIGHT_COLOR.a >= 0.18
+			and navigation.ROUTE_LIGHT_COLOR.a <= 0.25,
+			"Navigation illumination is not visibly subtle"
 		)
 		_check(
-			navigation.ROUTE_START_AHEAD_RATIO >= 0.15
-			and navigation.ROUTE_START_AHEAD_RATIO <= 0.25,
-			"Navigation illumination does not start near the car"
+			navigation.ROUTE_START_AHEAD_RATIO >= 0.08
+			and navigation.ROUTE_START_AHEAD_RATIO <= 0.15,
+			"Navigation illumination does not begin just ahead of the car"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(

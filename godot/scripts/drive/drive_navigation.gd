@@ -6,11 +6,13 @@ extends Label
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ROUTE_GLOW_COLOR := Color(0.98, 0.78, 0.30, 0.055)
-const ROUTE_LIGHT_COLOR := Color(1.0, 0.82, 0.34, 0.13)
-const ROUTE_GLOW_WIDTH_RATIO := 1.04
-const ROUTE_LIGHT_WIDTH_RATIO := 0.90
-const ROUTE_START_AHEAD_RATIO := 0.18
+const ROUTE_GLOW_COLOR := Color(1.0, 0.78, 0.24, 0.10)
+const ROUTE_LIGHT_COLOR := Color(1.0, 0.84, 0.34, 0.22)
+const ROUTE_CORE_COLOR := Color(1.0, 0.90, 0.52, 0.10)
+const ROUTE_GLOW_WIDTH_RATIO := 1.18
+const ROUTE_LIGHT_WIDTH_RATIO := 1.00
+const ROUTE_CORE_WIDTH_RATIO := 0.72
+const ROUTE_START_AHEAD_RATIO := 0.10
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -77,6 +79,7 @@ func _draw() -> void:
 	var zoom: float = drive._current_world_zoom()
 	var glow_width: float = road_world_width * zoom * ROUTE_GLOW_WIDTH_RATIO
 	var light_width: float = road_world_width * zoom * ROUTE_LIGHT_WIDTH_RATIO
+	var core_width: float = road_world_width * zoom * ROUTE_CORE_WIDTH_RATIO
 
 	for index in range(world_points.size() - 1):
 		var from_world: Vector2 = world_points[index]
@@ -95,7 +98,8 @@ func _draw() -> void:
 			from_screen,
 			to_screen,
 			glow_width,
-			light_width
+			light_width,
+			core_width
 		)
 
 
@@ -134,11 +138,16 @@ func _draw_illuminated_segment(
 	from_screen: Vector2,
 	to_screen: Vector2,
 	glow_width: float,
-	light_width: float
+	light_width: float,
+	core_width: float
 ) -> void:
+	# Layered translucent washes make the asphalt itself read as illuminated,
+	# rather than drawing a thin navigation stripe on top of it.
 	draw_line(from_screen, to_screen, ROUTE_GLOW_COLOR, glow_width, true)
 	draw_line(from_screen, to_screen, ROUTE_LIGHT_COLOR, light_width, true)
+	draw_line(from_screen, to_screen, ROUTE_CORE_COLOR, core_width, true)
 	draw_circle(to_screen, light_width * 0.5, ROUTE_LIGHT_COLOR)
+	draw_circle(to_screen, core_width * 0.5, ROUTE_CORE_COLOR)
 
 
 func _current_route_states() -> Array[Vector3i]:
