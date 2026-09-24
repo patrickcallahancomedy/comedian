@@ -297,6 +297,14 @@ func _run() -> void:
 	_check(drive.steering_feedback > 0.0, "Highway steering has no visual feedback")
 	_check(drive.camera_nudge.x < 0.0, "Camera does not counter-nudge on a right merge")
 	_check(
+		drive.player_car.pivot_offset.y < drive.player_car.size.y * 0.5,
+		"Steering pivot is not ahead of the car center"
+	)
+	_check(
+		is_equal_approx(drive.CAR_STEERING_PIVOT_Y_RATIO, 0.28),
+		"Steering pivot ratio changed from front-axle fishtail setup"
+	)
+	_check(
 		drive._ease_turn_with_overshoot(0.80) > 1.0,
 		"Turn easing does not overshoot before settling"
 	)

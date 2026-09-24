@@ -69,7 +69,8 @@ const VENUE_SIGN_COLOR := Color(0.78, 0.47, 0.22)
 const VENUE_SIDEWALK_COLOR := Color(0.48, 0.48, 0.46)
 const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.50)
 const STEERING_LEAN_RADIANS := 0.085
-const STEERING_SWAY_PIXELS := 3.0
+const STEERING_SWAY_PIXELS := 0.75
+const CAR_STEERING_PIVOT_Y_RATIO := 0.28
 const CAMERA_COUNTER_NUDGE_PIXELS := 5.0
 const STEERING_FEEDBACK_DECAY := 5.5
 const CAMERA_NUDGE_DECAY := 7.0
@@ -127,7 +128,10 @@ func _ready() -> void:
 	forward_button.pressed.connect(_start_drive)
 	right_button.pressed.connect(_turn_right)
 
-	player_car.pivot_offset = player_car.size * 0.5
+	player_car.pivot_offset = Vector2(
+		player_car.size.x * 0.5,
+		player_car.size.y * CAR_STEERING_PIVOT_Y_RATIO
+	)
 	_reset_to_start()
 	call_deferred("_refresh_layout")
 
