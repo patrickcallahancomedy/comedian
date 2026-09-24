@@ -11,7 +11,7 @@ signal trip_finished(result: Dictionary)
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const STEP_SECONDS := 1.0
+const STEP_SECONDS := 2.0
 const TURN_SECONDS := 0.34
 const DISPLAY_SCALE := 1.0
 const WORLD_SCALE := 2.0
