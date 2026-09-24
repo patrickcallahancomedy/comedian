@@ -2,12 +2,6 @@ name: Capture Alpha Screenshot V2
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - godot-alpha
-    paths:
-      - "godot/**"
-      - ".github/workflows/capture-alpha-v2.yml"
 
 permissions:
   contents: read
