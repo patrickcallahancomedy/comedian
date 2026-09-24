@@ -432,7 +432,7 @@ func _run() -> void:
 		"Highway player car scale multiplier is not applied"
 	)
 
-	var highway_effective_scale := (
+	var highway_effective_scale: float = (
 		MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
 		* drive.HIGHWAY_PLAYER_VISUAL_MULTIPLIER
 	)
