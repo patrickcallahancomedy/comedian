@@ -80,38 +80,23 @@ func _draw() -> void:
 	if drive == null or not drive.started or drive.drive_complete:
 		return
 
-	if drive.road_kind == "neighborhood" or drive.road_kind == "city":
-		_draw_route_line()
-
+	_draw_route_line()
 	_draw_instruction_banner()
 
 
 func _draw_route_line() -> void:
-	var route := _current_route_states()
-	if route.is_empty():
-		return
-
-	var world_points := _route_world_points(route)
+	var world_points: PackedVector2Array = _current_route_world_points()
 	if world_points.size() < 2:
 		return
 
-	var road_world_width: float = (
-		drive.NEIGHBORHOOD_ROAD_WIDTH
-		if drive.road_kind == "neighborhood"
-		else drive.CITY_ROAD_WIDTH
-	)
+	var road_world_width: float = _current_road_world_width()
 	var zoom: float = drive._current_world_zoom()
 	var shadow_width: float = road_world_width * zoom * ROUTE_SHADOW_WIDTH_RATIO
 	var line_width: float = road_world_width * zoom * ROUTE_LINE_WIDTH_RATIO
 	var screen_points := PackedVector2Array()
 
-	for index in range(world_points.size()):
-		if index > 0 and not _world_segment_is_local(
-			world_points[index - 1],
-			world_points[index]
-		):
-			break
-		screen_points.append(drive._world_to_screen(world_points[index]))
+	for world_point in world_points:
+		screen_points.append(drive._world_to_screen(world_point))
 
 	if screen_points.size() < 2:
 		return
@@ -121,9 +106,65 @@ func _draw_route_line() -> void:
 		ROUTE_START_AHEAD_RATIO
 	)
 
-	# Conventional GPS treatment: one solid center route with a darker casing.
+	# Keep one continuous GPS route line visible through every drive section.
 	draw_polyline(screen_points, ROUTE_SHADOW_COLOR, shadow_width, true)
 	draw_polyline(screen_points, ROUTE_LINE_COLOR, line_width, true)
+
+
+func _current_road_world_width() -> float:
+	match drive.road_kind:
+		"neighborhood":
+			return drive.NEIGHBORHOOD_ROAD_WIDTH
+		"city":
+			return drive.CITY_ROAD_WIDTH
+		"highway":
+			return float(MAP.HIGHWAY_LANE_WIDTH) * 0.72
+		"connector_one", "connector_two":
+			return float(MAP.HIGHWAY_LANE_WIDTH) * 0.85
+	return drive.NEIGHBORHOOD_ROAD_WIDTH
+
+
+func _current_route_world_points() -> PackedVector2Array:
+	match drive.road_kind:
+		"neighborhood", "city":
+			var route: Array[Vector3i] = _current_route_states()
+			if route.is_empty():
+				return PackedVector2Array()
+			return _route_world_points(route)
+
+		"connector_one":
+			return PackedVector2Array([
+				drive.visual_world_position,
+				MAP.highway_entry_point(),
+			])
+
+		"highway":
+			var exit_lane_center: Vector2 = drive._highway_cell_center(
+				MAP.HIGHWAY_COLUMNS - 1,
+				MAP.HIGHWAY_EXIT_LANE
+			)
+			var points := PackedVector2Array([drive.visual_world_position])
+
+			# If the player is not in the exit lane, aim the blue route gently
+			# toward it instead of making the line disappear on the highway.
+			if drive.highway_lane != MAP.HIGHWAY_EXIT_LANE:
+				var merge_x: float = lerpf(
+					drive.visual_world_position.x,
+					exit_lane_center.x,
+					0.42
+				)
+				points.append(Vector2(merge_x, exit_lane_center.y))
+
+			points.append(exit_lane_center)
+			return points
+
+		"connector_two":
+			return PackedVector2Array([
+				drive.visual_world_position,
+				drive._city_entry_point(),
+			])
+
+	return PackedVector2Array()
 
 
 func _draw_instruction_banner() -> void:
