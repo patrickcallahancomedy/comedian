@@ -207,7 +207,7 @@ func _run() -> void:
 	if navigation != null:
 		var initial_route: Array[Vector3i] = navigation._current_route_states()
 		_check(initial_route.size() >= 2, "Navigation route line has no usable path")
-		var route_world_points := navigation._route_world_points(initial_route)
+		var route_world_points: PackedVector2Array = navigation._route_world_points(initial_route)
 		_check(
 			route_world_points.size() >= 2,
 			"Navigation illumination has no world segments"
