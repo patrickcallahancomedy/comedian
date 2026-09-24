@@ -208,16 +208,16 @@ func _run() -> void:
 		var initial_route: Array[Vector3i] = navigation._current_route_states()
 		_check(initial_route.size() >= 2, "Navigation route line has no usable path")
 		_check(
-			navigation.ROUTE_WIDTH_RATIO > 0.75
-			and navigation.ROUTE_WIDTH_RATIO < 0.9,
-			"Navigation overlay is not approximately lane width"
+			navigation.ROUTE_WIDTH_RATIO > 0.4
+			and navigation.ROUTE_WIDTH_RATIO < 0.55,
+			"Navigation overlay is not approximately one lane wide"
 		)
 		_check(
 			navigation.ROUTE_LINE_COLOR.a <= 0.15,
 			"Navigation overlay is not subtle"
 		)
 		_check(
-			navigation.ROUTE_START_AHEAD_RATIO >= 0.25,
+			navigation.ROUTE_START_AHEAD_RATIO >= 0.55,
 			"Navigation overlay starts too close to the car"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()

@@ -6,10 +6,10 @@ extends Label
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ROUTE_LINE_COLOR := Color(0.95, 0.73, 0.28, 0.12)
-const ROUTE_LINE_UNDERLAY := Color(0.02, 0.025, 0.03, 0.06)
-const ROUTE_WIDTH_RATIO := 0.82
-const ROUTE_START_AHEAD_RATIO := 0.28
+const ROUTE_LINE_COLOR := Color(0.95, 0.73, 0.28, 0.14)
+const ROUTE_LINE_UNDERLAY := Color(0.02, 0.025, 0.03, 0.04)
+const ROUTE_WIDTH_RATIO := 0.48
+const ROUTE_START_AHEAD_RATIO := 0.58
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -74,7 +74,9 @@ func _draw() -> void:
 	)
 	var next_screen: Vector2 = drive._world_to_screen(next_world)
 
-	# Leave a clean gap around the car, then begin the guidance overlay ahead.
+	# Leave a clear gap around the car. The overlay begins over halfway to
+	# the next intersection so it reads like navigation ahead, not paint
+	# sitting underneath the player sprite.
 	points.append(
 		drive.player_screen_center.lerp(
 			next_screen,
