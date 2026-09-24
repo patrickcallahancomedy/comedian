@@ -138,20 +138,49 @@ func _current_road_world_width() -> float:
 
 func _current_route_world_points() -> PackedVector2Array:
 	match drive.road_kind:
-		"neighborhood", "city":
-			if (
-				drive.road_kind == "city"
-				and drive.parking_maneuver_started
-			):
-				return PackedVector2Array([
-					drive.visual_world_position,
-					drive._parking_stop_point(),
-				])
-
+		"neighborhood":
 			var route: Array[Vector3i] = _current_route_states()
 			if route.is_empty():
 				return PackedVector2Array()
-			return _route_world_points(route)
+			var points := _route_world_points(route)
+
+			# While still in the neighborhood, let the route visibly continue
+			# into the mouth of the on-ramp. Once road_kind becomes connector_one
+			# the line disappears, so the connector never carries a blue overlay.
+			var connector_rect := MAP.CONNECTOR_ONE_RECT
+			var gate_center := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE)
+			var ramp_preview := Vector2(
+				connector_rect.position.x + connector_rect.size.x * 0.28,
+				lerpf(
+					gate_center.y,
+					MAP.highway_entry_point().y,
+					0.28
+				)
+			)
+			if points[points.size() - 1].distance_to(ramp_preview) > 0.5:
+				points.append(ramp_preview)
+			return points
+
+		"city":
+			if drive.parking_maneuver_started:
+				return PackedVector2Array([
+					drive.visual_world_position,
+					drive._parking_entry_point(),
+				])
+
+			var route: Array[Vector3i] = _current_route_states()
+			var points := PackedVector2Array()
+			if not route.is_empty():
+				points = _route_world_points(route)
+			else:
+				points.append(drive.visual_world_position)
+
+			# Carry the city route through the destination intersection to the
+			# driveway mouth, then remove it as soon as parking mode begins.
+			var lot_entry := drive._parking_entry_point()
+			if points[points.size() - 1].distance_to(lot_entry) > 0.5:
+				points.append(lot_entry)
+			return points
 
 		"connector_one":
 			return PackedVector2Array([
