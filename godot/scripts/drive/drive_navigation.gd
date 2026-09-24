@@ -231,7 +231,7 @@ func _draw_turn_icon(rect: Rect2, turn: String) -> void:
 func _current_instruction() -> Dictionary:
 	match drive.road_kind:
 		"neighborhood", "city":
-			var hint := _current_turn_hint()
+			var hint: Dictionary = _current_turn_hint()
 			if hint.is_empty():
 				return {
 					"turn": "straight",
@@ -239,13 +239,13 @@ func _current_instruction() -> Dictionary:
 					"subtitle": "Follow the blue route",
 				}
 			var turn := String(hint.get("turn", "straight"))
-			var turn_cell := hint.get("cell", Vector2i.ZERO)
-			var current_cell := (
+			var turn_cell: Vector2i = hint.get("cell", Vector2i.ZERO)
+			var current_cell: Vector2i = (
 				drive.neighborhood_cell
 				if drive.road_kind == "neighborhood"
 				else drive.city_cell
 			)
-			var blocks := maxi(
+			var blocks: int = maxi(
 				1,
 				abs(turn_cell.x - current_cell.x)
 				+ abs(turn_cell.y - current_cell.y)
