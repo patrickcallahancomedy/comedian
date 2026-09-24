@@ -85,6 +85,9 @@ func _draw() -> void:
 
 
 func _draw_route_line() -> void:
+	if drive.road_kind == "highway":
+		return
+
 	var world_points: PackedVector2Array = _current_route_world_points()
 	if world_points.size() < 2:
 		return
