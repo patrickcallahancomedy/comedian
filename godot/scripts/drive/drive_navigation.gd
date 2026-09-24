@@ -33,7 +33,7 @@ func _ready() -> void:
 	add_theme_constant_override("shadow_offset_y", 1)
 	add_theme_constant_override("outline_size", 0)
 
-	var panel := StyleBoxFlat.new()
+	var panel: StyleBoxFlat = StyleBoxFlat.new()
 	panel.bg_color = Color(0.08, 0.10, 0.13, 0.96)
 	panel.corner_radius_top_left = 14
 	panel.corner_radius_top_right = 14
@@ -73,7 +73,7 @@ func _process(delta: float) -> void:
 
 
 func _apply_card_rect(top: float) -> void:
-	var viewport_width := size.x
+	var viewport_width: float = size.x
 	if get_parent() is Control:
 		viewport_width = (get_parent() as Control).size.x
 	offset_left = CARD_SIDE_MARGIN
@@ -111,7 +111,7 @@ func _local_road_instruction(neighborhood: bool) -> String:
 	if route.is_empty():
 		return "CONTINUE STRAIGHT"
 
-	var final_direction := (
+	var final_direction: Vector2i = (
 		MAP.NEIGHBORHOOD_GATE_SIDE
 		if neighborhood
 		else Vector2i.ZERO
@@ -120,8 +120,8 @@ func _local_road_instruction(neighborhood: bool) -> String:
 
 	if not turn_info.is_empty():
 		var turn_cell: Vector2i = turn_info.get("cell", Vector2i.ZERO)
-		var turn_name := String(turn_info.get("turn", ""))
-		var distance_world := _distance_along_route_to_cell(route, turn_cell)
+		var turn_name: String = String(turn_info.get("turn", ""))
+		var distance_world: float = _distance_along_route_to_cell(route, turn_cell)
 		return "%s  TURN %s\n%s" % [
 			_turn_symbol(turn_name),
 			turn_name.to_upper(),
@@ -129,28 +129,28 @@ func _local_road_instruction(neighborhood: bool) -> String:
 		]
 
 	if neighborhood:
-		var gate_distance := drive.visual_world_position.distance_to(
+		var gate_distance: float = drive.visual_world_position.distance_to(
 			MAP.neighborhood_gate_outside_point()
 		)
 		return "↑  CONTINUE\nRAMP IN %s" % _format_distance(gate_distance)
 
-	var destination := drive._parking_stop_point()
-	var destination_distance := drive.visual_world_position.distance_to(destination)
+	var destination: Vector2 = drive._parking_stop_point()
+	var destination_distance: float = drive.visual_world_position.distance_to(destination)
 	if destination_distance <= 28.0:
 		return "P  PARK ON RIGHT\nDESTINATION"
 	return "↑  CONTINUE\nDESTINATION IN %s" % _format_distance(destination_distance)
 
 
 func _connector_one_instruction() -> String:
-	var distance_world := drive.visual_world_position.distance_to(
+	var distance_world: float = drive.visual_world_position.distance_to(
 		MAP.highway_entry_point()
 	)
 	return "↑  CONTINUE ON RAMP\nHIGHWAY IN %s" % _format_distance(distance_world)
 
 
 func _highway_instruction() -> String:
-	var exit_x := drive._highway_rect_for_lap(drive.highway_lap).end.x
-	var distance_world := maxf(0.0, exit_x - drive.visual_world_position.x)
+	var exit_x: float = drive._highway_rect_for_lap(drive.highway_lap).end.x
+	var distance_world: float = maxf(0.0, exit_x - drive.visual_world_position.x)
 
 	if drive.highway_lane < MAP.HIGHWAY_EXIT_LANE:
 		return "↱  KEEP RIGHT\nEXIT IN %s" % _format_distance(distance_world)
@@ -159,22 +159,22 @@ func _highway_instruction() -> String:
 
 
 func _connector_two_instruction() -> String:
-	var distance_world := drive.visual_world_position.distance_to(
+	var distance_world: float = drive.visual_world_position.distance_to(
 		drive._city_entry_point()
 	)
 	return "↑  TAKE EXIT RAMP\nCITY IN %s" % _format_distance(distance_world)
 
 
 func _format_distance(world_distance: float) -> String:
-	var feet := maxi(0, int(round(world_distance * FEET_PER_WORLD_UNIT)))
+	var feet: int = maxi(0, int(round(world_distance * FEET_PER_WORLD_UNIT)))
 	if feet <= 25:
 		return "NOW"
-	var rounded := maxi(
+	var rounded: int = maxi(
 		DISTANCE_ROUNDING_FT,
 		int(round(float(feet) / DISTANCE_ROUNDING_FT)) * DISTANCE_ROUNDING_FT
 	)
 	if rounded >= 1000:
-		var miles := float(rounded) / 5280.0
+		var miles: float = float(rounded) / 5280.0
 		if miles >= 0.2:
 			return "%.1f MI" % miles
 	return "%d FT" % rounded
@@ -220,7 +220,7 @@ func _current_route_states() -> Array[Vector3i]:
 func _route_world_points(route: Array[Vector3i]) -> PackedVector2Array:
 	var points := PackedVector2Array([drive.visual_world_position])
 	for state in route:
-		var cell := Vector2i(state.x, state.y)
+		var cell: Vector2i = Vector2i(state.x, state.y)
 		var world_position: Vector2 = (
 			MAP.neighborhood_cell_center(cell)
 			if drive.road_kind == "neighborhood"
@@ -239,11 +239,11 @@ func _distance_along_route_to_cell(
 	if points.size() < 2:
 		return 0.0
 
-	var distance := 0.0
-	var point_index := 1
+	var distance: float = 0.0
+	var point_index: int = 1
 
 	for state in route:
-		var cell := Vector2i(state.x, state.y)
+		var cell: Vector2i = Vector2i(state.x, state.y)
 		var world_position: Vector2 = (
 			MAP.neighborhood_cell_center(cell)
 			if drive.road_kind == "neighborhood"
@@ -251,7 +251,7 @@ func _distance_along_route_to_cell(
 		)
 
 		if point_index < points.size():
-			var previous := points[point_index - 1]
+			var previous: Vector2 = points[point_index - 1]
 			if previous.distance_to(world_position) > 0.5:
 				distance += previous.distance_to(world_position)
 				point_index += 1
@@ -291,11 +291,11 @@ func _find_route_states(
 	var found := false
 
 	while queue_index < queue.size():
-		var state := queue[queue_index]
+		var state: Vector3i = queue[queue_index]
 		queue_index += 1
 
-		var cell := Vector2i(state.x, state.y)
-		var state_heading := _direction_from_index(state.z)
+		var cell: Vector2i = Vector2i(state.x, state.y)
+		var state_heading: Vector2i = _direction_from_index(state.z)
 
 		if cell == goal_cell:
 			goal_state = state
@@ -303,7 +303,7 @@ func _find_route_states(
 			break
 
 		for next_heading in _ordered_directions(state_heading):
-			var next_cell := cell + next_heading
+			var next_cell: Vector2i = cell + next_heading
 			if not _cell_inside(next_cell, grid_size):
 				continue
 			if (
@@ -312,7 +312,7 @@ func _find_route_states(
 			):
 				continue
 
-			var next_state := Vector3i(
+			var next_state: Vector3i = Vector3i(
 				next_cell.x,
 				next_cell.y,
 				_direction_index(next_heading)
@@ -327,7 +327,7 @@ func _find_route_states(
 		return []
 
 	var route: Array[Vector3i] = []
-	var cursor := goal_state
+	var cursor: Vector3i = goal_state
 	while true:
 		route.push_front(cursor)
 		if cursor == start_state:
@@ -344,13 +344,13 @@ func _first_turn_on_route(
 		return {}
 
 	for index in range(route.size() - 1):
-		var state := route[index]
-		var next_state := route[index + 1]
-		var cell := Vector2i(state.x, state.y)
-		var heading := _direction_from_index(state.z)
-		var next_cell := Vector2i(next_state.x, next_state.y)
-		var next_heading := next_cell - cell
-		var turn := _relative_turn(heading, next_heading)
+		var state: Vector3i = route[index]
+		var next_state: Vector3i = route[index + 1]
+		var cell: Vector2i = Vector2i(state.x, state.y)
+		var heading: Vector2i = _direction_from_index(state.z)
+		var next_cell: Vector2i = Vector2i(next_state.x, next_state.y)
+		var next_heading: Vector2i = next_cell - cell
+		var turn: String = _relative_turn(heading, next_heading)
 
 		if not turn.is_empty():
 			return {
@@ -360,9 +360,9 @@ func _first_turn_on_route(
 
 	if final_direction != Vector2i.ZERO:
 		var final_state: Vector3i = route.back()
-		var final_cell := Vector2i(final_state.x, final_state.y)
-		var final_heading := _direction_from_index(final_state.z)
-		var final_turn := _relative_turn(final_heading, final_direction)
+		var final_cell: Vector2i = Vector2i(final_state.x, final_state.y)
+		var final_heading: Vector2i = _direction_from_index(final_state.z)
+		var final_turn: String = _relative_turn(final_heading, final_direction)
 		if not final_turn.is_empty():
 			return {
 				"cell": final_cell,
