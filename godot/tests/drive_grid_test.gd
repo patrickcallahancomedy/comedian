@@ -243,6 +243,43 @@ func _run() -> void:
 			initial_hint.get("turn") == "right",
 			"First turn guidance should point right"
 		)
+		_check(
+			navigation._current_route_world_points().size() >= 2,
+			"Blue GPS route is missing in neighborhood"
+		)
+		var saved_kind_for_line: String = drive.road_kind
+		var saved_position_for_line: Vector2 = drive.visual_world_position
+		var saved_lane_for_line: int = drive.highway_lane
+		drive.road_kind = "connector_one"
+		drive.visual_world_position = MAP.CONNECTOR_ONE_RECT.get_center()
+		_check(
+			navigation._current_route_world_points().size() >= 2,
+			"Blue GPS route is missing on connector one"
+		)
+		drive.road_kind = "highway"
+		drive.highway_lane = 1
+		drive.visual_world_position = drive._highway_cell_center(5, 1)
+		_check(
+			navigation._current_route_world_points().size() >= 2,
+			"Blue GPS route is missing on highway"
+		)
+		drive.road_kind = "connector_two"
+		drive.visual_world_position = drive._connector_two_rect().get_center()
+		_check(
+			navigation._current_route_world_points().size() >= 2,
+			"Blue GPS route is missing on connector two"
+		)
+		drive.road_kind = "city"
+		drive.city_cell = MAP.CITY_ENTRY
+		drive.heading = Vector2i.RIGHT
+		drive.visual_world_position = drive._city_cell_center(MAP.CITY_ENTRY)
+		_check(
+			navigation._current_route_world_points().size() >= 2,
+			"Blue GPS route is missing in city"
+		)
+		drive.road_kind = saved_kind_for_line
+		drive.visual_world_position = saved_position_for_line
+		drive.highway_lane = saved_lane_for_line
 
 
 		# Missing that turn should move the hint to the next best intersection.
