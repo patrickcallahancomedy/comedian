@@ -235,8 +235,8 @@ func _run() -> void:
 			"GPS instruction banner does not show the first turn"
 		)
 		_check(
-			String(initial_instruction.get("subtitle", "")) == "In 3 blocks",
-			"GPS instruction banner block count does not include the current block"
+			String(initial_instruction.get("subtitle", "")) == "In 2 blocks",
+			"GPS instruction banner block count is off by one"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
@@ -253,9 +253,12 @@ func _run() -> void:
 			"Blue GPS route is missing in neighborhood"
 		)
 		_check(
-			neighborhood_route_points[neighborhood_route_points.size() - 1].x
-				> MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).x,
-			"Neighborhood route does not lead into the connector entrance"
+			neighborhood_route_points[neighborhood_route_points.size() - 1]
+				== Vector2(
+					MAP.CONNECTOR_ONE_RECT.position.x,
+					MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).y
+				),
+			"Neighborhood route does not stop at the connector mouth"
 		)
 		var saved_kind_for_line: String = drive.road_kind
 		var saved_position_for_line: Vector2 = drive.visual_world_position
