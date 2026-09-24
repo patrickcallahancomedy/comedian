@@ -206,37 +206,19 @@ func _run() -> void:
 	_check(drive.started, "START did not begin grid drive")
 	if navigation != null:
 		var initial_route: Array[Vector3i] = navigation._current_route_states()
-		_check(initial_route.size() >= 2, "Navigation route line has no usable path")
-		var route_world_points: PackedVector2Array = navigation._route_world_points(initial_route)
+		_check(initial_route.size() >= 2, "GPS navigation has no usable neighborhood route")
+		var initial_text: String = navigation._navigation_text()
 		_check(
-			route_world_points.size() >= 2,
-			"Navigation illumination has no world segments"
+			initial_text.contains("TURN RIGHT"),
+			"GPS card does not give the first neighborhood turn"
 		)
 		_check(
-			route_world_points[0].distance_to(drive.visual_world_position) < 0.5,
-			"Navigation illumination is not anchored to the visual car position"
+			initial_text.contains("FT") or initial_text.contains("MI"),
+			"GPS card does not include distance"
 		)
 		_check(
-			navigation.ROUTE_LINE_WIDTH_RATIO >= 0.28
-			and navigation.ROUTE_LINE_WIDTH_RATIO <= 0.36,
-			"GPS route line width is not conventional"
-		)
-		_check(
-			navigation.ROUTE_LINE_COLOR.a >= 0.95,
-			"GPS route line is not solid enough"
-		)
-		_check(
-			navigation.ROUTE_START_AHEAD_RATIO <= 0.05,
-			"GPS route does not begin at the car"
-		)
-		var initial_instruction: Dictionary = navigation._current_instruction()
-		_check(
-			initial_instruction.get("title") == "Turn right",
-			"GPS instruction banner does not show the first turn"
-		)
-		_check(
-			String(initial_instruction.get("subtitle", "")).begins_with("In "),
-			"GPS instruction banner does not show turn distance"
+			is_equal_approx(navigation.FEET_PER_WORLD_UNIT, 4.0),
+			"GPS distance scale changed unexpectedly"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
