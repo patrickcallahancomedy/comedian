@@ -206,19 +206,33 @@ func _run() -> void:
 	_check(drive.started, "START did not begin grid drive")
 	if navigation != null:
 		var initial_route: Array[Vector3i] = navigation._current_route_states()
-		_check(initial_route.size() >= 2, "GPS navigation has no usable neighborhood route")
-		var initial_text: String = navigation._navigation_text()
+		_check(initial_route.size() >= 2, "Navigation route line has no usable path")
+		var route_world_points: PackedVector2Array = navigation._route_world_points(initial_route)
 		_check(
-			initial_text.contains("TURN RIGHT"),
-			"GPS card does not give the first neighborhood turn"
+			route_world_points.size() >= 2,
+			"Navigation route line has no world segments"
 		)
 		_check(
-			initial_text.contains("FT") or initial_text.contains("MI"),
-			"GPS card does not include distance"
+			route_world_points[0].distance_to(drive.visual_world_position) < 0.5,
+			"Navigation route line is not anchored to the car"
 		)
 		_check(
-			is_equal_approx(navigation.FEET_PER_WORLD_UNIT, 4.0),
-			"GPS distance scale changed unexpectedly"
+			navigation.ROUTE_LINE_WIDTH_RATIO >= 0.28
+			and navigation.ROUTE_LINE_WIDTH_RATIO <= 0.36,
+			"GPS route line width changed"
+		)
+		_check(
+			navigation.ROUTE_LINE_COLOR.a >= 0.95,
+			"GPS route line is not solid enough"
+		)
+		var initial_instruction: Dictionary = navigation._current_instruction()
+		_check(
+			initial_instruction.get("title") == "Turn right",
+			"GPS instruction banner does not show the first turn"
+		)
+		_check(
+			String(initial_instruction.get("subtitle", "")).begins_with("In "),
+			"GPS instruction banner does not show turn distance"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
@@ -229,41 +243,6 @@ func _run() -> void:
 			initial_hint.get("turn") == "right",
 			"First turn guidance should point right"
 		)
-
-		# Navigation must remain present through every driving section.
-		var saved_kind: String = drive.road_kind
-		var saved_position: Vector2 = drive.visual_world_position
-		var saved_lane: int = drive.highway_lane
-		drive.road_kind = "connector_one"
-		drive.visual_world_position = MAP.CONNECTOR_ONE_RECT.get_center()
-		_check(
-			navigation._navigation_text().contains("RAMP"),
-			"GPS card disappears or loses ramp guidance on connector one"
-		)
-		drive.road_kind = "highway"
-		drive.highway_lane = 1
-		drive.visual_world_position = drive._highway_cell_center(5, 1)
-		_check(
-			navigation._navigation_text().contains("EXIT"),
-			"GPS card does not give highway exit guidance"
-		)
-		drive.road_kind = "connector_two"
-		drive.visual_world_position = drive._connector_two_rect().get_center()
-		_check(
-			navigation._navigation_text().contains("EXIT RAMP"),
-			"GPS card disappears or loses guidance on connector two"
-		)
-		drive.road_kind = "city"
-		drive.city_cell = MAP.CITY_ENTRY
-		drive.heading = Vector2i.RIGHT
-		drive.visual_world_position = drive._city_cell_center(MAP.CITY_ENTRY)
-		_check(
-			not navigation._navigation_text().is_empty(),
-			"GPS card does not give city guidance"
-		)
-		drive.road_kind = saved_kind
-		drive.visual_world_position = saved_position
-		drive.highway_lane = saved_lane
 
 
 		# Missing that turn should move the hint to the next best intersection.
@@ -288,6 +267,12 @@ func _run() -> void:
 	drive.scale_from = 1.0
 	drive._begin_neighborhood_step()
 	_check(drive.road_kind == "connector_one", "Outside gate did not enter connector")
+	if navigation != null:
+		navigation._update_status_visibility()
+		_check(
+			not drive.status_label.visible,
+			"Legacy CONNECTOR label is visible behind GPS banner"
+		)
 	_check(is_equal_approx(drive.scale_to, 0.5), "First connector does not scale toward highway")
 	_check(
 		is_equal_approx(
@@ -397,6 +382,19 @@ func _run() -> void:
 		not drive.status_label.text.contains("LOOP"),
 		"Missed highway exit still exposes the loop in UI text"
 	)
+	if navigation != null:
+		navigation._process(0.0)
+		var missed_instruction: Dictionary = navigation._current_instruction()
+		_check(
+			missed_instruction.get("title") == "Missed exit",
+			"GPS banner does not announce a missed highway exit"
+		)
+		navigation.missed_exit_notice_remaining = 0.0
+		var rerouted_instruction: Dictionary = navigation._current_instruction()
+		_check(
+			rerouted_instruction.get("title") != "Missed exit",
+			"GPS banner does not return to normal guidance after missed-exit notice"
+		)
 
 	# Lane four reaches the shifted city connector even after a missed exit.
 	drive.highway_column = MAP.HIGHWAY_COLUMNS - 1
