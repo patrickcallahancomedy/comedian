@@ -382,12 +382,24 @@ func _current_instruction() -> Dictionary:
 			if drive.parking_phase == 0:
 				return {
 					"turn": "straight",
-					"title": "Choose an open spot",
+					"title": "Choose an aisle",
+					"subtitle": "Turn left or right",
+				}
+			if drive.parking_phase == 1:
+				return {
+					"turn": "straight",
+					"title": "Enter aisle",
+					"subtitle": "Then choose a space",
+				}
+			if drive.parking_phase == 2:
+				return {
+					"turn": "straight",
+					"title": "Choose a parking spot",
 					"subtitle": "Left or right",
 				}
 			return {
-				"turn": "right",
-				"title": "Park",
+				"turn": "straight",
+				"title": "Parking",
 				"subtitle": "Open space selected",
 			}
 	return {}
