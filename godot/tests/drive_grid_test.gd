@@ -207,18 +207,28 @@ func _run() -> void:
 	if navigation != null:
 		var initial_route: Array[Vector3i] = navigation._current_route_states()
 		_check(initial_route.size() >= 2, "Navigation route line has no usable path")
+		var route_world_points := navigation._route_world_points(initial_route)
 		_check(
-			navigation.ROUTE_WIDTH_RATIO > 0.4
-			and navigation.ROUTE_WIDTH_RATIO < 0.55,
-			"Navigation overlay is not approximately one lane wide"
+			route_world_points.size() >= 2,
+			"Navigation illumination has no world segments"
 		)
 		_check(
-			navigation.ROUTE_LINE_COLOR.a <= 0.15,
-			"Navigation overlay is not subtle"
+			route_world_points[0].distance_to(drive.visual_world_position) < 0.5,
+			"Navigation illumination is not anchored to the visual car position"
 		)
 		_check(
-			navigation.ROUTE_START_AHEAD_RATIO >= 0.55,
-			"Navigation overlay starts too close to the car"
+			navigation.ROUTE_LIGHT_WIDTH_RATIO >= 0.85
+			and navigation.ROUTE_LIGHT_WIDTH_RATIO <= 0.95,
+			"Navigation illumination does not cover most of the road"
+		)
+		_check(
+			navigation.ROUTE_LIGHT_COLOR.a <= 0.15,
+			"Navigation illumination is not subtle"
+		)
+		_check(
+			navigation.ROUTE_START_AHEAD_RATIO >= 0.15
+			and navigation.ROUTE_START_AHEAD_RATIO <= 0.25,
+			"Navigation illumination does not start near the car"
 		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
