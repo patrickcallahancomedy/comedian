@@ -6,13 +6,12 @@ extends Label
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ROUTE_GLOW_COLOR := Color(1.0, 0.78, 0.24, 0.10)
-const ROUTE_LIGHT_COLOR := Color(1.0, 0.84, 0.34, 0.22)
-const ROUTE_CORE_COLOR := Color(1.0, 0.90, 0.52, 0.10)
-const ROUTE_GLOW_WIDTH_RATIO := 1.18
-const ROUTE_LIGHT_WIDTH_RATIO := 1.00
-const ROUTE_CORE_WIDTH_RATIO := 0.72
-const ROUTE_START_AHEAD_RATIO := 0.10
+const ROUTE_TINT_COLOR := Color(1.0, 0.80, 0.30, 0.18)
+const ROUTE_SOFT_COLOR := Color(1.0, 0.88, 0.50, 0.055)
+const ROUTE_TINT_WIDTH_RATIO := 0.98
+const ROUTE_SOFT_WIDTH_RATIO := 0.82
+const ROUTE_START_AHEAD_RATIO := 0.08
+const ROUTE_LOOKAHEAD_CELLS := 1.35
 
 @onready var drive = $"../CityMap"
 @onready var status_label: Label = $"../StatusLabel"
@@ -68,6 +67,7 @@ func _draw() -> void:
 		return
 
 	var world_points := _route_world_points(route)
+	world_points = _limited_route_world_points(world_points)
 	if world_points.size() < 2:
 		return
 
@@ -77,30 +77,25 @@ func _draw() -> void:
 		else drive.CITY_ROAD_WIDTH
 	)
 	var zoom: float = drive._current_world_zoom()
-	var glow_width: float = road_world_width * zoom * ROUTE_GLOW_WIDTH_RATIO
-	var light_width: float = road_world_width * zoom * ROUTE_LIGHT_WIDTH_RATIO
-	var core_width: float = road_world_width * zoom * ROUTE_CORE_WIDTH_RATIO
+	var tint_width: float = road_world_width * zoom * ROUTE_TINT_WIDTH_RATIO
+	var soft_width: float = road_world_width * zoom * ROUTE_SOFT_WIDTH_RATIO
+	var screen_points := PackedVector2Array()
 
-	for index in range(world_points.size() - 1):
-		var from_world: Vector2 = world_points[index]
-		var to_world: Vector2 = world_points[index + 1]
+	for world_point in world_points:
+		screen_points.append(drive._world_to_screen(world_point))
 
-		if index > 0 and not _world_segment_is_local(from_world, to_world):
-			continue
+	# Start just in front of the car so the road reads as lit ahead of Darren,
+	# not as a marker painted underneath the car.
+	screen_points[0] = screen_points[0].lerp(
+		screen_points[1],
+		ROUTE_START_AHEAD_RATIO
+	)
 
-		var from_screen: Vector2 = drive._world_to_screen(from_world)
-		var to_screen: Vector2 = drive._world_to_screen(to_world)
-
-		if index == 0:
-			from_screen = from_screen.lerp(to_screen, ROUTE_START_AHEAD_RATIO)
-
-		_draw_illuminated_segment(
-			from_screen,
-			to_screen,
-			glow_width,
-			light_width,
-			core_width
-		)
+	# Draw the route as one continuous road-width wash. This avoids the round
+	# endpoint blobs and overlapping per-segment rectangles that made turns look
+	# like blocks or caused the old line to appear to split across the map.
+	draw_polyline(screen_points, ROUTE_TINT_COLOR, tint_width, true)
+	draw_polyline(screen_points, ROUTE_SOFT_COLOR, soft_width, true)
 
 
 func _route_world_points(route: Array[Vector3i]) -> PackedVector2Array:
@@ -120,6 +115,46 @@ func _route_world_points(route: Array[Vector3i]) -> PackedVector2Array:
 	return points
 
 
+func _limited_route_world_points(
+	world_points: PackedVector2Array
+) -> PackedVector2Array:
+	if world_points.size() < 2:
+		return world_points
+
+	var cell_size: float = (
+		float(MAP.NEIGHBORHOOD_CELL)
+		if drive.road_kind == "neighborhood"
+		else float(MAP.CITY_CELL)
+	)
+	var remaining := cell_size * ROUTE_LOOKAHEAD_CELLS
+	var limited := PackedVector2Array([world_points[0]])
+
+	for index in range(world_points.size() - 1):
+		var from_world := world_points[index]
+		var to_world := world_points[index + 1]
+		var segment := to_world - from_world
+		var segment_length := segment.length()
+
+		if segment_length <= 0.001:
+			continue
+
+		# Never bridge a non-local jump. Route tint may only follow an actual
+		# adjacent road segment.
+		if not _world_segment_is_local(from_world, to_world):
+			break
+
+		if segment_length <= remaining + 0.001:
+			limited.append(to_world)
+			remaining -= segment_length
+			if remaining <= 0.001:
+				break
+		else:
+			limited.append(from_world + segment.normalized() * remaining)
+			break
+
+	return limited
+
+
 func _world_segment_is_local(from_world: Vector2, to_world: Vector2) -> bool:
 	var expected_length: float = (
 		float(MAP.NEIGHBORHOOD_CELL)
@@ -132,22 +167,6 @@ func _world_segment_is_local(from_world: Vector2, to_world: Vector2) -> bool:
 		or is_zero_approx(delta.y)
 	)
 	return axis_aligned and delta.length() <= expected_length + 0.5
-
-
-func _draw_illuminated_segment(
-	from_screen: Vector2,
-	to_screen: Vector2,
-	glow_width: float,
-	light_width: float,
-	core_width: float
-) -> void:
-	# Layered translucent washes make the asphalt itself read as illuminated,
-	# rather than drawing a thin navigation stripe on top of it.
-	draw_line(from_screen, to_screen, ROUTE_GLOW_COLOR, glow_width, true)
-	draw_line(from_screen, to_screen, ROUTE_LIGHT_COLOR, light_width, true)
-	draw_line(from_screen, to_screen, ROUTE_CORE_COLOR, core_width, true)
-	draw_circle(to_screen, light_width * 0.5, ROUTE_LIGHT_COLOR)
-	draw_circle(to_screen, core_width * 0.5, ROUTE_CORE_COLOR)
 
 
 func _current_route_states() -> Array[Vector3i]:
