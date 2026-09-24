@@ -236,7 +236,7 @@ func _run() -> void:
 			and navigation.ROUTE_LOOKAHEAD_CELLS <= 1.5,
 			"Navigation illumination extends too far ahead"
 		)
-		var limited_route := navigation._limited_route_world_points(route_world_points)
+		var limited_route: PackedVector2Array = navigation._limited_route_world_points(route_world_points)
 		var limited_distance := 0.0
 		for route_index in range(limited_route.size() - 1):
 			limited_distance += limited_route[route_index].distance_to(
