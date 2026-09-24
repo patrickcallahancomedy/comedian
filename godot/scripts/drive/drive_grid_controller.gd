@@ -71,7 +71,9 @@ const VENUE_WINDOW_COLOR := Color(0.96, 0.66, 0.28, 0.88)
 const VENUE_AWNING_COLOR := Color(0.42, 0.16, 0.13)
 const VENUE_SIGN_COLOR := Color(0.78, 0.47, 0.22)
 const VENUE_SIDEWALK_COLOR := Color(0.48, 0.48, 0.46)
-const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.50)
+const PARKING_LINE_COLOR := Color(0.92, 0.91, 0.84, 0.72)
+const PARKING_LOT_COLOR := Color(0.13, 0.14, 0.16)
+const PARKING_LOT_EDGE_COLOR := Color(0.34, 0.35, 0.36)
 const STEERING_LEAN_RADIANS := 0.085
 const STEERING_SWAY_PIXELS := 0.75
 const CAR_STEERING_PIVOT_Y_RATIO := 0.28
@@ -410,6 +412,11 @@ func _begin_city_step() -> void:
 	if city_cell == MAP.CITY_DESTINATION:
 		if not parking_maneuver_started:
 			parking_maneuver_started = true
+			# Make the final move feel like an actual right turn into the lot.
+			heading = Vector2i.RIGHT
+			map_rotation_from = map_rotation
+			map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
+			turn_elapsed = 0.0
 			move_to = _parking_stop_point()
 			scale_to = CITY_CAR_SCALE
 			motion_direction = (move_to - move_from).normalized()
@@ -1246,61 +1253,82 @@ func _city_entry_point() -> Vector2:
 	return MAP.city_entry_point() + _highway_lap_offset()
 
 
+func _parking_lot_rect() -> Rect2:
+	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
+	return Rect2(
+		Vector2(
+			destination_center.x + CITY_ROAD_WIDTH * 0.5 + 2.0,
+			destination_center.y - 54.0
+		),
+		Vector2(42.0, 108.0)
+	)
+
+
 func _parking_stop_point() -> Vector2:
-	# Nudge the final car position toward the curb instead of ending in the
-	# middle of the lane. The logical destination cell itself does not change.
-	return _city_cell_center(MAP.CITY_DESTINATION) + Vector2(11.0, 0.0)
+	# The final movement now turns off the street and into a real parking lot.
+	var lot := _parking_lot_rect()
+	return Vector2(
+		lot.position.x + 25.0,
+		_city_cell_center(MAP.CITY_DESTINATION).y
+	)
 
 
 func _parking_space_rect() -> Rect2:
 	var center := _parking_stop_point()
 	return Rect2(
-		center + Vector2(-8.0, -24.0),
-		Vector2(16.0, 48.0)
+		center + Vector2(-12.0, -9.0),
+		Vector2(24.0, 18.0)
 	)
 
 
 func _venue_rect() -> Rect2:
-	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
+	var lot := _parking_lot_rect()
 	return Rect2(
-		Vector2(
-			destination_center.x + CITY_SIDEWALK_WIDTH * 0.5 + 4.0,
-			destination_center.y - 44.0
-		),
-		Vector2(36.0, 88.0)
+		Vector2(lot.end.x + 2.0, lot.position.y - 2.0),
+		Vector2(22.0, lot.size.y + 4.0)
 	)
 
 
 func _draw_destination() -> void:
+	var lot := _parking_lot_rect()
 	var parking_rect := _parking_space_rect()
 	var venue_rect := _venue_rect()
 	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
 	var curb_x := destination_center.x + CITY_ROAD_WIDTH * 0.5
 
-	# Two short curbside ticks imply a parallel-parking bay without drawing a
-	# large target box under the car.
-	_draw_world_line(
-		Vector2(parking_rect.end.x, parking_rect.position.y),
-		Vector2(parking_rect.end.x, parking_rect.position.y + 4.5),
-		PARKING_LINE_COLOR,
-		0.65
+	# Small asphalt parking lot attached to the venue.
+	_draw_world_rect(lot, PARKING_LOT_EDGE_COLOR)
+	var lot_inner := Rect2(
+		lot.position + Vector2(1.5, 1.5),
+		lot.size - Vector2(3.0, 3.0)
 	)
-	_draw_world_line(
-		Vector2(parking_rect.end.x, parking_rect.end.y - 4.5),
-		Vector2(parking_rect.end.x, parking_rect.end.y),
-		PARKING_LINE_COLOR,
-		0.65
-	)
+	_draw_world_rect(lot_inner, PARKING_LOT_COLOR)
 
-	# A narrow sidewalk strip bridges the curb directly to the venue frontage.
-	var venue_sidewalk := Rect2(
-		Vector2(curb_x, destination_center.y - 26.0),
-		Vector2(maxf(1.0, venue_rect.position.x - curb_x + 1.5), 52.0)
+	# Driveway opening connects the city street directly into the lot.
+	var driveway := Rect2(
+		Vector2(curb_x, destination_center.y - 9.0),
+		Vector2(maxf(1.0, lot.position.x - curb_x + 8.0), 18.0)
 	)
-	_draw_world_rect(venue_sidewalk, VENUE_SIDEWALK_COLOR)
+	_draw_world_rect(driveway, PARKING_LOT_COLOR)
 
-	# Compact commercial building. Keeping the footprint close to the curb
-	# makes the venue visible while the car is actually parked.
+	# Five simple parking bays make the destination read instantly as a lot.
+	var stall_x0 := lot.position.x + 8.0
+	var stall_x1 := lot.end.x - 3.0
+	for stall_index in range(6):
+		var y := lot.position.y + 5.0 + float(stall_index) * 19.5
+		if y > lot.end.y - 4.0:
+			break
+		_draw_world_line(
+			Vector2(stall_x0, y),
+			Vector2(stall_x1, y),
+			PARKING_LINE_COLOR,
+			0.75
+		)
+
+	# Highlight only the destination bay slightly more clearly.
+	_draw_world_rect_outline(parking_rect, PARKING_LINE_COLOR, 0.9)
+
+	# Venue sits immediately beside the lot instead of directly on the curb.
 	_draw_world_rect(
 		Rect2(venue_rect.position + Vector2(1.3, 1.3), venue_rect.size),
 		Color(0.0, 0.0, 0.0, 0.22)
@@ -1313,7 +1341,6 @@ func _draw_destination() -> void:
 	)
 	_draw_world_rect(roof, VENUE_ROOF_COLOR)
 
-	# Street-facing front wall and recessed warm doorway.
 	var facade := Rect2(
 		Vector2(venue_rect.position.x, venue_rect.position.y + 2.5),
 		Vector2(3.6, venue_rect.size.y - 5.0)
@@ -1326,8 +1353,6 @@ func _draw_destination() -> void:
 	)
 	_draw_world_rect(door_rect, VENUE_WINDOW_COLOR)
 
-	# Small marquee over the door: enough to read as a venue entrance without
-	# putting a giant label in the world.
 	var marquee := PackedVector2Array([
 		Vector2(venue_rect.position.x - 3.0, destination_center.y - 8.0),
 		Vector2(venue_rect.position.x + 7.0, destination_center.y - 8.0),
@@ -1348,9 +1373,8 @@ func _draw_destination() -> void:
 	)
 	_draw_world_rect(poster_rect, Color(0.36, 0.44, 0.50, 0.80))
 
-	# One rooftop unit gives the top-down footprint some believable structure.
 	_draw_world_rect(
-		Rect2(venue_rect.position + Vector2(10.0, 9.0), Vector2(5.0, 4.0)),
+		Rect2(venue_rect.position + Vector2(9.0, 9.0), Vector2(5.0, 4.0)),
 		Color(0.22, 0.23, 0.23)
 	)
 
