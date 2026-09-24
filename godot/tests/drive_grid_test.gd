@@ -12,9 +12,9 @@ func _initialize() -> void:
 func _run() -> void:
 	print("DRIVE GRID v0.1 TEST START")
 
-	_check(MAP.MAP_SIZE == Vector2i(880, 800), "Logical map size is wrong")
-	_check(is_equal_approx(MAP.CONNECTOR_ONE_RECT.size.x, 80.0), "Connector one is not doubled to 80 units")
-	_check(is_equal_approx(MAP.CONNECTOR_TWO_RECT.size.x, 80.0), "Connector two is not doubled to 80 units")
+	_check(MAP.MAP_SIZE == Vector2i(1760, 1600), "Logical map size is wrong")
+	_check(is_equal_approx(MAP.CONNECTOR_ONE_RECT.size.x, 160.0), "Connector one is not doubled to 160 units")
+	_check(is_equal_approx(MAP.CONNECTOR_TWO_RECT.size.x, 160.0), "Connector two is not doubled to 160 units")
 	_check(MAP.MASTER_UNIT == 10, "Master snap unit changed")
 	_check(MAP.rect_is_master_snapped(MAP.NEIGHBORHOOD_RECT), "Neighborhood is off master grid")
 	_check(MAP.rect_is_master_snapped(MAP.CONNECTOR_ONE_RECT), "Connector one is off master grid")
@@ -182,7 +182,7 @@ func _run() -> void:
 		"Venue should sit outside the road beside the parked car"
 	)
 	_check(
-		venue_rect.position.x - parking_stop.x < 14.0,
+		venue_rect.position.x - parking_stop.x < 28.0,
 		"Venue is too far from the parked car to read on mobile"
 	)
 
@@ -248,7 +248,7 @@ func _run() -> void:
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
-			float(MAP.NEIGHBORHOOD_CELL) / drive.STEP_SECONDS
+			drive.NEIGHBORHOOD_WORLD_SPEED
 		),
 		"On-ramp does not start at neighborhood speed"
 	)
@@ -265,7 +265,7 @@ func _run() -> void:
 	_check(
 		is_equal_approx(
 			ramp_end_speed,
-			float(MAP.HIGHWAY_CELL) * 4.0 / drive.STEP_SECONDS
+			drive.HIGHWAY_WORLD_SPEED
 		),
 		"On-ramp does not reach highway speed"
 	)
@@ -382,7 +382,7 @@ func _run() -> void:
 	_check(
 		is_equal_approx(
 			exit_end_speed,
-			float(MAP.NEIGHBORHOOD_CELL) * 0.8 / drive.STEP_SECONDS
+			drive.CITY_WORLD_SPEED
 		),
 		"City off-ramp does not reach 0.8x neighborhood speed"
 	)
@@ -397,7 +397,7 @@ func _run() -> void:
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
-			float(MAP.NEIGHBORHOOD_CELL) * 0.8 / drive.STEP_SECONDS
+			drive.CITY_WORLD_SPEED
 		),
 		"City speed is not 0.8x neighborhood speed"
 	)

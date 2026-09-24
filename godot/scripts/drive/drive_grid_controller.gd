@@ -1219,14 +1219,14 @@ func _city_entry_point() -> Vector2:
 func _parking_stop_point() -> Vector2:
 	# Nudge the final car position toward the curb instead of ending in the
 	# middle of the lane. The logical destination cell itself does not change.
-	return _city_cell_center(MAP.CITY_DESTINATION) + Vector2(5.5, 0.0)
+	return _city_cell_center(MAP.CITY_DESTINATION) + Vector2(11.0, 0.0)
 
 
 func _parking_space_rect() -> Rect2:
 	var center := _parking_stop_point()
 	return Rect2(
-		center + Vector2(-4.0, -12.0),
-		Vector2(8.0, 24.0)
+		center + Vector2(-8.0, -24.0),
+		Vector2(16.0, 48.0)
 	)
 
 
@@ -1234,10 +1234,10 @@ func _venue_rect() -> Rect2:
 	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
 	return Rect2(
 		Vector2(
-			destination_center.x + CITY_SIDEWALK_WIDTH * 0.5 + 2.0,
-			destination_center.y - 22.0
+			destination_center.x + CITY_SIDEWALK_WIDTH * 0.5 + 4.0,
+			destination_center.y - 44.0
 		),
-		Vector2(18.0, 44.0)
+		Vector2(36.0, 88.0)
 	)
 
 
