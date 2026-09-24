@@ -1,11 +1,15 @@
 extends Label
 
-## In-world turn guidance for the driving microgame.
-## The arrow is anchored to the actual intersection where the player should turn.
-## If that turn is missed, the route is recalculated and the arrow moves to the
-## next best intersection. Driving logic and map topology are untouched.
+## Subtle in-world route guidance for the driving microgame.
+## Pathfinding remains dynamic, but the visible guidance is now a restrained
+## road-center route line instead of turn-arrow badges.
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
+
+const ROUTE_LINE_COLOR := Color(0.95, 0.73, 0.28, 0.42)
+const ROUTE_LINE_UNDERLAY := Color(0.02, 0.025, 0.03, 0.20)
+const ROUTE_LINE_WIDTH := 2.4
+const ROUTE_LINE_UNDERLAY_WIDTH := 5.0
 
 const MARKER_BG := Color(0.055, 0.062, 0.072, 0.90)
 const MARKER_INNER := Color(0.11, 0.12, 0.135, 0.92)
@@ -43,7 +47,7 @@ func _ready() -> void:
 	# Reuse the existing Navigation node as a full-screen, non-interactive
 	# drawing layer. No new embedded assets are needed.
 	text = ""
-	z_index = 4
+	z_index = 2
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	offset_left = 0.0
@@ -56,7 +60,6 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	ui_time += delta
 	_update_status_visibility()
-	_update_marker_state(delta)
 	queue_redraw()
 
 
@@ -85,26 +88,46 @@ func _update_status_visibility() -> void:
 
 
 func _draw() -> void:
-	if drive == null or displayed_hint.is_empty() or marker_alpha <= 0.001:
+	if drive == null or not drive.started or drive.drive_complete:
 		return
 
-	var cell: Vector2i = displayed_hint["cell"]
-	var turn: String = displayed_hint["turn"]
-	var world_position := Vector2.ZERO
+	var route := _current_route_states()
+	if route.size() < 2:
+		return
 
-	match drive.road_kind:
-		"neighborhood":
-			world_position = MAP.neighborhood_cell_center(cell)
-		"city":
-			world_position = drive._city_cell_center(cell)
-		_:
-			return
+	var points := PackedVector2Array()
+	points.append(drive._world_to_screen(drive.visual_world_position))
 
-	_draw_turn_marker(
-		drive._world_to_screen(world_position),
-		turn,
-		marker_alpha,
-		marker_scale
+	for state in route:
+		var cell := Vector2i(state.x, state.y)
+		var world_position := Vector2.ZERO
+
+		match drive.road_kind:
+			"neighborhood":
+				world_position = MAP.neighborhood_cell_center(cell)
+			"city":
+				world_position = drive._city_cell_center(cell)
+			_:
+				return
+
+		var screen_point: Vector2 = drive._world_to_screen(world_position)
+		if points.is_empty() or points[points.size() - 1].distance_to(screen_point) > 0.5:
+			points.append(screen_point)
+
+	if points.size() < 2:
+		return
+
+	draw_polyline(
+		points,
+		ROUTE_LINE_UNDERLAY,
+		ROUTE_LINE_UNDERLAY_WIDTH,
+		true
+	)
+	draw_polyline(
+		points,
+		ROUTE_LINE_COLOR,
+		ROUTE_LINE_WIDTH,
+		true
 	)
 
 
@@ -224,28 +247,37 @@ func _hint_key(hint: Dictionary) -> String:
 	return "%d:%d:%s" % [cell.x, cell.y, turn]
 
 
-func _current_turn_hint() -> Dictionary:
+func _current_route_states() -> Array[Vector3i]:
 	match drive.road_kind:
 		"neighborhood":
-			var states := _find_route_states(
+			return _find_route_states(
 				drive.neighborhood_cell,
 				drive.heading,
 				MAP.NEIGHBORHOOD_GATE,
 				MAP.NEIGHBORHOOD_SIZE,
 				true
 			)
-			return _first_turn_on_route(
-				states,
-				MAP.NEIGHBORHOOD_GATE_SIDE
-			)
 		"city":
-			var states := _find_route_states(
+			return _find_route_states(
 				drive.city_cell,
 				drive.heading,
 				MAP.CITY_DESTINATION,
 				MAP.CITY_SIZE,
 				false
 			)
+
+	return []
+
+
+func _current_turn_hint() -> Dictionary:
+	var states := _current_route_states()
+	match drive.road_kind:
+		"neighborhood":
+			return _first_turn_on_route(
+				states,
+				MAP.NEIGHBORHOOD_GATE_SIDE
+			)
+		"city":
 			return _first_turn_on_route(states, Vector2i.ZERO)
 
 	return {}

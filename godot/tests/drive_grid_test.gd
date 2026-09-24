@@ -197,6 +197,12 @@ func _run() -> void:
 	drive._start_drive()
 	_check(drive.started, "START did not begin grid drive")
 	if navigation != null:
+		var initial_route: Array[Vector3i] = navigation._current_route_states()
+		_check(initial_route.size() >= 2, "Navigation route line has no usable path")
+		_check(
+			navigation.ROUTE_LINE_WIDTH < 3.0,
+			"Navigation route line is not subtle"
+		)
 		var initial_hint: Dictionary = navigation.get_turn_hint()
 		_check(
 			initial_hint.get("cell") == Vector2i(1, 1),
