@@ -74,10 +74,6 @@ const CAMERA_COUNTER_NUDGE_PIXELS := 5.0
 const STEERING_FEEDBACK_DECAY := 5.5
 const CAMERA_NUDGE_DECAY := 7.0
 const TURN_OVERSHOOT_STRENGTH := 0.80
-const HIGHWAY_STREAK_SPEED := 430.0
-const HIGHWAY_STREAK_SPACING := 148.0
-const HIGHWAY_STREAK_LENGTH := 34.0
-const HIGHWAY_STREAK_ALPHA := 0.12
 const GRID_COLOR := Color(0.08, 0.09, 0.09, 0.45)
 const BORDER_COLOR := Color(0.93, 0.92, 0.86)
 
@@ -538,7 +534,6 @@ func _draw() -> void:
 	_draw_highway_surroundings()
 	_draw_connector_one()
 	_draw_highway()
-	_draw_highway_speed_feedback()
 	_draw_city_connector()
 
 	_draw_city()
@@ -1060,35 +1055,6 @@ func _draw_highway() -> void:
 	# exposes the end of the highway or reveals a reset.
 	for lap in range(maxi(0, highway_lap - 1), highway_lap + 2):
 		_draw_highway_for_lap(lap)
-
-
-func _draw_highway_speed_feedback() -> void:
-	if road_kind != "highway":
-		return
-
-	var phase := fmod(drive_time * HIGHWAY_STREAK_SPEED, HIGHWAY_STREAK_SPACING)
-	var center_x := player_screen_center.x
-	var side_offsets := [126.0, 158.0]
-
-	for index in range(7):
-		var y := (
-			fmod(float(index) * HIGHWAY_STREAK_SPACING + phase, size.y + 120.0)
-			- 60.0
-		)
-		var alpha := HIGHWAY_STREAK_ALPHA * (
-			0.72 + 0.28 * sin(float(index) * 1.7 + drive_time * 4.0)
-		)
-
-		for side in [-1.0, 1.0]:
-			for offset in side_offsets:
-				var x: float = center_x + float(side) * float(offset)
-				draw_line(
-					Vector2(x, y - HIGHWAY_STREAK_LENGTH * 0.5),
-					Vector2(x, y + HIGHWAY_STREAK_LENGTH * 0.5),
-					Color(0.93, 0.94, 0.96, alpha),
-					1.15,
-					true
-				)
 
 
 func _draw_highway_for_lap(lap: int) -> void:
