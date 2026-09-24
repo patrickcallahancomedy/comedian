@@ -261,7 +261,7 @@ func _run() -> void:
 		drive.visual_world_position = drive._highway_cell_center(5, 1)
 		_check(
 			navigation._current_route_world_points().size() >= 2,
-			"Blue GPS route is missing on highway"
+			"Highway navigation route data is missing"
 		)
 		drive.road_kind = "connector_two"
 		drive.visual_world_position = drive._connector_two_rect().get_center()
@@ -355,6 +355,10 @@ func _run() -> void:
 	if navigation != null:
 		navigation._update_status_visibility()
 		_check(not drive.status_label.visible, "Highway status text should be hidden")
+		_check(
+			drive.road_kind == "highway",
+			"Highway state changed while testing route visibility"
+		)
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
