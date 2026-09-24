@@ -91,6 +91,7 @@ var started := false
 var drive_complete := false
 var parking_maneuver_started := false
 var parking_target_index := -1
+var parking_lane_choice := 0
 var parking_phase := 0
 var drive_time := 0.0
 var missed_turns := 0
@@ -158,6 +159,7 @@ func _reset_to_start() -> void:
 	drive_complete = false
 	parking_maneuver_started = false
 	parking_target_index = -1
+	parking_lane_choice = 0
 	parking_phase = 0
 	drive_time = 0.0
 	missed_turns = 0
@@ -419,6 +421,7 @@ func _begin_city_step() -> void:
 		if not parking_maneuver_started:
 			parking_maneuver_started = true
 			parking_target_index = -1
+			parking_lane_choice = 0
 			parking_phase = 0
 			road_kind = "parking"
 			# Turn into the aisle first. The player then chooses an open space.
@@ -460,7 +463,7 @@ func _turn_left() -> void:
 		return
 
 	if road_kind == "parking":
-		_choose_parking_space(1)
+		_handle_parking_turn(-1)
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
@@ -478,7 +481,7 @@ func _turn_right() -> void:
 		return
 
 	if road_kind == "parking":
-		_choose_parking_space(3)
+		_handle_parking_turn(1)
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
@@ -1275,48 +1278,54 @@ func _parking_lot_rect() -> Rect2:
 	return Rect2(
 		Vector2(
 			destination_center.x + CITY_ROAD_WIDTH * 0.5 + 2.0,
-			destination_center.y - 54.0
+			destination_center.y - 62.0
 		),
-		Vector2(42.0, 108.0)
+		Vector2(68.0, 124.0)
 	)
 
 
 func _parking_aisle_point() -> Vector2:
 	var lot := _parking_lot_rect()
 	return Vector2(
-		lot.position.x + 10.0,
+		lot.position.x + 15.0,
 		_city_cell_center(MAP.CITY_DESTINATION).y
 	)
 
 
-func _parking_space_center(index: int) -> Vector2:
+func _parking_lane_point(lane_choice: int) -> Vector2:
 	var lot := _parking_lot_rect()
-	return Vector2(
-		lot.position.x + 30.0,
-		lot.position.y + 14.0 + float(index) * 19.5
-	)
+	var lane_y := lot.position.y + 34.0 if lane_choice < 0 else lot.end.y - 34.0
+	return Vector2(lot.position.x + 22.0, lane_y)
+
+
+func _parking_space_center(lane_choice: int, turn_choice: int) -> Vector2:
+	var lane_point := _parking_lane_point(lane_choice)
+	# Once inside an aisle, a second left/right input chooses a bay on either
+	# side of that aisle rather than parking automatically.
+	var x_offset := -13.0 if turn_choice < 0 else 25.0
+	return lane_point + Vector2(x_offset, 0.0)
 
 
 func _parking_stop_point() -> Vector2:
-	var target := parking_target_index
-	if target < 0:
-		target = 1
-	return _parking_space_center(target)
+	if parking_lane_choice == 0 or parking_target_index == 0:
+		return _parking_aisle_point()
+	return _parking_space_center(parking_lane_choice, parking_target_index)
 
 
-func _parking_space_rect(index: int = -1) -> Rect2:
-	var target := index
-	if target < 0:
-		target = parking_target_index if parking_target_index >= 0 else 1
-	var center := _parking_space_center(target)
+func _parking_space_rect(lane_choice: int, turn_choice: int) -> Rect2:
+	var center := _parking_space_center(lane_choice, turn_choice)
 	return Rect2(
-		center + Vector2(-12.0, -8.0),
-		Vector2(24.0, 16.0)
+		center + Vector2(-10.0, -8.0),
+		Vector2(20.0, 16.0)
 	)
 
 
-func _parking_space_is_open(index: int) -> bool:
-	return index == 1 or index == 3
+func _parking_space_is_open(lane_choice: int, turn_choice: int) -> bool:
+	# Upper aisle: right bay open. Lower aisle: left bay open.
+	return (
+		(lane_choice < 0 and turn_choice > 0)
+		or (lane_choice > 0 and turn_choice < 0)
+	)
 
 
 func _begin_parking_step() -> void:
@@ -1324,50 +1333,68 @@ func _begin_parking_step() -> void:
 		move_to = move_from
 		scale_to = scale_from
 		blocked_this_step = true
-		status_label.text = "CHOOSE SPACE"
+		status_label.text = "CHOOSE AISLE"
 		return
 
 	if parking_phase == 1:
+		# Reaching the chosen aisle is not parking yet. Stop and ask for a
+		# second turn into one of the bays beside the aisle.
 		parking_phase = 2
-		var align_point := Vector2(
-			_parking_aisle_point().x,
-			_parking_space_center(parking_target_index).y
-		)
-		heading = Vector2i.UP if align_point.y < visual_world_position.y else Vector2i.DOWN
+		move_to = move_from
+		scale_to = scale_from
+		blocked_this_step = true
+		status_label.text = "CHOOSE SPACE"
+		return
+
+	if parking_phase == 3:
+		_finish_drive()
+		return
+
+
+func _handle_parking_turn(turn_choice: int) -> void:
+	if parking_phase == 0:
+		parking_lane_choice = turn_choice
+		parking_phase = 1
+		blocked_this_step = false
+		move_from = visual_world_position
+		scale_from = visual_cell_scale
+
+		var lane_point := _parking_lane_point(parking_lane_choice)
+		heading = Vector2i.UP if parking_lane_choice < 0 else Vector2i.DOWN
 		map_rotation_from = map_rotation
 		map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
 		turn_elapsed = 0.0
-		move_to = align_point
+		move_to = lane_point
 		scale_to = CITY_CAR_SCALE
 		motion_direction = (move_to - move_from).normalized()
-		status_label.text = "PARKING"
+		status_label.text = "PARKING AISLE"
 		return
 
-	if parking_phase == 2:
-		parking_phase = 3
-		heading = Vector2i.RIGHT
-		map_rotation_from = map_rotation
-		map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
-		turn_elapsed = 0.0
-		move_to = _parking_space_center(parking_target_index)
-		scale_to = CITY_CAR_SCALE
-		motion_direction = (move_to - move_from).normalized()
-		status_label.text = "PARKING"
+	if parking_phase != 2:
 		return
 
-	_finish_drive()
-
-
-func _choose_parking_space(index: int) -> void:
-	if parking_phase != 0 or not _parking_space_is_open(index):
+	if not _parking_space_is_open(parking_lane_choice, turn_choice):
+		status_label.text = "SPACE OCCUPIED"
 		return
 
-	parking_target_index = index
-	parking_phase = 1
+	parking_target_index = turn_choice
+	parking_phase = 3
 	blocked_this_step = false
 	move_from = visual_world_position
 	scale_from = visual_cell_scale
-	_begin_parking_step()
+
+	# Turn from the aisle into the selected open bay.
+	if heading == Vector2i.UP:
+		heading = Vector2i.LEFT if turn_choice < 0 else Vector2i.RIGHT
+	else:
+		heading = Vector2i.RIGHT if turn_choice < 0 else Vector2i.LEFT
+	map_rotation_from = map_rotation
+	map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
+	turn_elapsed = 0.0
+	move_to = _parking_space_center(parking_lane_choice, turn_choice)
+	scale_to = CITY_CAR_SCALE
+	motion_direction = (move_to - move_from).normalized()
+	status_label.text = "PARKING"
 
 
 func _venue_rect() -> Rect2:
@@ -1384,7 +1411,6 @@ func _draw_destination() -> void:
 	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
 	var curb_x := destination_center.x + CITY_ROAD_WIDTH * 0.5
 
-	# Small asphalt parking lot attached to the venue.
 	_draw_world_rect(lot, PARKING_LOT_EDGE_COLOR)
 	var lot_inner := Rect2(
 		lot.position + Vector2(1.5, 1.5),
@@ -1392,57 +1418,45 @@ func _draw_destination() -> void:
 	)
 	_draw_world_rect(lot_inner, PARKING_LOT_COLOR)
 
-	# Driveway opening connects the city street directly into the lot.
+	# Driveway feeds a center decision point, then splits into two short aisles.
 	var driveway := Rect2(
-		Vector2(curb_x, destination_center.y - 9.0),
-		Vector2(maxf(1.0, lot.position.x - curb_x + 8.0), 18.0)
+		Vector2(curb_x, destination_center.y - 8.0),
+		Vector2(maxf(1.0, _parking_aisle_point().x - curb_x + 2.0), 16.0)
 	)
 	_draw_world_rect(driveway, PARKING_LOT_COLOR)
 
-	# Five simple parking bays make the destination read instantly as a lot.
-	var stall_x0 := lot.position.x + 8.0
-	var stall_x1 := lot.end.x - 3.0
-	for stall_index in range(6):
-		var y := lot.position.y + 5.0 + float(stall_index) * 19.5
-		if y > lot.end.y - 4.0:
-			break
-		_draw_world_line(
-			Vector2(stall_x0, y),
-			Vector2(stall_x1, y),
-			PARKING_LINE_COLOR,
-			0.75
-		)
+	var aisle_x := _parking_aisle_point().x
+	_draw_world_line(
+		Vector2(aisle_x, _parking_lane_point(-1).y),
+		Vector2(aisle_x, _parking_lane_point(1).y),
+		Color(0.34, 0.35, 0.36, 0.65),
+		1.0
+	)
 
-	# Three occupied cars force the player to choose between two open spaces.
-	for occupied_index in [0, 2, 4]:
-		var stall := _parking_space_rect(occupied_index)
-		var parked_car := Rect2(
-			stall.position + Vector2(4.0, 2.5),
-			stall.size - Vector2(8.0, 5.0)
-		)
-		var car_color := Color(0.42, 0.44, 0.48)
-		if occupied_index == 2:
-			car_color = Color(0.34, 0.24, 0.22)
-		elif occupied_index == 4:
-			car_color = Color(0.24, 0.33, 0.40)
-		_draw_world_rect(parked_car, car_color)
-		_draw_world_rect(
-			Rect2(
-				parked_car.position + Vector2(parked_car.size.x * 0.56, 2.0),
-				Vector2(parked_car.size.x * 0.22, parked_car.size.y - 4.0)
-			),
-			Color(0.10, 0.13, 0.16, 0.82)
-		)
+	# Four bays: two around each aisle. One bay in each aisle is occupied, so
+	# the first turn chooses an aisle and the second turn chooses the open bay.
+	for lane_choice in [-1, 1]:
+		for turn_choice in [-1, 1]:
+			var stall := _parking_space_rect(lane_choice, turn_choice)
+			_draw_world_rect_outline(stall, Color(PARKING_LINE_COLOR, 0.48), 0.7)
 
-	# Keep both open stalls readable without designating one automatic target.
-	for open_index in [1, 3]:
-		_draw_world_rect_outline(
-			_parking_space_rect(open_index),
-			Color(PARKING_LINE_COLOR, 0.42),
-			0.65
-		)
+			if not _parking_space_is_open(lane_choice, turn_choice):
+				var parked_car := Rect2(
+					stall.position + Vector2(3.0, 2.0),
+					stall.size - Vector2(6.0, 4.0)
+				)
+				var car_color := Color(0.40, 0.43, 0.48)
+				if lane_choice > 0:
+					car_color = Color(0.34, 0.24, 0.22)
+				_draw_world_rect(parked_car, car_color)
+				_draw_world_rect(
+					Rect2(
+						parked_car.position + Vector2(parked_car.size.x * 0.56, 1.5),
+						Vector2(parked_car.size.x * 0.22, parked_car.size.y - 3.0)
+					),
+					Color(0.10, 0.13, 0.16, 0.82)
+				)
 
-	# Venue sits immediately beside the lot instead of directly on the curb.
 	_draw_world_rect(
 		Rect2(venue_rect.position + Vector2(1.3, 1.3), venue_rect.size),
 		Color(0.0, 0.0, 0.0, 0.22)
