@@ -230,6 +230,41 @@ func _run() -> void:
 			"First turn guidance should point right"
 		)
 
+		# Navigation must remain present through every driving section.
+		var saved_kind: String = drive.road_kind
+		var saved_position: Vector2 = drive.visual_world_position
+		var saved_lane: int = drive.highway_lane
+		drive.road_kind = "connector_one"
+		drive.visual_world_position = MAP.CONNECTOR_ONE_RECT.get_center()
+		_check(
+			navigation._navigation_text().contains("RAMP"),
+			"GPS card disappears or loses ramp guidance on connector one"
+		)
+		drive.road_kind = "highway"
+		drive.highway_lane = 1
+		drive.visual_world_position = drive._highway_cell_center(5, 1)
+		_check(
+			navigation._navigation_text().contains("EXIT"),
+			"GPS card does not give highway exit guidance"
+		)
+		drive.road_kind = "connector_two"
+		drive.visual_world_position = drive._connector_two_rect().get_center()
+		_check(
+			navigation._navigation_text().contains("EXIT RAMP"),
+			"GPS card disappears or loses guidance on connector two"
+		)
+		drive.road_kind = "city"
+		drive.city_cell = MAP.CITY_ENTRY
+		drive.heading = Vector2i.RIGHT
+		drive.visual_world_position = drive._city_cell_center(MAP.CITY_ENTRY)
+		_check(
+			not navigation._navigation_text().is_empty(),
+			"GPS card does not give city guidance"
+		)
+		drive.road_kind = saved_kind
+		drive.visual_world_position = saved_position
+		drive.highway_lane = saved_lane
+
 
 		# Missing that turn should move the hint to the next best intersection.
 		drive.neighborhood_cell = Vector2i(1, 0)
