@@ -23,7 +23,7 @@ const HIGHWAY_PLAYER_VISUAL_MULTIPLIER := 2.75
 const CITY_SPEED_MULTIPLIER := 0.8
 const NEIGHBORHOOD_WORLD_SPEED := 40.0
 const HIGHWAY_WORLD_SPEED := 80.0
-const CITY_WORLD_SPEED := 32.0
+const CITY_WORLD_SPEED := 36.0
 
 const NEIGHBORHOOD_COLOR := Color(0.27, 0.43, 0.23)
 const NEIGHBORHOOD_SIDEWALK_COLOR := Color(0.70, 0.67, 0.60)
@@ -90,6 +90,8 @@ const BORDER_COLOR := Color(0.93, 0.92, 0.86)
 var started := false
 var drive_complete := false
 var parking_maneuver_started := false
+var parking_target_index := -1
+var parking_phase := 0
 var drive_time := 0.0
 var missed_turns := 0
 var steering_feedback := 0.0
@@ -155,6 +157,8 @@ func _reset_to_start() -> void:
 	started = false
 	drive_complete = false
 	parking_maneuver_started = false
+	parking_target_index = -1
+	parking_phase = 0
 	drive_time = 0.0
 	missed_turns = 0
 	steering_feedback = 0.0
@@ -276,7 +280,7 @@ func _current_world_speed() -> float:
 			return NEIGHBORHOOD_WORLD_SPEED
 		"highway":
 			return HIGHWAY_WORLD_SPEED
-		"city":
+		"city", "parking":
 			return CITY_WORLD_SPEED
 		"connector_one":
 			return lerpf(
@@ -328,6 +332,8 @@ func _begin_next_step() -> void:
 			_begin_city_step()
 		"city":
 			_begin_city_step()
+		"parking":
+			_begin_parking_step()
 
 
 func _begin_neighborhood_step() -> void:
@@ -412,15 +418,18 @@ func _begin_city_step() -> void:
 	if city_cell == MAP.CITY_DESTINATION:
 		if not parking_maneuver_started:
 			parking_maneuver_started = true
-			# Make the final move feel like an actual right turn into the lot.
+			parking_target_index = -1
+			parking_phase = 0
+			road_kind = "parking"
+			# Turn into the aisle first. The player then chooses an open space.
 			heading = Vector2i.RIGHT
 			map_rotation_from = map_rotation
 			map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
 			turn_elapsed = 0.0
-			move_to = _parking_stop_point()
+			move_to = _parking_aisle_point()
 			scale_to = CITY_CAR_SCALE
 			motion_direction = (move_to - move_from).normalized()
-			status_label.text = "PARKING"
+			status_label.text = "PARKING LOT"
 			return
 
 		_finish_drive()
@@ -450,6 +459,10 @@ func _turn_left() -> void:
 		_set_highway_lane(queued_highway_lane - 1)
 		return
 
+	if road_kind == "parking":
+		_choose_parking_space(1)
+		return
+
 	if road_kind == "neighborhood" or road_kind == "city":
 		turn_drift_direction = -1.0
 		_set_heading(Vector2i(heading.y, -heading.x))
@@ -462,6 +475,10 @@ func _turn_right() -> void:
 	if road_kind == "highway":
 		_trigger_steering_feedback(1.0)
 		_set_highway_lane(queued_highway_lane + 1)
+		return
+
+	if road_kind == "parking":
+		_choose_parking_space(3)
 		return
 
 	if road_kind == "neighborhood" or road_kind == "city":
@@ -1264,21 +1281,93 @@ func _parking_lot_rect() -> Rect2:
 	)
 
 
-func _parking_stop_point() -> Vector2:
-	# The final movement now turns off the street and into a real parking lot.
+func _parking_aisle_point() -> Vector2:
 	var lot := _parking_lot_rect()
 	return Vector2(
-		lot.position.x + 25.0,
+		lot.position.x + 10.0,
 		_city_cell_center(MAP.CITY_DESTINATION).y
 	)
 
 
-func _parking_space_rect() -> Rect2:
-	var center := _parking_stop_point()
-	return Rect2(
-		center + Vector2(-12.0, -9.0),
-		Vector2(24.0, 18.0)
+func _parking_space_center(index: int) -> Vector2:
+	var lot := _parking_lot_rect()
+	return Vector2(
+		lot.position.x + 30.0,
+		lot.position.y + 14.0 + float(index) * 19.5
 	)
+
+
+func _parking_stop_point() -> Vector2:
+	var target := parking_target_index
+	if target < 0:
+		target = 1
+	return _parking_space_center(target)
+
+
+func _parking_space_rect(index: int = -1) -> Rect2:
+	var target := index
+	if target < 0:
+		target = parking_target_index if parking_target_index >= 0 else 1
+	var center := _parking_space_center(target)
+	return Rect2(
+		center + Vector2(-12.0, -8.0),
+		Vector2(24.0, 16.0)
+	)
+
+
+func _parking_space_is_open(index: int) -> bool:
+	return index == 1 or index == 3
+
+
+func _begin_parking_step() -> void:
+	if parking_phase == 0:
+		move_to = move_from
+		scale_to = scale_from
+		blocked_this_step = true
+		status_label.text = "CHOOSE SPACE"
+		return
+
+	if parking_phase == 1:
+		parking_phase = 2
+		var align_point := Vector2(
+			_parking_aisle_point().x,
+			_parking_space_center(parking_target_index).y
+		)
+		heading = Vector2i.UP if align_point.y < visual_world_position.y else Vector2i.DOWN
+		map_rotation_from = map_rotation
+		map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
+		turn_elapsed = 0.0
+		move_to = align_point
+		scale_to = CITY_CAR_SCALE
+		motion_direction = (move_to - move_from).normalized()
+		status_label.text = "PARKING"
+		return
+
+	if parking_phase == 2:
+		parking_phase = 3
+		heading = Vector2i.RIGHT
+		map_rotation_from = map_rotation
+		map_rotation_to = -PI / 2.0 - Vector2(heading).angle()
+		turn_elapsed = 0.0
+		move_to = _parking_space_center(parking_target_index)
+		scale_to = CITY_CAR_SCALE
+		motion_direction = (move_to - move_from).normalized()
+		status_label.text = "PARKING"
+		return
+
+	_finish_drive()
+
+
+func _choose_parking_space(index: int) -> void:
+	if parking_phase != 0 or not _parking_space_is_open(index):
+		return
+
+	parking_target_index = index
+	parking_phase = 1
+	blocked_this_step = false
+	move_from = visual_world_position
+	scale_from = visual_cell_scale
+	_begin_parking_step()
 
 
 func _venue_rect() -> Rect2:
@@ -1291,7 +1380,6 @@ func _venue_rect() -> Rect2:
 
 func _draw_destination() -> void:
 	var lot := _parking_lot_rect()
-	var parking_rect := _parking_space_rect()
 	var venue_rect := _venue_rect()
 	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
 	var curb_x := destination_center.x + CITY_ROAD_WIDTH * 0.5
@@ -1325,8 +1413,34 @@ func _draw_destination() -> void:
 			0.75
 		)
 
-	# Highlight only the destination bay slightly more clearly.
-	_draw_world_rect_outline(parking_rect, PARKING_LINE_COLOR, 0.9)
+	# Three occupied cars force the player to choose between two open spaces.
+	for occupied_index in [0, 2, 4]:
+		var stall := _parking_space_rect(occupied_index)
+		var parked_car := Rect2(
+			stall.position + Vector2(4.0, 2.5),
+			stall.size - Vector2(8.0, 5.0)
+		)
+		var car_color := Color(0.42, 0.44, 0.48)
+		if occupied_index == 2:
+			car_color = Color(0.34, 0.24, 0.22)
+		elif occupied_index == 4:
+			car_color = Color(0.24, 0.33, 0.40)
+		_draw_world_rect(parked_car, car_color)
+		_draw_world_rect(
+			Rect2(
+				parked_car.position + Vector2(parked_car.size.x * 0.56, 2.0),
+				Vector2(parked_car.size.x * 0.22, parked_car.size.y - 4.0)
+			),
+			Color(0.10, 0.13, 0.16, 0.82)
+		)
+
+	# Keep both open stalls readable without designating one automatic target.
+	for open_index in [1, 3]:
+		_draw_world_rect_outline(
+			_parking_space_rect(open_index),
+			Color(PARKING_LINE_COLOR, 0.42),
+			0.65
+		)
 
 	# Venue sits immediately beside the lot instead of directly on the curb.
 	_draw_world_rect(
