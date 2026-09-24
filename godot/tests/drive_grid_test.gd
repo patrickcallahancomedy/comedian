@@ -546,24 +546,25 @@ func _run() -> void:
 		"Off-ramp does not start at the highway car size"
 	)
 
-	# Reaching the destination now enters the lot, stops in the aisle, and waits
-	# for the player to choose one of two open spaces.
+	# Reaching the destination now enters the lot, then requires two separate
+	# steering decisions: choose an aisle, then choose a parking space.
 	_check(is_equal_approx(drive.CITY_WORLD_SPEED, 36.0), "City speed was not increased slightly")
-	_check(drive._parking_space_is_open(1), "Upper parking choice should be open")
-	_check(drive._parking_space_is_open(3), "Lower parking choice should be open")
-	_check(not drive._parking_space_is_open(0), "Occupied parking space 0 should not be selectable")
-	_check(not drive._parking_space_is_open(2), "Occupied parking space 2 should not be selectable")
-	_check(not drive._parking_space_is_open(4), "Occupied parking space 4 should not be selectable")
+	_check(drive._parking_space_is_open(-1, 1), "Upper aisle right space should be open")
+	_check(not drive._parking_space_is_open(-1, -1), "Upper aisle left space should be occupied")
+	_check(drive._parking_space_is_open(1, -1), "Lower aisle left space should be open")
+	_check(not drive._parking_space_is_open(1, 1), "Lower aisle right space should be occupied")
 
 	drive.road_kind = "city"
 	drive.city_cell = MAP.CITY_DESTINATION
 	drive.parking_maneuver_started = false
 	drive.parking_target_index = -1
+	drive.parking_lane_choice = 0
 	drive.parking_phase = 0
 	drive.drive_complete = false
 	drive.visual_world_position = drive._city_cell_center(MAP.CITY_DESTINATION)
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = drive.CITY_CAR_SCALE
+
 	if navigation != null:
 		var lot_instruction: Dictionary = navigation._current_instruction()
 		_check(
@@ -571,38 +572,62 @@ func _run() -> void:
 			and lot_instruction.get("subtitle", "") == "Into parking lot",
 			"GPS does not direct the final turn into the parking lot"
 		)
+
 	drive._begin_city_step()
 	_check(drive.road_kind == "parking", "Destination did not enter parking mode")
-	_check(drive.move_to == drive._parking_aisle_point(), "Parking entry does not target the aisle")
+	_check(drive.move_to == drive._parking_aisle_point(), "Parking entry does not target the aisle entrance")
 
 	drive.visual_world_position = drive.move_to
 	drive.move_from = drive.visual_world_position
 	drive._begin_parking_step()
-	_check(drive.blocked_this_step, "Car should wait in the aisle for a parking choice")
+	_check(drive.blocked_this_step, "Car should wait at the aisle choice")
 	if navigation != null:
-		var choose_instruction: Dictionary = navigation._current_instruction()
+		var choose_aisle_instruction: Dictionary = navigation._current_instruction()
 		_check(
-			choose_instruction.get("title", "") == "Choose an open spot",
-			"GPS does not ask the player to choose a parking space"
+			choose_aisle_instruction.get("title", "") == "Choose an aisle",
+			"GPS does not ask the player to choose an aisle"
 		)
 
-	drive._choose_parking_space(1)
-	_check(drive.parking_target_index == 1, "Left parking choice did not select the upper open space")
-	_check(not drive.blocked_this_step, "Parking choice did not resume movement")
-	_check(drive.parking_phase == 2, "Parking choice did not begin aisle alignment")
+	# First left/right input only moves into an aisle; it must not park.
+	drive._handle_parking_turn(-1)
+	_check(drive.parking_lane_choice == -1, "Left input did not choose the upper aisle")
+	_check(drive.parking_phase == 1, "Choosing an aisle skipped directly to parking")
+	_check(
+		drive.move_to == drive._parking_lane_point(-1),
+		"Choosing an aisle does not target the aisle lane"
+	)
+	_check(not drive.drive_complete, "Choosing an aisle completed parking too early")
 
 	drive.visual_world_position = drive.move_to
 	drive.move_from = drive.visual_world_position
 	drive._begin_parking_step()
+	_check(drive.parking_phase == 2, "Aisle arrival did not wait for a parking-space choice")
+	_check(drive.blocked_this_step, "Car should stop in the aisle before choosing a space")
+	if navigation != null:
+		var choose_space_instruction: Dictionary = navigation._current_instruction()
+		_check(
+			choose_space_instruction.get("title", "") == "Choose a parking spot",
+			"GPS does not ask for a second parking turn"
+		)
+
+	# Turning toward the occupied car must do nothing.
+	drive._handle_parking_turn(-1)
+	_check(drive.parking_phase == 2, "Occupied space should not advance parking")
+	_check(drive.parking_target_index == -1, "Occupied space should not become the target")
+
+	# Turning the other way enters the open space.
+	drive._handle_parking_turn(1)
+	_check(drive.parking_target_index == 1, "Open parking space was not selected")
+	_check(drive.parking_phase == 3, "Open space did not start final parking move")
 	_check(
-		drive.move_to == drive._parking_space_center(1),
-		"Parking maneuver does not target the selected open space"
+		drive.move_to == drive._parking_space_center(-1, 1),
+		"Final parking move does not target the selected open space"
 	)
 
 	drive.visual_world_position = drive.move_to
 	drive.move_from = drive.visual_world_position
 	drive._begin_parking_step()
-	_check(drive.drive_complete, "Drive did not complete after parking in an open space")
+	_check(drive.drive_complete, "Drive did not complete after parking in the selected open space")
 
 	scene.free()
 	_finish()
