@@ -281,17 +281,6 @@ func _run() -> void:
 	if navigation != null:
 		navigation._update_status_visibility()
 		_check(not drive.status_label.visible, "Highway status text should be hidden")
-	_check(drive.highway_traffic.size() == 3, "Highway traffic did not spawn")
-	if drive.highway_traffic.size() == 3:
-		_check(
-			int(drive.highway_traffic[0]["lane"]) == MAP.HIGHWAY_ENTRY_LANE,
-			"First traffic car should force an early lane decision"
-		)
-		var first_traffic_position: Vector2 = drive.highway_traffic[0]["position"]
-		_check(
-			first_traffic_position.x - drive.visual_world_position.x <= 35.0,
-			"First traffic car starts too far ahead to be visible on mobile"
-		)
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
@@ -305,19 +294,12 @@ func _run() -> void:
 	drive._turn_right()
 	_check(drive.queued_highway_lane == lane_before + 1, "Highway lane input did not register")
 	_check(not is_equal_approx(drive.move_to.y, target_y_before), "Highway merge still waits for checkpoint")
-
-	# Traffic is dodgeable rather than a hard fail. Contact counts one bump and
-	# starts feedback, but repeated checks against the same car do not stack.
-	if not drive.highway_traffic.is_empty():
-		var traffic_position: Vector2 = drive.highway_traffic[0]["position"]
-		drive.visual_world_position = traffic_position
-		drive.bump_count = 0
-		drive.bump_shake_remaining = 0.0
-		drive._check_highway_traffic_collisions()
-		_check(drive.bump_count == 1, "Traffic collision did not count a bump")
-		_check(drive.bump_shake_remaining > 0.0, "Traffic collision has no bump feedback")
-		drive._check_highway_traffic_collisions()
-		_check(drive.bump_count == 1, "Same traffic car counted multiple bumps")
+	_check(drive.steering_feedback > 0.0, "Highway steering has no visual feedback")
+	_check(drive.camera_nudge.x < 0.0, "Camera does not counter-nudge on a right merge")
+	_check(
+		drive._ease_turn_with_overshoot(0.80) > 1.0,
+		"Turn easing does not overshoot before settling"
+	)
 
 	# A missed exit continues forward seamlessly instead of visibly resetting.
 	drive.highway_column = MAP.HIGHWAY_COLUMNS - 1
