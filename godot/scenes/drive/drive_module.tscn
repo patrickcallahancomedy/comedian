@@ -89,6 +89,46 @@ texture = ExtResource("1_car")
 expand_mode = 1
 stretch_mode = 5
 
+[node name="TrafficCars" type="Control" parent="."]
+z_index = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TrafficCarA" type="TextureRect" parent="TrafficCars"]
+layout_mode = 0
+offset_right = 98.0
+offset_bottom = 98.0
+mouse_filter = 2
+texture = ExtResource("1_car")
+expand_mode = 1
+stretch_mode = 5
+modulate = Color(0.72, 0.84, 1, 1)
+
+[node name="TrafficCarB" type="TextureRect" parent="TrafficCars"]
+layout_mode = 0
+offset_right = 98.0
+offset_bottom = 98.0
+mouse_filter = 2
+texture = ExtResource("1_car")
+expand_mode = 1
+stretch_mode = 5
+modulate = Color(0.95, 0.72, 0.68, 1)
+
+[node name="TrafficCarC" type="TextureRect" parent="TrafficCars"]
+layout_mode = 0
+offset_right = 98.0
+offset_bottom = 98.0
+mouse_filter = 2
+texture = ExtResource("1_car")
+expand_mode = 1
+stretch_mode = 5
+modulate = Color(0.76, 0.9, 0.74, 1)
+
 [node name="TouchControls" type="HBoxContainer" parent="." unique_id=162859420]
 z_index = 4
 layout_mode = 1
