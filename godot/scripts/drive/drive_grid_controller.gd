@@ -25,11 +25,11 @@ const NEIGHBORHOOD_WORLD_SPEED := 40.0
 const HIGHWAY_WORLD_SPEED := 80.0
 const CITY_WORLD_SPEED := 36.0
 const HIGHWAY_TRAFFIC_LANES := [2, 0, 3]
-const HIGHWAY_TRAFFIC_START_OFFSETS_X := [28.0, 42.0, 56.0]
-const HIGHWAY_TRAFFIC_APPROACH_SPEED := 5.0
-const HIGHWAY_TRAFFIC_RESPAWN_X := 58.0
+const HIGHWAY_TRAFFIC_START_OFFSETS_X := [36.0, 72.0, 108.0]
+const HIGHWAY_TRAFFIC_APPROACH_SPEEDS := [3.2, 3.8, 4.4]
+const HIGHWAY_TRAFFIC_RESPAWN_X := 108.0
 const HIGHWAY_TRAFFIC_COLLISION_X := 3.5
-const HIGHWAY_TRAFFIC_SCALE := 0.82
+const HIGHWAY_TRAFFIC_SCALE := 1.0
 const HIGHWAY_COLLISION_SLOW_SECONDS := 0.8
 const HIGHWAY_COLLISION_SPEED_MULTIPLIER := 0.45
 
@@ -667,10 +667,10 @@ func _update_highway_traffic(delta: float = 0.0) -> void:
 
 		# Traffic approaches gradually relative to the player, giving several
 		# seconds to read the lane and dodge instead of popping in at the car.
-		highway_traffic_offsets_x[index] -= HIGHWAY_TRAFFIC_APPROACH_SPEED * delta
+		highway_traffic_offsets_x[index] -= HIGHWAY_TRAFFIC_APPROACH_SPEEDS[index] * delta
 		if highway_traffic_offsets_x[index] < -8.0:
 			highway_traffic_offsets_x[index] = (
-				HIGHWAY_TRAFFIC_RESPAWN_X + float(index) * 10.0
+				HIGHWAY_TRAFFIC_RESPAWN_X + float(index) * 28.0
 			)
 
 		if (
@@ -709,7 +709,7 @@ func _register_highway_collision(index: int) -> void:
 	# Move the struck car ahead immediately so one overlap cannot count as
 	# repeated collisions on consecutive frames.
 	highway_traffic_offsets_x[index] = (
-		HIGHWAY_TRAFFIC_RESPAWN_X + float(index) * 10.0
+		HIGHWAY_TRAFFIC_RESPAWN_X + float(index) * 28.0
 	)
 
 
