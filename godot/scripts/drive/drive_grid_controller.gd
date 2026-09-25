@@ -24,6 +24,9 @@ const CITY_SPEED_MULTIPLIER := 0.8
 const NEIGHBORHOOD_WORLD_SPEED := 40.0
 const HIGHWAY_WORLD_SPEED := 80.0
 const CITY_WORLD_SPEED := 36.0
+const HIGHWAY_TRAFFIC_COLUMNS := [4, 8, 12]
+const HIGHWAY_TRAFFIC_LANES := [0, 2, 1]
+const HIGHWAY_TRAFFIC_SCALE := 0.82
 
 const NEIGHBORHOOD_COLOR := Color(0.27, 0.43, 0.23)
 const NEIGHBORHOOD_SIDEWALK_COLOR := Color(0.70, 0.67, 0.60)
@@ -128,6 +131,11 @@ var player_screen_center := Vector2.ZERO
 var car_base_position := Vector2.ZERO
 
 @onready var player_car: TextureRect = $"../PlayerCar"
+@onready var traffic_cars: Array[TextureRect] = [
+	$"../TrafficCars/TrafficCarA",
+	$"../TrafficCars/TrafficCarB",
+	$"../TrafficCars/TrafficCarC",
+]
 @onready var left_button: Button = $"../TouchControls/LeftButton"
 @onready var forward_button: Button = $"../TouchControls/ForwardButton"
 @onready var right_button: Button = $"../TouchControls/RightButton"
@@ -151,6 +159,7 @@ func _refresh_layout() -> void:
 	player_screen_center = Vector2(size.x * 0.5, size.y * 0.46)
 	car_base_position = player_screen_center - player_car.size * 0.5
 	_update_car_visual()
+	_update_highway_traffic()
 	queue_redraw()
 
 
@@ -617,6 +626,35 @@ func _update_car_visual() -> void:
 		* _rendered_car_section_scale()
 	)
 	player_car.rotation = visual_feedback * STEERING_LEAN_RADIANS
+
+
+func _update_highway_traffic() -> void:
+	var highway_visible := (
+		road_kind == "highway"
+		or road_kind == "connector_one"
+		or road_kind == "connector_two"
+	)
+
+	for index in range(traffic_cars.size()):
+		var traffic_car := traffic_cars[index]
+		traffic_car.visible = highway_visible
+		if not highway_visible:
+			continue
+
+		var traffic_world := _highway_cell_center(
+			HIGHWAY_TRAFFIC_COLUMNS[index],
+			HIGHWAY_TRAFFIC_LANES[index]
+		)
+		var screen_position := _world_to_screen(traffic_world)
+		var traffic_scale := (
+			CAR_REFERENCE_SCALE
+			* MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
+			* HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+			* HIGHWAY_TRAFFIC_SCALE
+		)
+		traffic_car.scale = Vector2.ONE * traffic_scale
+		traffic_car.position = screen_position - traffic_car.size * traffic_scale * 0.5
+		traffic_car.rotation = 0.0
 
 
 func _draw() -> void:
