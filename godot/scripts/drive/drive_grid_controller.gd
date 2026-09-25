@@ -640,7 +640,7 @@ func _update_highway_traffic() -> void:
 			continue
 
 		var lane_center_y := (
-			_highway_rect_for_lap().position.y
+			_highway_rect_for_lap(highway_lap).position.y
 			+ float(HIGHWAY_TRAFFIC_LANES[index]) * MAP.HIGHWAY_LANE_WIDTH
 			+ MAP.HIGHWAY_LANE_WIDTH * 0.5
 		)
