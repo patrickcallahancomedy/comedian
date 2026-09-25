@@ -103,8 +103,12 @@ func _run() -> void:
 	_check(traffic_container != null, "Highway traffic container missing")
 	if traffic_container != null:
 		_check(traffic_container.get_child_count() == 3, "Highway should have exactly three traffic cars")
-	_check(drive.HIGHWAY_TRAFFIC_OFFSETS_X.size() == 3, "Highway traffic offset data is not three cars")
+	_check(drive.HIGHWAY_TRAFFIC_START_OFFSETS_X.size() == 3, "Highway traffic offset data is not three cars")
 	_check(drive.HIGHWAY_TRAFFIC_LANES.size() == 3, "Highway traffic lane data is not three cars")
+	_check(
+		drive.HIGHWAY_TRAFFIC_APPROACH_SPEED < 10.0,
+		"Highway traffic approaches too quickly to dodge"
+	)
 	_check(
 		scene.get_node_or_null("NeighborhoodTiles") == null,
 		"Legacy NeighborhoodTiles node should be removed"
@@ -386,6 +390,28 @@ func _run() -> void:
 		),
 		"Highway is not running at the faster speed"
 	)
+
+	# A traffic collision should register once, visibly slow the player, and
+	# move the struck car forward so it cannot multi-hit every frame.
+	drive.highway_lane = drive.HIGHWAY_TRAFFIC_LANES[0]
+	drive.queued_highway_lane = drive.highway_lane
+	drive.highway_traffic_offsets_x[0] = 0.0
+	var bumps_before: int = drive.bumps
+	drive._update_highway_traffic(0.0)
+	_check(drive.bumps == bumps_before + 1, "Highway collision did not register a bump")
+	_check(
+		drive.highway_collision_slow_remaining > 0.0,
+		"Highway collision did not trigger slowdown feedback"
+	)
+	_check(
+		drive._current_world_speed() < drive.HIGHWAY_WORLD_SPEED,
+		"Highway collision did not reduce player speed"
+	)
+	_check(
+		drive.highway_traffic_offsets_x[0] >= drive.HIGHWAY_TRAFFIC_RESPAWN_X,
+		"Struck traffic car did not move ahead after collision"
+	)
+	drive.highway_collision_slow_remaining = 0.0
 
 	var lane_before: int = drive.queued_highway_lane
 	var target_y_before: float = drive.move_to.y
