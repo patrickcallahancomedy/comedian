@@ -215,6 +215,7 @@ func _process(delta: float) -> void:
 
 	if not started:
 		_update_car_visual()
+		_update_highway_traffic()
 		queue_redraw()
 		return
 
@@ -240,6 +241,7 @@ func _process(delta: float) -> void:
 	_advance_continuous_motion(delta)
 
 	_update_car_visual()
+	_update_highway_traffic()
 	queue_redraw()
 
 
@@ -629,11 +631,7 @@ func _update_car_visual() -> void:
 
 
 func _update_highway_traffic() -> void:
-	var highway_visible := (
-		road_kind == "highway"
-		or road_kind == "connector_one"
-		or road_kind == "connector_two"
-	)
+	var highway_visible := road_kind == "highway"
 
 	for index in range(traffic_cars.size()):
 		var traffic_car := traffic_cars[index]
