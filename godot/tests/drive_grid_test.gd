@@ -106,8 +106,18 @@ func _run() -> void:
 	_check(drive.HIGHWAY_TRAFFIC_START_OFFSETS_X.size() == 3, "Highway traffic offset data is not three cars")
 	_check(drive.HIGHWAY_TRAFFIC_LANES.size() == 3, "Highway traffic lane data is not three cars")
 	_check(
-		drive.HIGHWAY_TRAFFIC_APPROACH_SPEED < 10.0,
+		drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS.size() == 3,
+		"Highway traffic approach-speed data is not three cars"
+	)
+	_check(
+		drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS[0] < 5.0
+		and drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS[1] < 5.0
+		and drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS[2] < 5.0,
 		"Highway traffic approaches too quickly to dodge"
+	)
+	_check(
+		is_equal_approx(drive.HIGHWAY_TRAFFIC_SCALE, 1.0),
+		"Highway traffic cars do not match the player car size"
 	)
 	_check(
 		scene.get_node_or_null("NeighborhoodTiles") == null,
