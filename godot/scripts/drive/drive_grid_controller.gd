@@ -24,8 +24,8 @@ const CITY_SPEED_MULTIPLIER := 0.8
 const NEIGHBORHOOD_WORLD_SPEED := 40.0
 const HIGHWAY_WORLD_SPEED := 80.0
 const CITY_WORLD_SPEED := 36.0
-const HIGHWAY_TRAFFIC_COLUMNS := [4, 8, 12]
-const HIGHWAY_TRAFFIC_LANES := [0, 2, 1]
+const HIGHWAY_TRAFFIC_LANES := [0, 1, 3]
+const HIGHWAY_TRAFFIC_OFFSETS_X := [-16.0, 10.0, 18.0]
 const HIGHWAY_TRAFFIC_SCALE := 0.82
 
 const NEIGHBORHOOD_COLOR := Color(0.27, 0.43, 0.23)
@@ -639,9 +639,16 @@ func _update_highway_traffic() -> void:
 		if not highway_visible:
 			continue
 
-		var traffic_world := _highway_cell_center(
-			HIGHWAY_TRAFFIC_COLUMNS[index],
-			HIGHWAY_TRAFFIC_LANES[index]
+		var lane_center_y := (
+			_highway_rect_for_lap().position.y
+			+ float(HIGHWAY_TRAFFIC_LANES[index]) * MAP.HIGHWAY_LANE_WIDTH
+			+ MAP.HIGHWAY_LANE_WIDTH * 0.5
+		)
+		# Keep the three ambient cars within the visible highway camera window.
+		# The previous fixed columns were several screen-widths away at this zoom.
+		var traffic_world := Vector2(
+			visual_world_position.x + HIGHWAY_TRAFFIC_OFFSETS_X[index],
+			lane_center_y
 		)
 		var screen_position := _world_to_screen(traffic_world)
 		var traffic_scale := (
