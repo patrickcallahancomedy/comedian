@@ -103,7 +103,7 @@ func _run() -> void:
 	_check(traffic_container != null, "Highway traffic container missing")
 	if traffic_container != null:
 		_check(traffic_container.get_child_count() == 3, "Highway should have exactly three traffic cars")
-	_check(drive.HIGHWAY_TRAFFIC_COLUMNS.size() == 3, "Highway traffic column data is not three cars")
+	_check(drive.HIGHWAY_TRAFFIC_OFFSETS_X.size() == 3, "Highway traffic offset data is not three cars")
 	_check(drive.HIGHWAY_TRAFFIC_LANES.size() == 3, "Highway traffic lane data is not three cars")
 	_check(
 		scene.get_node_or_null("NeighborhoodTiles") == null,
