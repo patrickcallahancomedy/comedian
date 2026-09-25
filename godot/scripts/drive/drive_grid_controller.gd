@@ -24,9 +24,14 @@ const CITY_SPEED_MULTIPLIER := 0.8
 const NEIGHBORHOOD_WORLD_SPEED := 40.0
 const HIGHWAY_WORLD_SPEED := 80.0
 const CITY_WORLD_SPEED := 36.0
-const HIGHWAY_TRAFFIC_LANES := [0, 1, 3]
-const HIGHWAY_TRAFFIC_OFFSETS_X := [-16.0, 10.0, 18.0]
+const HIGHWAY_TRAFFIC_LANES := [2, 0, 3]
+const HIGHWAY_TRAFFIC_START_OFFSETS_X := [28.0, 42.0, 56.0]
+const HIGHWAY_TRAFFIC_APPROACH_SPEED := 5.0
+const HIGHWAY_TRAFFIC_RESPAWN_X := 58.0
+const HIGHWAY_TRAFFIC_COLLISION_X := 3.5
 const HIGHWAY_TRAFFIC_SCALE := 0.82
+const HIGHWAY_COLLISION_SLOW_SECONDS := 0.8
+const HIGHWAY_COLLISION_SPEED_MULTIPLIER := 0.45
 
 const NEIGHBORHOOD_COLOR := Color(0.27, 0.43, 0.23)
 const NEIGHBORHOOD_SIDEWALK_COLOR := Color(0.70, 0.67, 0.60)
@@ -98,6 +103,9 @@ var parking_lane_choice := 0
 var parking_phase := 0
 var drive_time := 0.0
 var missed_turns := 0
+var bumps := 0
+var highway_collision_slow_remaining := 0.0
+var highway_traffic_offsets_x: Array[float] = [28.0, 42.0, 56.0]
 var steering_feedback := 0.0
 var turn_drift_direction := 0.0
 var camera_nudge := Vector2.ZERO
@@ -172,6 +180,13 @@ func _reset_to_start() -> void:
 	parking_phase = 0
 	drive_time = 0.0
 	missed_turns = 0
+	bumps = 0
+	highway_collision_slow_remaining = 0.0
+	highway_traffic_offsets_x = [
+		HIGHWAY_TRAFFIC_START_OFFSETS_X[0],
+		HIGHWAY_TRAFFIC_START_OFFSETS_X[1],
+		HIGHWAY_TRAFFIC_START_OFFSETS_X[2],
+	]
 	steering_feedback = 0.0
 	turn_drift_direction = 0.0
 	camera_nudge = Vector2.ZERO
@@ -221,6 +236,10 @@ func _process(delta: float) -> void:
 
 	drive_time += delta
 	turn_elapsed += delta
+	highway_collision_slow_remaining = maxf(
+		0.0,
+		highway_collision_slow_remaining - delta
+	)
 	_update_game_feel(delta)
 
 	if turn_elapsed < TURN_SECONDS:
@@ -241,7 +260,7 @@ func _process(delta: float) -> void:
 	_advance_continuous_motion(delta)
 
 	_update_car_visual()
-	_update_highway_traffic()
+	_update_highway_traffic(delta)
 	queue_redraw()
 
 
@@ -292,6 +311,8 @@ func _current_world_speed() -> float:
 		"neighborhood":
 			return NEIGHBORHOOD_WORLD_SPEED
 		"highway":
+			if highway_collision_slow_remaining > 0.0:
+				return HIGHWAY_WORLD_SPEED * HIGHWAY_COLLISION_SPEED_MULTIPLIER
 			return HIGHWAY_WORLD_SPEED
 		"city", "parking":
 			return CITY_WORLD_SPEED
@@ -628,9 +649,14 @@ func _update_car_visual() -> void:
 		* _rendered_car_section_scale()
 	)
 	player_car.rotation = visual_feedback * STEERING_LEAN_RADIANS
+	player_car.modulate = (
+		Color(1.0, 0.58, 0.58, 1.0)
+		if highway_collision_slow_remaining > 0.0
+		else Color.WHITE
+	)
 
 
-func _update_highway_traffic() -> void:
+func _update_highway_traffic(delta: float = 0.0) -> void:
 	var highway_visible := road_kind == "highway"
 
 	for index in range(traffic_cars.size()):
@@ -639,15 +665,27 @@ func _update_highway_traffic() -> void:
 		if not highway_visible:
 			continue
 
+		# Traffic approaches gradually relative to the player, giving several
+		# seconds to read the lane and dodge instead of popping in at the car.
+		highway_traffic_offsets_x[index] -= HIGHWAY_TRAFFIC_APPROACH_SPEED * delta
+		if highway_traffic_offsets_x[index] < -8.0:
+			highway_traffic_offsets_x[index] = (
+				HIGHWAY_TRAFFIC_RESPAWN_X + float(index) * 10.0
+			)
+
+		if (
+			HIGHWAY_TRAFFIC_LANES[index] == highway_lane
+			and absf(highway_traffic_offsets_x[index]) <= HIGHWAY_TRAFFIC_COLLISION_X
+		):
+			_register_highway_collision(index)
+
 		var lane_center_y := (
 			_highway_rect_for_lap(highway_lap).position.y
 			+ float(HIGHWAY_TRAFFIC_LANES[index]) * MAP.HIGHWAY_LANE_WIDTH
 			+ MAP.HIGHWAY_LANE_WIDTH * 0.5
 		)
-		# Keep the three ambient cars within the visible highway camera window.
-		# The previous fixed columns were several screen-widths away at this zoom.
 		var traffic_world := Vector2(
-			visual_world_position.x + HIGHWAY_TRAFFIC_OFFSETS_X[index],
+			visual_world_position.x + highway_traffic_offsets_x[index],
 			lane_center_y
 		)
 		var screen_position := _world_to_screen(traffic_world)
@@ -660,6 +698,19 @@ func _update_highway_traffic() -> void:
 		traffic_car.scale = Vector2.ONE * traffic_scale
 		traffic_car.position = screen_position - traffic_car.size * traffic_scale * 0.5
 		traffic_car.rotation = 0.0
+
+
+func _register_highway_collision(index: int) -> void:
+	bumps += 1
+	highway_collision_slow_remaining = HIGHWAY_COLLISION_SLOW_SECONDS
+	steering_feedback = 0.0
+	camera_nudge = Vector2.ZERO
+
+	# Move the struck car ahead immediately so one overlap cannot count as
+	# repeated collisions on consecutive frames.
+	highway_traffic_offsets_x[index] = (
+		HIGHWAY_TRAFFIC_RESPAWN_X + float(index) * 10.0
+	)
 
 
 func _draw() -> void:
@@ -1664,7 +1715,7 @@ func _finish_drive() -> void:
 		"real_drive_seconds": snappedf(drive_time, 0.1),
 		"missed_turns": missed_turns,
 		"wrong_way_tickets": 0,
-		"bumps": 0,
+		"bumps": bumps,
 		"seed": world_seed,
 	})
 
