@@ -103,17 +103,17 @@ func _run() -> void:
 	_check(traffic_container != null, "Highway traffic container missing")
 	if traffic_container != null:
 		_check(traffic_container.get_child_count() == 3, "Highway should have exactly three traffic cars")
-	_check(drive.HIGHWAY_TRAFFIC_START_OFFSETS_X.size() == 3, "Highway traffic offset data is not three cars")
-	_check(drive.HIGHWAY_TRAFFIC_LANES.size() == 3, "Highway traffic lane data is not three cars")
+	_check(drive.HIGHWAY_TRAFFIC_START_OFFSETS_X.size() == 6, "Highway traffic offset data is not six cars")
+	_check(drive.HIGHWAY_TRAFFIC_LANES.size() == 6, "Highway traffic lane data is not six cars")
 	_check(
-		drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS.size() == 3,
-		"Highway traffic approach-speed data is not three cars"
+		drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS.size() == 6,
+		"Highway traffic approach-speed data is not six cars"
 	)
+	for speed in drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS:
+		_check(speed < 5.0, "Highway traffic approaches too quickly to dodge")
 	_check(
-		drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS[0] < 5.0
-		and drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS[1] < 5.0
-		and drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS[2] < 5.0,
-		"Highway traffic approaches too quickly to dodge"
+		drive.HIGHWAY_TRAFFIC_COLLISION_X >= 6.0,
+		"Highway traffic collision window is too tight for a fender bender"
 	)
 	_check(
 		is_equal_approx(drive.HIGHWAY_TRAFFIC_SCALE, 1.0),
