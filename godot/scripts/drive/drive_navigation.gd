@@ -23,11 +23,12 @@ const BANNER_RADIUS := 12.0
 
 const MISSED_EXIT_NOTICE_SECONDS := 1.6
 const BANNER_VISIBLE_SECONDS := 2.5
-const BANNER_REPEAT_DELAY_SECONDS := 1.0
+const BANNER_REPEAT_DELAY_SECONDS := 0.2
 
 var last_missed_turns := 0
 var missed_exit_notice_remaining := 0.0
 var last_instruction_key := ""
+var last_close_reminder_key := ""
 var banner_visible_remaining := 0.0
 var banner_repeat_delay_remaining := 0.0
 
@@ -66,28 +67,52 @@ func _process(delta: float) -> void:
 func _update_instruction_banner(delta: float) -> void:
 	if drive == null or not drive.started or drive.drive_complete:
 		last_instruction_key = ""
+		last_close_reminder_key = ""
 		banner_visible_remaining = 0.0
 		banner_repeat_delay_remaining = 0.0
 		return
 
 	var instruction := _current_instruction()
-	var instruction_key := ""
-	if not instruction.is_empty():
-		instruction_key = "%s|%s|%s" % [
+	if instruction.is_empty():
+		last_instruction_key = ""
+		last_close_reminder_key = ""
+		banner_visible_remaining = 0.0
+		banner_repeat_delay_remaining = 0.0
+		return
+
+	var instruction_key := String(instruction.get("maneuver_key", ""))
+	if instruction_key.is_empty():
+		instruction_key = "%s|%s" % [
 			String(instruction.get("turn", "")),
 			String(instruction.get("title", "")),
-			String(instruction.get("subtitle", "")),
 		]
 
+	var blocks := int(instruction.get("blocks", -1))
+	var is_close_turn := blocks == 1
+
+	# A new maneuver is a real GPS update. Distance-only changes such as
+	# "3 blocks" -> "2 blocks" do not restart the banner.
 	if instruction_key != last_instruction_key:
 		last_instruction_key = instruction_key
+		last_close_reminder_key = ""
 		banner_visible_remaining = BANNER_VISIBLE_SECONDS
 		banner_repeat_delay_remaining = 0.0
-	elif banner_visible_remaining > 0.0:
+		return
+
+	# Give one fresh reminder when an existing maneuver reaches one block away.
+	if is_close_turn and last_close_reminder_key != instruction_key:
+		last_close_reminder_key = instruction_key
+		banner_visible_remaining = BANNER_VISIBLE_SECONDS
+		banner_repeat_delay_remaining = 0.0
+		return
+
+	if banner_visible_remaining > 0.0:
 		banner_visible_remaining = maxf(0.0, banner_visible_remaining - delta)
-		if banner_visible_remaining <= 0.0:
+		if banner_visible_remaining <= 0.0 and is_close_turn:
 			banner_repeat_delay_remaining = BANNER_REPEAT_DELAY_SECONDS
-	elif not instruction_key.is_empty():
+	elif is_close_turn:
+		# If Darren is still at/near the required turn, keep nudging him with
+		# a very short blink between reminders until the maneuver changes.
 		banner_repeat_delay_remaining = maxf(
 			0.0,
 			banner_repeat_delay_remaining - delta
@@ -391,11 +416,13 @@ func _current_instruction() -> Dictionary:
 						"turn": "right",
 						"title": "Turn right",
 						"subtitle": "Into parking lot",
+						"maneuver_key": "city|parking_entry",
 					}
 				return {
 					"turn": "straight",
 					"title": "Continue straight",
 					"subtitle": "Follow the blue route",
+					"maneuver_key": "neighborhood|continue",
 				}
 			var turn := String(hint.get("turn", "straight"))
 			var turn_cell: Vector2i = hint.get("cell", Vector2i.ZERO)
@@ -422,6 +449,13 @@ func _current_instruction() -> Dictionary:
 				"subtitle": "In %d block%s" % [
 					blocks,
 					"" if blocks == 1 else "s",
+				],
+				"blocks": blocks,
+				"maneuver_key": "%s|%s|%d,%d" % [
+					drive.road_kind,
+					turn,
+					turn_cell.x,
+					turn_cell.y,
 				],
 			}
 		"connector_one":
