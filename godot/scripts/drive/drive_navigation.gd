@@ -23,11 +23,13 @@ const BANNER_RADIUS := 12.0
 
 const MISSED_EXIT_NOTICE_SECONDS := 1.6
 const BANNER_VISIBLE_SECONDS := 2.0
+const BANNER_REPEAT_DELAY_SECONDS := 1.0
 
 var last_missed_turns := 0
 var missed_exit_notice_remaining := 0.0
 var last_instruction_key := ""
 var banner_visible_remaining := 0.0
+var banner_repeat_delay_remaining := 0.0
 
 
 func _ready() -> void:
@@ -65,6 +67,7 @@ func _update_instruction_banner(delta: float) -> void:
 	if drive == null or not drive.started or drive.drive_complete:
 		last_instruction_key = ""
 		banner_visible_remaining = 0.0
+		banner_repeat_delay_remaining = 0.0
 		return
 
 	var instruction := _current_instruction()
@@ -79,8 +82,18 @@ func _update_instruction_banner(delta: float) -> void:
 	if instruction_key != last_instruction_key:
 		last_instruction_key = instruction_key
 		banner_visible_remaining = BANNER_VISIBLE_SECONDS
-	else:
+		banner_repeat_delay_remaining = 0.0
+	elif banner_visible_remaining > 0.0:
 		banner_visible_remaining = maxf(0.0, banner_visible_remaining - delta)
+		if banner_visible_remaining <= 0.0:
+			banner_repeat_delay_remaining = BANNER_REPEAT_DELAY_SECONDS
+	elif not instruction_key.is_empty():
+		banner_repeat_delay_remaining = maxf(
+			0.0,
+			banner_repeat_delay_remaining - delta
+		)
+		if banner_repeat_delay_remaining <= 0.0:
+			banner_visible_remaining = BANNER_VISIBLE_SECONDS
 
 
 func get_turn_hint() -> Dictionary:
