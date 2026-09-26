@@ -22,7 +22,7 @@ const BANNER_RADIUS := 12.0
 @onready var status_label: Label = $"../StatusLabel"
 
 const MISSED_EXIT_NOTICE_SECONDS := 1.6
-const BANNER_VISIBLE_SECONDS := 1.5
+const BANNER_VISIBLE_SECONDS := 2.0
 
 var last_missed_turns := 0
 var missed_exit_notice_remaining := 0.0
