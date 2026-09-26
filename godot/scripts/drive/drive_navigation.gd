@@ -450,7 +450,7 @@ func _current_instruction() -> Dictionary:
 				1,
 				int(ceil(drive.visual_world_position.distance_to(turn_world) / block_size))
 			)
-			var at_turn := (
+			var at_turn: bool = (
 				drive.blocked_this_step
 				and drive.visual_world_position.distance_to(turn_world) <= 0.5
 			)
