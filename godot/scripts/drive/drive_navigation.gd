@@ -89,6 +89,13 @@ func _update_instruction_banner(delta: float) -> void:
 
 	var blocks := int(instruction.get("blocks", -1))
 	var is_close_turn := blocks == 1
+	var is_persistent := bool(instruction.get("persistent", false))
+
+	if is_persistent:
+		last_instruction_key = instruction_key
+		banner_visible_remaining = BANNER_VISIBLE_SECONDS
+		banner_repeat_delay_remaining = 0.0
+		return
 
 	# A new maneuver is a real GPS update. Distance-only changes such as
 	# "3 blocks" -> "2 blocks" do not restart the banner.
@@ -443,14 +450,19 @@ func _current_instruction() -> Dictionary:
 				1,
 				int(ceil(drive.visual_world_position.distance_to(turn_world) / block_size))
 			)
+			var at_turn := (
+				drive.blocked_this_step
+				and drive.visual_world_position.distance_to(turn_world) <= 0.5
+			)
 			return {
 				"turn": turn,
 				"title": "Turn %s" % turn,
-				"subtitle": "In %d block%s" % [
+				"subtitle": "" if at_turn else "In %d block%s" % [
 					blocks,
 					"" if blocks == 1 else "s",
 				],
-				"blocks": blocks,
+				"blocks": 0 if at_turn else blocks,
+				"persistent": at_turn,
 				"maneuver_key": "%s|%s|%d,%d" % [
 					drive.road_kind,
 					turn,
