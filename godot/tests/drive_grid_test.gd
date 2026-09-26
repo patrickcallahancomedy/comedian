@@ -102,7 +102,7 @@ func _run() -> void:
 	_check(drive != null, "Grid controller missing")
 	_check(traffic_container != null, "Highway traffic container missing")
 	if traffic_container != null:
-		_check(traffic_container.get_child_count() == 3, "Highway should have exactly three traffic cars")
+		_check(traffic_container.get_child_count() == 6, "Highway should have exactly six traffic cars")
 	_check(drive.HIGHWAY_TRAFFIC_START_OFFSETS_X.size() == 6, "Highway traffic offset data is not six cars")
 	_check(drive.HIGHWAY_TRAFFIC_LANES.size() == 6, "Highway traffic lane data is not six cars")
 	_check(
