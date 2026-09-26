@@ -71,10 +71,34 @@ jobs:
           sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/alpha/index.html
           sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/alpha/index.html
 
+      - name: Prepare Pages payload
+        shell: bash
+        working-directory: godot
+        run: |
+          set -euo pipefail
+          rm -rf build/pages
+          mkdir -p build/pages/alpha
+          cp -a build/alpha/. build/pages/alpha/
+          touch build/pages/.nojekyll
+
+          cat > build/pages/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0; url=./alpha/">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>COMEDIAN</title>
+          </head>
+          <body>
+            <p><a href="./alpha/">Open the current COMEDIAN alpha build</a></p>
+          </body>
+          </html>
+          EOF
+
       - name: Publish ALPHA
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: godot/build/alpha
-          target-folder: alpha
-          clean: false
+          folder: godot/build/pages
+          clean: true
