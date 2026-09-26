@@ -24,9 +24,9 @@ const CITY_SPEED_MULTIPLIER := 0.8
 const NEIGHBORHOOD_WORLD_SPEED := 40.0
 const HIGHWAY_WORLD_SPEED := 80.0
 const CITY_WORLD_SPEED := 36.0
-const HIGHWAY_TRAFFIC_LANES := [2, 0, 3]
-const HIGHWAY_TRAFFIC_START_OFFSETS_X := [24.0, 56.0, 88.0]
-const HIGHWAY_TRAFFIC_APPROACH_SPEEDS := [4.0, 4.4, 4.8]
+const HIGHWAY_TRAFFIC_LANES := [2, 0, 3, 1, 2, 0]
+const HIGHWAY_TRAFFIC_START_OFFSETS_X := [24.0, 40.0, 56.0, 72.0, 88.0, 104.0]
+const HIGHWAY_TRAFFIC_APPROACH_SPEEDS := [4.0, 4.4, 4.8, 4.0, 4.4, 4.8]
 const HIGHWAY_TRAFFIC_RESPAWN_X := 108.0
 const HIGHWAY_TRAFFIC_COLLISION_X := 4.5
 const HIGHWAY_TRAFFIC_SCALE := 1.0
@@ -105,7 +105,7 @@ var drive_time := 0.0
 var missed_turns := 0
 var bumps := 0
 var highway_collision_slow_remaining := 0.0
-var highway_traffic_offsets_x: Array[float] = [28.0, 42.0, 56.0]
+var highway_traffic_offsets_x: Array[float] = [24.0, 40.0, 56.0, 72.0, 88.0, 104.0]
 var steering_feedback := 0.0
 var turn_drift_direction := 0.0
 var camera_nudge := Vector2.ZERO
@@ -143,6 +143,9 @@ var car_base_position := Vector2.ZERO
 	$"../TrafficCars/TrafficCarA",
 	$"../TrafficCars/TrafficCarB",
 	$"../TrafficCars/TrafficCarC",
+	$"../TrafficCars/TrafficCarD",
+	$"../TrafficCars/TrafficCarE",
+	$"../TrafficCars/TrafficCarF",
 ]
 @onready var left_button: Button = $"../TouchControls/LeftButton"
 @onready var forward_button: Button = $"../TouchControls/ForwardButton"
@@ -186,6 +189,9 @@ func _reset_to_start() -> void:
 		HIGHWAY_TRAFFIC_START_OFFSETS_X[0],
 		HIGHWAY_TRAFFIC_START_OFFSETS_X[1],
 		HIGHWAY_TRAFFIC_START_OFFSETS_X[2],
+		HIGHWAY_TRAFFIC_START_OFFSETS_X[3],
+		HIGHWAY_TRAFFIC_START_OFFSETS_X[4],
+		HIGHWAY_TRAFFIC_START_OFFSETS_X[5],
 	]
 	steering_feedback = 0.0
 	turn_drift_direction = 0.0
