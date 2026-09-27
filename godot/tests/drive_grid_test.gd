@@ -614,7 +614,9 @@ func _run() -> void:
 
 	drive.road_kind = "city"
 	drive.city_cell = MAP.CITY_DESTINATION
+	drive.heading = Vector2i.UP
 	drive.parking_maneuver_started = false
+	drive.parking_entry_requested = false
 	drive.parking_target_index = -1
 	drive.parking_lane_choice = 0
 	drive.parking_phase = 0
@@ -622,6 +624,7 @@ func _run() -> void:
 	drive.visual_world_position = drive._city_cell_center(MAP.CITY_DESTINATION)
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = drive.CITY_CAR_SCALE
+	drive.blocked_this_step = false
 
 	if navigation != null:
 		var lot_instruction: Dictionary = navigation._current_instruction()
@@ -631,11 +634,29 @@ func _run() -> void:
 			"GPS does not direct the final turn into the parking lot"
 		)
 
+	# Simply reaching/passing the destination must stay on the city street.
+	drive._begin_city_step()
+	_check(not drive.parking_maneuver_started, "Parking lot starts without a player turn")
+	_check(not drive.parking_entry_requested, "Parking entry intent appears without input")
+	_check(
+		drive.move_to == drive._city_cell_center(Vector2i(3, 0)),
+		"Driving past the parking lot does not continue on the city street"
+	)
+
+	# Reset to the destination and explicitly turn right into the driveway.
+	drive.city_cell = MAP.CITY_DESTINATION
+	drive.heading = Vector2i.UP
+	drive.visual_world_position = drive._city_cell_center(MAP.CITY_DESTINATION)
+	drive.move_from = drive.visual_world_position
+	drive.move_to = drive.visual_world_position
+	drive.blocked_this_step = false
+	drive._turn_right()
+	_check(drive.parking_entry_requested, "Right turn at destination did not request parking entry")
 	drive._begin_city_step()
 	_check(drive.road_kind == "city", "Parking turn leaves city mode before reaching the driveway")
 	_check(
 		drive.move_to == drive._parking_entry_point(),
-		"City route does not lead to the parking-lot entrance"
+		"Explicit parking turn does not lead to the parking-lot entrance"
 	)
 	_check(
 		is_equal_approx(drive.move_to.y, drive.visual_world_position.y),
