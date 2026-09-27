@@ -466,12 +466,16 @@ func _begin_city_step() -> void:
 		status_label.text = "CITY"
 		return
 
-	if (
-		city_cell == MAP.CITY_DESTINATION
-		and parking_entry_requested
-		and heading == Vector2i.RIGHT
-	):
-		if not parking_maneuver_started:
+	if city_cell == MAP.CITY_DESTINATION:
+		if parking_maneuver_started:
+			road_kind = "parking"
+			move_to = _parking_aisle_point()
+			scale_to = CITY_CAR_SCALE
+			motion_direction = (move_to - move_from).normalized()
+			status_label.text = "ENTER PARKING LOT"
+			return
+
+		if parking_entry_requested and heading == Vector2i.RIGHT:
 			parking_maneuver_started = true
 			parking_entry_requested = false
 			parking_target_index = -1
@@ -488,13 +492,6 @@ func _begin_city_step() -> void:
 			motion_direction = (move_to - move_from).normalized()
 			status_label.text = "PARKING LOT"
 			return
-
-		road_kind = "parking"
-		move_to = _parking_aisle_point()
-		scale_to = CITY_CAR_SCALE
-		motion_direction = (move_to - move_from).normalized()
-		status_label.text = "ENTER PARKING LOT"
-		return
 
 	var desired := city_cell + heading
 	if _cell_inside(desired, MAP.CITY_SIZE):
