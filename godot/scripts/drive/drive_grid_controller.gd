@@ -10,6 +10,7 @@ extends Control
 signal trip_finished(result: Dictionary)
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
+const PARKED_CAR_TEXTURE: Texture2D = preload("res://assets/car/player_car_top.png")
 
 const STEP_SECONDS := 1.0
 const TURN_SECONDS := 0.34
@@ -1579,44 +1580,26 @@ func _draw_destination() -> void:
 		1.0
 	)
 
-	# Compact rows make the lot read at the same scale as the player car.
+	# Keep the actual driving paths clear. Each upper/lower choice lane gets
+	# one pair of stalls beside it; parked cars never sit on the aisle itself.
 	for lane_choice in [-1, 1]:
-		var lane_point := _parking_lane_point(lane_choice)
 		for turn_choice in [-1, 1]:
-			for row_offset in [-14.0, 0.0, 14.0]:
-				var stall_center := Vector2(
-					lane_point.x + (-15.0 if turn_choice < 0 else 15.0),
-					lane_point.y + row_offset
-				)
-				var stall := Rect2(
-					stall_center + Vector2(-5.0, -6.0),
-					Vector2(10.0, 12.0)
-				)
-				_draw_world_rect_outline(stall, Color(PARKING_LINE_COLOR, 0.48), 0.7)
+			var stall := _parking_space_rect(lane_choice, turn_choice)
+			_draw_world_rect_outline(
+				stall,
+				Color(PARKING_LINE_COLOR, 0.62),
+				0.8
+			)
 
-				var selectable_center := is_zero_approx(row_offset)
-				var should_occupy := (
-					not selectable_center
-					or not _parking_space_is_open(lane_choice, turn_choice)
+			if not _parking_space_is_open(lane_choice, turn_choice):
+				var tint := Color(0.72, 0.84, 1.0, 1.0)
+				if lane_choice > 0:
+					tint = Color(0.95, 0.72, 0.68, 1.0)
+				_draw_world_car_texture(
+					stall.get_center(),
+					Vector2(8.0, 12.0),
+					tint
 				)
-				if should_occupy:
-					var parked_car := Rect2(
-						stall.position + Vector2(2.0, 1.5),
-						stall.size - Vector2(4.0, 3.0)
-					)
-					var car_color := Color(0.40, 0.43, 0.48)
-					if lane_choice > 0:
-						car_color = Color(0.34, 0.24, 0.22)
-					elif row_offset > 0.0:
-						car_color = Color(0.24, 0.33, 0.40)
-					_draw_world_rect(parked_car, car_color)
-					_draw_world_rect(
-						Rect2(
-							parked_car.position + Vector2(parked_car.size.x * 0.56, 1.5),
-							Vector2(parked_car.size.x * 0.22, parked_car.size.y - 3.0)
-						),
-						Color(0.10, 0.13, 0.16, 0.82)
-					)
 
 	_draw_world_rect(
 		Rect2(venue_rect.position + Vector2(1.3, 1.3), venue_rect.size),
@@ -1666,6 +1649,24 @@ func _draw_destination() -> void:
 		Rect2(venue_rect.position + Vector2(9.0, 9.0), Vector2(5.0, 4.0)),
 		Color(0.22, 0.23, 0.23)
 	)
+
+
+func _draw_world_car_texture(
+	world_center: Vector2,
+	world_size: Vector2,
+	tint: Color
+) -> void:
+	var zoom := _current_world_zoom()
+	var screen_center := _world_to_screen(world_center)
+	var screen_size := world_size * zoom
+	draw_set_transform(screen_center, map_rotation, Vector2.ONE)
+	draw_texture_rect(
+		PARKED_CAR_TEXTURE,
+		Rect2(-screen_size * 0.5, screen_size),
+		false,
+		tint
+	)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_map_outline() -> void:
