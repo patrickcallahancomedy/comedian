@@ -857,7 +857,8 @@ func _draw_neighborhood_arm(
 func _draw_city() -> void:
 	var rect := _city_rect()
 	_draw_world_rect(rect, CITY_GROUND_COLOR)
-	_draw_city_buildings(rect)
+	if road_kind != "parking":
+		_draw_city_buildings(rect)
 
 	# City roads follow the same border rule as the neighborhood: perimeter
 	# intersections stop at the city edge, and only the actual entry cell opens
@@ -1416,9 +1417,9 @@ func _parking_lot_rect() -> Rect2:
 	return Rect2(
 		Vector2(
 			destination_center.x + CITY_ROAD_WIDTH * 0.5 + 2.0,
-			destination_center.y - 41.0
+			destination_center.y - 65.0
 		),
-		Vector2(54.0, 82.0)
+		Vector2(100.0, 130.0)
 	)
 
 
@@ -1433,20 +1434,20 @@ func _parking_entry_point() -> Vector2:
 func _parking_aisle_point() -> Vector2:
 	var lot := _parking_lot_rect()
 	return Vector2(
-		lot.position.x + 27.0,
+		lot.position.x + 36.0,
 		_city_cell_center(MAP.CITY_DESTINATION).y
 	)
 
 
 func _parking_lane_point(lane_choice: int) -> Vector2:
 	var lot := _parking_lot_rect()
-	var lane_y := lot.position.y + 22.0 if lane_choice < 0 else lot.end.y - 22.0
+	var lane_y := lot.position.y + 32.0 if lane_choice < 0 else lot.end.y - 32.0
 	return Vector2(_parking_aisle_point().x, lane_y)
 
 
 func _parking_space_center(lane_choice: int, turn_choice: int) -> Vector2:
 	var lane_point := _parking_lane_point(lane_choice)
-	var x_offset := -15.0 if turn_choice < 0 else 15.0
+	var x_offset := -24.0 if turn_choice < 0 else 24.0
 	return lane_point + Vector2(x_offset, 0.0)
 
 
@@ -1459,8 +1460,8 @@ func _parking_stop_point() -> Vector2:
 func _parking_space_rect(lane_choice: int, turn_choice: int) -> Rect2:
 	var center := _parking_space_center(lane_choice, turn_choice)
 	return Rect2(
-		center + Vector2(-5.0, -7.0),
-		Vector2(10.0, 14.0)
+		center + Vector2(-10.0, -15.0),
+		Vector2(20.0, 30.0)
 	)
 
 
@@ -1545,7 +1546,7 @@ func _venue_rect() -> Rect2:
 	var lot := _parking_lot_rect()
 	return Rect2(
 		Vector2(lot.end.x + 2.0, lot.position.y - 2.0),
-		Vector2(22.0, lot.size.y + 4.0)
+		Vector2(30.0, lot.size.y + 4.0)
 	)
 
 
@@ -1594,7 +1595,7 @@ func _draw_destination() -> void:
 					tint = Color(0.95, 0.72, 0.68, 1.0)
 				_draw_world_car_texture(
 					stall.get_center(),
-					Vector2(8.0, 12.0),
+					Vector2(16.0, 26.0),
 					tint
 				)
 
