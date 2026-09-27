@@ -1417,38 +1417,30 @@ func _parking_lot_rect() -> Rect2:
 	return Rect2(
 		Vector2(
 			destination_center.x + CITY_ROAD_WIDTH * 0.5 + 2.0,
-			destination_center.y - 65.0
+			destination_center.y - 42.0
 		),
-		Vector2(100.0, 130.0)
+		Vector2(82.0, 84.0)
 	)
 
 
 func _parking_entry_point() -> Vector2:
 	var lot := _parking_lot_rect()
-	return Vector2(
-		lot.position.x,
-		_city_cell_center(MAP.CITY_DESTINATION).y
-	)
+	return Vector2(lot.position.x, lot.get_center().y)
 
 
 func _parking_aisle_point() -> Vector2:
 	var lot := _parking_lot_rect()
-	return Vector2(
-		lot.position.x + 36.0,
-		_city_cell_center(MAP.CITY_DESTINATION).y
-	)
+	return Vector2(lot.position.x + 27.0, lot.get_center().y)
 
 
 func _parking_lane_point(lane_choice: int) -> Vector2:
-	var lot := _parking_lot_rect()
-	var lane_y := lot.position.y + 32.0 if lane_choice < 0 else lot.end.y - 32.0
-	return Vector2(_parking_aisle_point().x, lane_y)
+	var center := _parking_aisle_point()
+	return center + Vector2(0.0, -24.0 if lane_choice < 0 else 24.0)
 
 
 func _parking_space_center(lane_choice: int, turn_choice: int) -> Vector2:
 	var lane_point := _parking_lane_point(lane_choice)
-	var x_offset := -24.0 if turn_choice < 0 else 24.0
-	return lane_point + Vector2(x_offset, 0.0)
+	return lane_point + Vector2(-20.0 if turn_choice < 0 else 20.0, 0.0)
 
 
 func _parking_stop_point() -> Vector2:
@@ -1459,10 +1451,7 @@ func _parking_stop_point() -> Vector2:
 
 func _parking_space_rect(lane_choice: int, turn_choice: int) -> Rect2:
 	var center := _parking_space_center(lane_choice, turn_choice)
-	return Rect2(
-		center + Vector2(-10.0, -15.0),
-		Vector2(20.0, 30.0)
-	)
+	return Rect2(center - Vector2(8.0, 12.0), Vector2(16.0, 24.0))
 
 
 func _parking_space_is_open(lane_choice: int, turn_choice: int) -> bool:
@@ -1546,7 +1535,7 @@ func _venue_rect() -> Rect2:
 	var lot := _parking_lot_rect()
 	return Rect2(
 		Vector2(lot.end.x + 2.0, lot.position.y - 2.0),
-		Vector2(30.0, lot.size.y + 4.0)
+		Vector2(24.0, lot.size.y + 4.0)
 	)
 
 
@@ -1556,48 +1545,44 @@ func _draw_destination() -> void:
 	var destination_center := _city_cell_center(MAP.CITY_DESTINATION)
 	var curb_x := destination_center.x + CITY_ROAD_WIDTH * 0.5
 
+	# Simple lot: one driveway, one vertical aisle, four real stalls.
 	_draw_world_rect(lot, PARKING_LOT_EDGE_COLOR)
-	var lot_inner := Rect2(
-		lot.position + Vector2(1.5, 1.5),
-		lot.size - Vector2(3.0, 3.0)
+	_draw_world_rect(
+		Rect2(lot.position + Vector2(1.2, 1.2), lot.size - Vector2(2.4, 2.4)),
+		PARKING_LOT_COLOR
 	)
-	_draw_world_rect(lot_inner, PARKING_LOT_COLOR)
 
-	# Driveway feeds a center decision point, then splits into two short aisles.
 	var driveway := Rect2(
-		Vector2(curb_x, destination_center.y - 8.0),
-		Vector2(maxf(1.0, _parking_aisle_point().x - curb_x + 2.0), 16.0)
+		Vector2(curb_x, destination_center.y - 6.0),
+		Vector2(_parking_aisle_point().x - curb_x + 2.0, 12.0)
 	)
 	_draw_world_rect(driveway, PARKING_LOT_COLOR)
 
-	var aisle_x := _parking_aisle_point().x
+	var aisle_center := _parking_aisle_point()
 	_draw_world_line(
-		Vector2(aisle_x, _parking_lane_point(-1).y),
-		Vector2(aisle_x, _parking_lane_point(1).y),
-		Color(0.34, 0.35, 0.36, 0.65),
-		1.0
+		_parking_lane_point(-1),
+		_parking_lane_point(1),
+		Color(0.42, 0.43, 0.44, 0.72),
+		1.2
 	)
 
-	# Keep the actual driving paths clear. Each upper/lower choice lane gets
-	# one pair of stalls beside it; parked cars never sit on the aisle itself.
+	# Four stalls sit off the aisle. Two are occupied, two are usable.
 	for lane_choice in [-1, 1]:
 		for turn_choice in [-1, 1]:
 			var stall := _parking_space_rect(lane_choice, turn_choice)
 			_draw_world_rect_outline(
 				stall,
-				Color(PARKING_LINE_COLOR, 0.62),
-				0.8
+				Color(PARKING_LINE_COLOR, 0.72),
+				0.85
 			)
 
 			if not _parking_space_is_open(lane_choice, turn_choice):
-				var tint := Color(0.72, 0.84, 1.0, 1.0)
-				if lane_choice > 0:
-					tint = Color(0.95, 0.72, 0.68, 1.0)
-				_draw_world_car_texture(
-					stall.get_center(),
-					Vector2(16.0, 26.0),
-					tint
+				var tint := (
+					Color(0.72, 0.84, 1.0, 1.0)
+					if lane_choice < 0
+					else Color(0.95, 0.72, 0.68, 1.0)
 				)
+				_draw_world_car_texture(stall.get_center(), tint)
 
 	_draw_world_rect(
 		Rect2(venue_rect.position + Vector2(1.3, 1.3), venue_rect.size),
@@ -1649,13 +1634,17 @@ func _draw_destination() -> void:
 	)
 
 
-func _draw_world_car_texture(
-	world_center: Vector2,
-	world_size: Vector2,
-	tint: Color
-) -> void:
+func _draw_world_car_texture(world_center: Vector2, tint: Color) -> void:
 	var screen_center := _world_to_screen(world_center)
-	var screen_size := player_car.size * CAR_REFERENCE_SCALE * CITY_CAR_SCALE
+	var texture_size := PARKED_CAR_TEXTURE.get_size()
+	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
+		return
+
+	var player_canvas_size := player_car.size * CAR_REFERENCE_SCALE * CITY_CAR_SCALE
+	var target_height := player_canvas_size.y * 0.88
+	var aspect := texture_size.x / texture_size.y
+	var screen_size := Vector2(target_height * aspect, target_height)
+
 	draw_set_transform(screen_center, map_rotation, Vector2.ONE)
 	draw_texture_rect(
 		PARKED_CAR_TEXTURE,
