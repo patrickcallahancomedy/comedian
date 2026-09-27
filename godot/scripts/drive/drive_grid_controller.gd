@@ -98,6 +98,7 @@ const BORDER_COLOR := Color(0.93, 0.92, 0.86)
 var started := false
 var drive_complete := false
 var parking_maneuver_started := false
+var parking_entry_requested := false
 var parking_target_index := -1
 var parking_lane_choice := 0
 var parking_phase := 0
@@ -178,6 +179,7 @@ func _reset_to_start() -> void:
 	started = false
 	drive_complete = false
 	parking_maneuver_started = false
+	parking_entry_requested = false
 	parking_target_index = -1
 	parking_lane_choice = 0
 	parking_phase = 0
@@ -463,9 +465,14 @@ func _begin_city_step() -> void:
 		status_label.text = "CITY"
 		return
 
-	if city_cell == MAP.CITY_DESTINATION and heading == Vector2i.RIGHT:
+	if (
+		city_cell == MAP.CITY_DESTINATION
+		and parking_entry_requested
+		and heading == Vector2i.RIGHT
+	):
 		if not parking_maneuver_started:
 			parking_maneuver_started = true
+			parking_entry_requested = false
 			parking_target_index = -1
 			parking_lane_choice = 0
 			parking_phase = 0
@@ -518,7 +525,9 @@ func _turn_left() -> void:
 
 	if road_kind == "neighborhood" or road_kind == "city":
 		turn_drift_direction = -1.0
-		_set_heading(Vector2i(heading.y, -heading.x))
+		var new_heading := Vector2i(heading.y, -heading.x)
+		_request_parking_entry_if_applicable(new_heading)
+		_set_heading(new_heading)
 
 
 func _turn_right() -> void:
@@ -536,7 +545,20 @@ func _turn_right() -> void:
 
 	if road_kind == "neighborhood" or road_kind == "city":
 		turn_drift_direction = 1.0
-		_set_heading(Vector2i(-heading.y, heading.x))
+		var new_heading := Vector2i(-heading.y, heading.x)
+		_request_parking_entry_if_applicable(new_heading)
+		_set_heading(new_heading)
+
+
+func _request_parking_entry_if_applicable(new_heading: Vector2i) -> void:
+	if (
+		road_kind == "city"
+		and city_cell == MAP.CITY_DESTINATION
+		and new_heading == Vector2i.RIGHT
+	):
+		parking_entry_requested = true
+	else:
+		parking_entry_requested = false
 
 
 func _set_highway_lane(requested_lane: int) -> void:
