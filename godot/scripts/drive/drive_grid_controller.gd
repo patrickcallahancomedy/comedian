@@ -1654,9 +1654,8 @@ func _draw_world_car_texture(
 	world_size: Vector2,
 	tint: Color
 ) -> void:
-	var zoom := _current_world_zoom()
 	var screen_center := _world_to_screen(world_center)
-	var screen_size := world_size * zoom
+	var screen_size := player_car.size * CAR_REFERENCE_SCALE * CITY_CAR_SCALE
 	draw_set_transform(screen_center, map_rotation, Vector2.ONE)
 	draw_texture_rect(
 		PARKED_CAR_TEXTURE,
@@ -1717,7 +1716,7 @@ func _current_world_zoom() -> float:
 			CITY_WORLD_ZOOM,
 			_connector_two_progress()
 		)
-	if road_kind == "city":
+	if road_kind == "city" or road_kind == "parking":
 		return CITY_WORLD_ZOOM
 	return WORLD_ZOOM
 
