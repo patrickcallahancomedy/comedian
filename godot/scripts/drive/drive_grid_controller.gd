@@ -463,7 +463,7 @@ func _begin_city_step() -> void:
 		status_label.text = "CITY"
 		return
 
-	if city_cell == MAP.CITY_DESTINATION:
+	if city_cell == MAP.CITY_DESTINATION and heading == Vector2i.RIGHT:
 		if not parking_maneuver_started:
 			parking_maneuver_started = true
 			parking_target_index = -1
