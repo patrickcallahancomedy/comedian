@@ -3,8 +3,9 @@ extends Control
 const BASE_SPEED := 25.0
 const SPEED_MULTIPLIERS := [1.0, 10.0, 100.0, 5000.0]
 const SPEED_LABELS := ["1×", "10×", "100×", "MAX"]
-const CAR_COLOR := Color(1.0, 0.90, 0.18)
-const CAR_OUTLINE := Color(0.05, 0.05, 0.05)
+const CAR_COLOR := Color(1.0, 0.92, 0.08)
+const CAR_OUTLINE := Color(0.02, 0.02, 0.02)
+const CAR_RADIUS := 8.0
 
 var route: Array = []
 var route_index := 0
@@ -30,6 +31,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# Keep the overlay synced even while idle if the map view changes.
+	queue_redraw()
+
 	if not running or route.size() < 2:
 		return
 
@@ -68,10 +72,22 @@ func _draw() -> void:
 		return
 
 	var screen := map.world_to_screen(world_position)
-	var radius := maxf(4.0, 4.5 * map.map_scale)
+	var radius := CAR_RADIUS
 
-	draw_circle(screen, radius + 2.0, CAR_OUTLINE)
+	draw_circle(screen, radius + 3.0, CAR_OUTLINE)
 	draw_circle(screen, radius, CAR_COLOR)
+	draw_circle(screen, 2.2, Color.WHITE)
+
+	var font := get_theme_default_font()
+	draw_string(
+		font,
+		screen + Vector2(11.0, 4.0),
+		"CAR",
+		HORIZONTAL_ALIGNMENT_LEFT,
+		30.0,
+		11,
+		Color.WHITE
+	)
 
 
 func _run() -> void:
@@ -110,7 +126,7 @@ func _reset() -> void:
 		return
 
 	world_position = Vector2(map.generator.nodes[int(route[0])])
-	status_label.text = "READY"
+	status_label.text = "READY AT A"
 	queue_redraw()
 
 
