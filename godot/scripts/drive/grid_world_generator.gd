@@ -645,35 +645,48 @@ func _generate_highway_connection() -> void:
 	var highway_start: Vector2i = corridor["start"]
 	var highway_end: Vector2i = corridor["end"]
 
-	var neighborhood_target := _project_rect_center_to_highway(
+	var neighborhood_access := _build_parallel_highway_access(
 		neighborhood_rect,
 		horizontal,
 		highway_start
 	)
-	var city_target := _project_rect_center_to_highway(
+	var city_access := _build_parallel_highway_access(
 		city_rect,
 		horizontal,
 		highway_start
 	)
 
+	var neighborhood_connector_target: Vector2i = (
+		neighborhood_access["connector_target"]
+	)
+	var city_connector_target: Vector2i = (
+		city_access["connector_target"]
+	)
+
+	# Blue connector selection happens from the finished pink lane endpoint.
+	# The nearest district boundary point wins.
 	neighborhood_gateway = _closest_boundary_node(
 		neighborhood_grid,
-		neighborhood_target
+		neighborhood_connector_target
 	)
 	city_gateway = _closest_boundary_node(
 		city_grid,
-		city_target
+		city_connector_target
 	)
 
-	var neighborhood_merge: Vector2i = _add_fast_access_to_highway(
-		neighborhood_gateway,
-		horizontal,
-		highway_start
+	_add_grid_path(
+		Vector2i(nodes[neighborhood_gateway]),
+		neighborhood_connector_target,
+		RoadClass.CONNECTOR,
+		CONNECTOR_STEP,
+		false
 	)
-	var city_merge: Vector2i = _add_fast_access_to_highway(
-		city_gateway,
-		horizontal,
-		highway_start
+	_add_grid_path(
+		Vector2i(nodes[city_gateway]),
+		city_connector_target,
+		RoadClass.CONNECTOR,
+		CONNECTOR_STEP,
+		false
 	)
 
 	gateway_distance = Vector2(
@@ -683,9 +696,80 @@ func _generate_highway_connection() -> void:
 	_add_highway_with_merges(
 		highway_start,
 		highway_end,
-		[neighborhood_merge, city_merge],
+		[
+			neighborhood_access["merge"],
+			city_access["merge"],
+		],
 		horizontal
 	)
+
+
+func _build_parallel_highway_access(
+	rect: Rect2i,
+	horizontal_highway: bool,
+	highway_start: Vector2i
+) -> Dictionary:
+	var center := Vector2i(rect.get_center())
+	var merge := Vector2i.ZERO
+	var lane_start := Vector2i.ZERO
+	var lane_end := Vector2i.ZERO
+
+	if horizontal_highway:
+		var highway_y: int = highway_start.y
+		var side: int = -1 if center.y < highway_y else 1
+		var lane_y: int = highway_y + side * RAMP_STANDOFF
+		var lane_end_x: int = clampi(
+			_snap_int(center.x, CONNECTOR_STEP),
+			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
+			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
+		)
+		var run_sign: int = 1 if lane_end_x < GRID_SIZE / 2 else -1
+		var lane_start_x: int = lane_end_x - run_sign * RAMP_RUN
+
+		lane_end = Vector2i(lane_end_x, lane_y)
+		lane_start = Vector2i(lane_start_x, lane_y)
+		merge = Vector2i(lane_start_x, highway_y)
+	else:
+		var highway_x: int = highway_start.x
+		var side: int = -1 if center.x < highway_x else 1
+		var lane_x: int = highway_x + side * RAMP_STANDOFF
+		var lane_end_y: int = clampi(
+			_snap_int(center.y, CONNECTOR_STEP),
+			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
+			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
+		)
+		var run_sign: int = 1 if lane_end_y < GRID_SIZE / 2 else -1
+		var lane_start_y: int = lane_end_y - run_sign * RAMP_RUN
+
+		lane_end = Vector2i(lane_x, lane_end_y)
+		lane_start = Vector2i(lane_x, lane_start_y)
+		merge = Vector2i(highway_x, lane_start_y)
+
+	merge = _clamp_to_world(_snap_point(merge, CONNECTOR_STEP))
+	lane_start = _clamp_to_world(_snap_point(lane_start, CONNECTOR_STEP))
+	lane_end = _clamp_to_world(_snap_point(lane_end, CONNECTOR_STEP))
+
+	# Pink is an auxiliary highway lane: short merge into the side lane,
+	# then a straight run parallel with the highway.
+	_add_grid_path(
+		merge,
+		lane_start,
+		RoadClass.RAMP,
+		CONNECTOR_STEP,
+		false
+	)
+	_add_grid_path(
+		lane_start,
+		lane_end,
+		RoadClass.RAMP,
+		CONNECTOR_STEP,
+		false
+	)
+
+	return {
+		"merge": merge,
+		"connector_target": lane_end,
+	}
 
 
 func _choose_longest_highway_corridor() -> Dictionary:
@@ -845,97 +929,6 @@ func _project_rect_center_to_highway(
 	if horizontal:
 		return Vector2i(center.x, highway_start.y)
 	return Vector2i(highway_start.x, center.y)
-
-
-func _add_fast_access_to_highway(
-	gateway_id: int,
-	horizontal_highway: bool,
-	highway_start: Vector2i
-) -> Vector2i:
-	var gateway := Vector2i(nodes[gateway_id])
-	var merge := gateway
-	var connector_end := gateway
-	var ramp_turn := gateway
-
-	if horizontal_highway:
-		var highway_y: int = highway_start.y
-		var side: int = -1 if gateway.y < highway_y else 1
-		var connector_x: int = clampi(
-			_snap_int(gateway.x, CONNECTOR_STEP),
-			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
-			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
-		)
-		var run_sign: int = 1 if connector_x < GRID_SIZE / 2 else -1
-		var merge_x: int = connector_x + run_sign * RAMP_RUN
-
-		merge = Vector2i(merge_x, highway_y)
-		ramp_turn = Vector2i(
-			merge_x,
-			highway_y + side * RAMP_STANDOFF
-		)
-		connector_end = Vector2i(
-			connector_x,
-			ramp_turn.y
-		)
-	else:
-		var highway_x: int = highway_start.x
-		var side: int = -1 if gateway.x < highway_x else 1
-		var connector_y: int = clampi(
-			_snap_int(gateway.y, CONNECTOR_STEP),
-			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
-			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
-		)
-		var run_sign: int = 1 if connector_y < GRID_SIZE / 2 else -1
-		var merge_y: int = connector_y + run_sign * RAMP_RUN
-
-		merge = Vector2i(highway_x, merge_y)
-		ramp_turn = Vector2i(
-			highway_x + side * RAMP_STANDOFF,
-			merge_y
-		)
-		connector_end = Vector2i(
-			ramp_turn.x,
-			connector_y
-		)
-
-	connector_end = _clamp_to_world(
-		_snap_point(connector_end, CONNECTOR_STEP)
-	)
-	ramp_turn = _clamp_to_world(
-		_snap_point(ramp_turn, CONNECTOR_STEP)
-	)
-	merge = _clamp_to_world(
-		_snap_point(merge, CONNECTOR_STEP)
-	)
-
-	# Blue connector: shortest Manhattan route from the district boundary to
-	# the highway-side standoff line.
-	_add_grid_path(
-		gateway,
-		connector_end,
-		RoadClass.CONNECTOR,
-		CONNECTOR_STEP,
-		false
-	)
-
-	# Purple ramp: first runs parallel to the highway, then makes the short
-	# final turn into the highway. The blue connector meets its outer end.
-	_add_grid_path(
-		connector_end,
-		ramp_turn,
-		RoadClass.RAMP,
-		CONNECTOR_STEP,
-		false
-	)
-	_add_grid_path(
-		ramp_turn,
-		merge,
-		RoadClass.RAMP,
-		CONNECTOR_STEP,
-		false
-	)
-
-	return merge
 
 
 func _add_highway_with_merges(
