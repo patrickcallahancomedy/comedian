@@ -1,0 +1,85 @@
+name: COMEDIAN PROCEDURAL ROAD A-B
+
+on:
+  push:
+    branches:
+      - procedural-road-ab
+    paths:
+      - "godot/**"
+      - ".github/workflows/procedural-road-ab.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comedian-procedural-road-ab
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  test-export-deploy:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout procedural road prototype
+        uses: actions/checkout@v4
+
+      - name: Import Godot project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path godot --quit
+
+      - name: Test procedural A-to-B drive
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 45s godot --headless --path godot --script res://tests/procedural_drive_ab_test.gd
+
+      - name: Prepare export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/"
+
+      - name: Export procedural road preview
+        shell: bash
+        working-directory: godot
+        run: |
+          set -euo pipefail
+
+          # Preview only. The committed main scene remains the normal COMEDIAN drive.
+          sed -i 's#run/main_scene="res://scenes/drive/drive_module.tscn"#run/main_scene="res://scenes/drive/procedural_drive_ab.tscn"#' project.godot
+
+          rm -rf build/roads
+          mkdir -p build/roads
+          godot --headless --path . --export-release "Web" build/roads/index.html
+          touch build/roads/.nojekyll
+
+          grep -a -q "procedural_road_network.gd" build/roads/index.pck
+          grep -a -q "procedural_drive_controller.gd" build/roads/index.pck
+
+          BUILD_NAME="roads-${GITHUB_SHA:0:8}"
+          mv build/roads/index.js "build/roads/${BUILD_NAME}.js"
+          mv build/roads/index.wasm "build/roads/${BUILD_NAME}.wasm"
+          mv build/roads/index.pck "build/roads/${BUILD_NAME}.pck"
+
+          sed -i "s#src=\"index.js\"#src=\"${BUILD_NAME}.js\"#" build/roads/index.html
+          sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/roads/index.html
+          sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/roads/index.html
+          sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/roads/index.html
+
+      - name: Publish procedural road preview
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: godot/build/roads
+          target-folder: roads
+          clean: true
+          force: false
