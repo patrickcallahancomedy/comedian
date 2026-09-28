@@ -1,9 +1,9 @@
 [gd_scene format=4 uid="uid://toj3nfh0umto"]
 
-[ext_resource type="Script" uid="uid://ddyjqns4g4t0g" path="res://scripts/drive/drive_grid_controller.gd" id="1_boj34"]
+[ext_resource type="Script" path="res://scripts/drive/drive_world_controller.gd" id="1_boj34"]
 [ext_resource type="Texture2D" uid="uid://dkqq7eu8lpill" path="res://assets/car/player_car_top.png" id="1_car"]
 [ext_resource type="Script" uid="uid://dnqi0cw64kxjr" path="res://scripts/drive/drive_session.gd" id="3_session"]
-[ext_resource type="Script" uid="uid://decwj71t5uanu" path="res://scripts/drive/drive_navigation.gd" id="4_nav"]
+[ext_resource type="Script" path="res://scripts/drive/drive_world_navigation.gd" id="4_nav"]
 
 [node name="DriveModule" type="Control" unique_id=1084516026]
 layout_mode = 3
