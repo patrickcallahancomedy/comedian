@@ -25,7 +25,7 @@ const HIGHWAY_STEP := 42.0
 const NEIGHBORHOOD_START := "n22"
 const NEIGHBORHOOD_GATE := "n00"
 const CITY_ENTRY := "c20"
-const CITY_PARKING_NODE := "c11"
+const CITY_PARKING_NODE := "c22"
 
 const NEIGHBORHOOD_NODES := {
 	"n00": Vector2(1240, 600),
@@ -63,18 +63,18 @@ const CITY_NODES := {
 const CITY_EDGES := [
 	["c00", "c01"], ["c01", "c02"],
 	["c10", "c11"], ["c11", "c12"],
-	["c20", "c21"], ["c21", "c22"],
+	["c21", "c22"],
 	["c00", "c10"], ["c10", "c20"],
 	["c01", "c11"], ["c11", "c21"],
-	["c02", "c12"], ["c12", "c22"],
+	["c02", "c12"],
 ]
 
-const PARKING_ENTRY := Vector2(320, 810)
-const PARKING_AISLE := Vector2(320, 850)
-const PARKING_LEFT_SPACE := Vector2(282, 892)
-const PARKING_RIGHT_SPACE := Vector2(358, 892)
-const PARKING_LOT_RECT := Rect2(250, 790, 140, 135)
-const VENUE_RECT := Rect2(405, 790, 135, 150)
+const PARKING_ENTRY := Vector2(420, 900)
+const PARKING_AISLE := Vector2(385, 900)
+const PARKING_LEFT_SPACE := Vector2(365, 860)
+const PARKING_RIGHT_SPACE := Vector2(365, 940)
+const PARKING_LOT_RECT := Rect2(340, 825, 110, 150)
+const VENUE_RECT := Rect2(195, 815, 130, 170)
 
 
 static func node_position(area: String, node_id: String) -> Vector2:
