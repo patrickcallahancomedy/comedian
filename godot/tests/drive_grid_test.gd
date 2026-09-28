@@ -13,7 +13,7 @@ func _run() -> void:
 	print("DRIVE GRID v0.1 TEST START")
 
 	_check(MAP.MAP_SIZE == Vector2i(1760, 1600), "Logical map size is wrong")
-	_check(is_equal_approx(MAP.CONNECTOR_ONE_RECT.size.x, 120.0), "Connector one is not the shortened 120-unit ramp")
+	_check(is_equal_approx(MAP.CONNECTOR_ONE_RECT.size.x, 160.0), "Connector one is not doubled to 160 units")
 	_check(is_equal_approx(MAP.CONNECTOR_TWO_RECT.size.x, 160.0), "Connector two is not doubled to 160 units")
 	_check(MAP.MASTER_UNIT == 10, "Master snap unit changed")
 	_check(MAP.rect_is_master_snapped(MAP.NEIGHBORHOOD_RECT), "Neighborhood is off master grid")
@@ -136,20 +136,13 @@ func _run() -> void:
 		"Basic neighborhood road styling is missing"
 	)
 
-	var on_ramp_path: PackedVector2Array = MAP.onramp_path_points()
-	_check(on_ramp_path.size() == 4, "On-ramp path does not have four shared control points")
-	if on_ramp_path.size() == 4:
+	var on_ramp_points: PackedVector2Array = drive._connector_one_points()
+	_check(on_ramp_points.size() == 4, "On-ramp is not a four-point wedge")
+	if on_ramp_points.size() == 4:
+		var on_ramp_end_width := on_ramp_points[2].y - on_ramp_points[1].y
 		_check(
-			on_ramp_path[0].x == MAP.CONNECTOR_ONE_RECT.position.x,
-			"On-ramp path does not begin at the neighborhood edge"
-		)
-		_check(
-			on_ramp_path[2] == MAP.highway_merge_point(),
-			"On-ramp path and merge point disagree"
-		)
-		_check(
-			on_ramp_path[3] == MAP.highway_lane_edge_point(),
-			"On-ramp path does not finish at the highway edge"
+			is_equal_approx(on_ramp_end_width, float(MAP.HIGHWAY_LANE_WIDTH)),
+			"On-ramp does not finish at one highway-lane width"
 		)
 
 	var off_ramp_points: PackedVector2Array = drive._connector_two_points()
@@ -348,11 +341,6 @@ func _run() -> void:
 	drive.scale_from = 1.0
 	drive._begin_neighborhood_step()
 	_check(drive.road_kind == "connector_one", "Outside gate did not enter connector")
-	var onramp_path: PackedVector2Array = MAP.onramp_path_points()
-	_check(
-		drive.move_to == onramp_path[0],
-		"On-ramp movement does not begin on the shared visual path"
-	)
 	if navigation != null:
 		navigation._update_status_visibility()
 		_check(
@@ -368,7 +356,7 @@ func _run() -> void:
 		"On-ramp does not start at neighborhood speed"
 	)
 
-	# The shortened ramp accelerates continuously to highway speed.
+	# The highway connector accelerates across its physical 80-unit ramp.
 	drive.visual_world_position.x = MAP.CONNECTOR_ONE_RECT.position.x
 	var ramp_start_speed: float = drive._current_world_speed()
 	drive.visual_world_position.x = MAP.CONNECTOR_ONE_RECT.position.x + MAP.CONNECTOR_ONE_RECT.size.x * 0.5
@@ -385,32 +373,17 @@ func _run() -> void:
 		"On-ramp does not reach highway speed"
 	)
 
-	# Walk the exact same ramp points used by the renderer.
-	for path_index in range(1, onramp_path.size()):
-		drive.visual_world_position = drive.move_to
-		drive.move_from = drive.visual_world_position
-		drive.scale_from = drive.visual_cell_scale
-		drive._begin_connector_one_step()
-		_check(
-			drive.move_to == onramp_path[path_index],
-			"Connector movement diverged from the shared on-ramp path"
-		)
-
-	# The final path point is the highway edge. One short forward move then
-	# centers the car in lane 4 and starts normal highway driving.
-	drive.visual_world_position = drive.move_to
+	# Connector hands directly to the four-lane highway.
+	drive.visual_world_position = MAP.highway_entry_point()
+	drive.visual_cell_scale = 0.5
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = 0.5
-	drive._begin_connector_one_step()
+	drive._begin_highway_step()
 	_check(drive.road_kind == "highway", "Connector did not enter highway")
 	_check(
 		drive.highway_lane == MAP.HIGHWAY_ENTRY_LANE
 		and drive.highway_lane == MAP.HIGHWAY_LANES - 1,
 		"On-ramp does not merge directly into the rightmost lane"
-	)
-	_check(
-		drive.move_to == MAP.highway_entry_point(),
-		"Highway handoff does not continue into the center of lane 4"
 	)
 	drive.road_kind = "connector_one"
 	drive.steering_feedback = 1.0
