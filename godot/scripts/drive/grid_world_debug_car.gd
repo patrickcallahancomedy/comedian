@@ -6,7 +6,7 @@ const SPEED_LABELS := ["1×", "10×", "100×", "MAX"]
 const CAR_COLOR := Color(1.0, 0.92, 0.08)
 const CAR_OUTLINE := Color(0.02, 0.02, 0.02)
 const CAR_RADIUS := 8.0
-const HIGHWAY_EXIT_PREP_DISTANCE := 60.0
+const LANE_MERGE_DISTANCE := 40.0
 
 var route: Array = []
 var route_index := 0
@@ -49,9 +49,19 @@ func _process(delta: float) -> void:
 			_finish()
 			break
 
+		var current_id: int = int(route[route_index])
 		var next_id: int = int(route[route_index + 1])
-		var target := Vector2(map.generator.nodes[next_id])
-		var distance := world_position.distance_to(target)
+		var target: Vector2 = Vector2(map.generator.nodes[next_id])
+
+		# Hidden links only connect the logical highway spine to its visual
+		# lanes. They are routing metadata, not roads the car should visibly
+		# drive across.
+		if map.generator.edge_class(current_id, next_id) < 0:
+			world_position = target
+			route_index += 1
+			continue
+
+		var distance: float = world_position.distance_to(target)
 
 		if distance <= 0.0001:
 			world_position = target
@@ -102,63 +112,170 @@ func _display_world_position() -> Vector2:
 
 	var current_id: int = int(route[route_index])
 	var next_id: int = int(route[route_index + 1])
-	if (
-		map.generator.edge_class(current_id, next_id)
-		!= map.generator.RoadClass.HIGHWAY
-	):
+	var road_class: int = map.generator.edge_class(current_id, next_id)
+
+	if road_class == map.generator.RoadClass.HIGHWAY:
+		return _highway_display_position()
+	if road_class == map.generator.RoadClass.RAMP:
+		return _ramp_display_position()
+
+	return world_position
+
+
+func _highway_display_position() -> Vector2:
+	var merge_indices: Array = _auxiliary_merge_route_indices()
+	if merge_indices.size() < 2:
 		return world_position
 
-	var exit_merge_id: int = _next_auxiliary_merge_id()
-	if exit_merge_id < 0:
+	var entry_merge_index: int = int(merge_indices[0])
+	var exit_merge_index: int = int(merge_indices[-1])
+	if entry_merge_index + 1 >= route.size() or exit_merge_index <= 0:
 		return world_position
 
-	var highway_a: Vector2 = Vector2(
-		map.generator.nodes[int(map.generator.highway_nodes[0])]
-	)
-	var highway_b: Vector2 = Vector2(
-		map.generator.nodes[int(map.generator.highway_nodes[1])]
-	)
-	var exit_merge: Vector2 = Vector2(
-		map.generator.nodes[exit_merge_id]
-	)
-	var horizontal: bool = is_equal_approx(highway_a.y, highway_b.y)
+	var entry_lane_id: int = int(route[entry_merge_index])
+	var exit_lane_id: int = int(route[exit_merge_index])
+	var entry_center_id: int = int(route[entry_merge_index + 1])
+	var exit_center_id: int = int(route[exit_merge_index - 1])
 
-	var center_axis: float = highway_a.y if horizontal else highway_a.x
-	var merge_axis: float = exit_merge.y if horizontal else exit_merge.x
-	var side: float = signf(merge_axis - center_axis)
-	if is_zero_approx(side):
-		return world_position
+	var entry_lane: Vector2 = Vector2(map.generator.nodes[entry_lane_id])
+	var exit_lane: Vector2 = Vector2(map.generator.nodes[exit_lane_id])
+	var entry_center: Vector2 = Vector2(map.generator.nodes[entry_center_id])
+	var exit_center: Vector2 = Vector2(map.generator.nodes[exit_center_id])
+	var horizontal: bool = _highway_is_horizontal()
 
-	var remaining_to_exit: float = (
-		absf(exit_merge.x - world_position.x)
+	var entry_side: float = signf(
+		(entry_lane.y - entry_center.y)
 		if horizontal
-		else absf(exit_merge.y - world_position.y)
+		else (entry_lane.x - entry_center.x)
 	)
-	var lane_progress: float = clampf(
-		1.0 - (
-			remaining_to_exit
-			/ HIGHWAY_EXIT_PREP_DISTANCE
-		),
-		0.0,
-		1.0
+	var exit_side: float = signf(
+		(exit_lane.y - exit_center.y)
+		if horizontal
+		else (exit_lane.x - exit_center.x)
 	)
-	var lane_offset: float = (
-		float(map.generator.HIGHWAY_LANE_SPACING)
-		* lane_progress
-		* side
-	)
+	if is_zero_approx(entry_side) or is_zero_approx(exit_side):
+		return world_position
+
+	var start_axis: float = entry_center.x if horizontal else entry_center.y
+	var end_axis: float = exit_center.x if horizontal else exit_center.y
+	var current_axis: float = world_position.x if horizontal else world_position.y
+	var denominator: float = end_axis - start_axis
+	var progress := 0.0
+	if not is_zero_approx(denominator):
+		progress = clampf(
+			(current_axis - start_axis) / denominator,
+			0.0,
+			1.0
+		)
+
+	# Stay in the entry-side outer lane, make any needed lane change through
+	# the middle of the highway, and be fully in the exit-side outer lane
+	# well before the pink exit.
+	var lane_change: float = smoothstep(0.35, 0.65, progress)
+	var side: float = lerpf(entry_side, exit_side, lane_change)
+	var offset: float = float(map.generator.HIGHWAY_LANE_SPACING) * side
 
 	if horizontal:
-		return world_position + Vector2(0.0, lane_offset)
-	return world_position + Vector2(lane_offset, 0.0)
+		return Vector2(world_position.x, entry_center.y + offset)
+	return Vector2(entry_center.x + offset, world_position.y)
 
 
-func _next_auxiliary_merge_id() -> int:
-	for future_index in range(route_index + 1, route.size()):
-		var node_id: int = int(route[future_index])
+func _ramp_display_position() -> Vector2:
+	var merge_indices: Array = _auxiliary_merge_route_indices()
+	if merge_indices.size() < 2:
+		return world_position
+
+	var entry_merge_index: int = int(merge_indices[0])
+	var exit_merge_index: int = int(merge_indices[-1])
+	var horizontal: bool = _highway_is_horizontal()
+
+	# Entry ramp: the pink lane gradually merges into the adjacent outer
+	# highway lane during the final stretch, rather than crossing lanes at
+	# the hidden graph junction.
+	if route_index < entry_merge_index:
+		var highway_end_index := entry_merge_index - 1
+		if highway_end_index < 0:
+			return world_position
+		var highway_end: Vector2 = Vector2(
+			map.generator.nodes[int(route[highway_end_index])]
+		)
+		var lane_merge: Vector2 = Vector2(
+			map.generator.nodes[int(route[entry_merge_index])]
+		)
+		var remaining: float = (
+			absf(highway_end.x - world_position.x)
+			if horizontal
+			else absf(highway_end.y - world_position.y)
+		)
+		var blend: float = clampf(
+			1.0 - remaining / LANE_MERGE_DISTANCE,
+			0.0,
+			1.0
+		)
+		if horizontal:
+			return Vector2(
+				world_position.x,
+				lerpf(world_position.y, lane_merge.y, blend)
+			)
+		return Vector2(
+			lerpf(world_position.x, lane_merge.x, blend),
+			world_position.y
+		)
+
+	# Exit ramp: start on the adjacent outer highway lane and gradually move
+	# onto the pink lane over the first stretch of the ramp.
+	if route_index > exit_merge_index:
+		var highway_end_index := exit_merge_index + 1
+		if highway_end_index >= route.size():
+			return world_position
+		var highway_end: Vector2 = Vector2(
+			map.generator.nodes[int(route[highway_end_index])]
+		)
+		var lane_merge: Vector2 = Vector2(
+			map.generator.nodes[int(route[exit_merge_index])]
+		)
+		var traveled: float = (
+			absf(world_position.x - highway_end.x)
+			if horizontal
+			else absf(world_position.y - highway_end.y)
+		)
+		var blend: float = clampf(
+			traveled / LANE_MERGE_DISTANCE,
+			0.0,
+			1.0
+		)
+		if horizontal:
+			return Vector2(
+				world_position.x,
+				lerpf(lane_merge.y, world_position.y, blend)
+			)
+		return Vector2(
+			lerpf(lane_merge.x, world_position.x, blend),
+			world_position.y
+		)
+
+	return world_position
+
+
+func _auxiliary_merge_route_indices() -> Array:
+	var indices: Array = []
+	for index in range(route.size()):
+		var node_id: int = int(route[index])
 		if map.generator.auxiliary_merge_nodes.has(node_id):
-			return node_id
-	return -1
+			indices.append(index)
+	return indices
+
+
+func _highway_is_horizontal() -> bool:
+	if map.generator.highway_nodes.size() != 2:
+		return true
+	var a: Vector2i = map.generator.nodes[
+		int(map.generator.highway_nodes[0])
+	]
+	var b: Vector2i = map.generator.nodes[
+		int(map.generator.highway_nodes[1])
+	]
+	return a.y == b.y
 
 
 func _run() -> void:
