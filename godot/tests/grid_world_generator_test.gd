@@ -99,14 +99,6 @@ func _run() -> void:
 			and not first.highway_nodes.has(node_id)
 		):
 			dead_ends += 1
-			print(
-				"UNEXPECTED DEAD END: ",
-				node_id,
-				" @ ",
-				first.nodes[node_id],
-				" connector=",
-				first.connector_nodes.has(node_id)
-			)
 	_check(
 		dead_ends == 0,
 		"Generated map contains terminal wrong-turn roads away from highway continuations"
@@ -154,6 +146,10 @@ func _run() -> void:
 		"Generated road node escaped the 500x500 world"
 	)
 
+	_check(
+		first.uses_highway,
+		"Generator did not create the independent highway system"
+	)
 	if first.uses_highway:
 		_check(
 			first.highway_nodes.size() == 2,
@@ -167,10 +163,21 @@ func _run() -> void:
 				or first_highway_a.y == first_highway_b.y,
 				"Highway endpoints are not grid-aligned"
 			)
-	else:
+			_check(
+				int(Vector2(first_highway_a).distance_to(
+					Vector2(first_highway_b)
+				))
+				== first.GRID_SIZE - first.HIGHWAY_EDGE_MARGIN * 2,
+				"Highway is not stretching across the full usable world"
+			)
+
+		var ramp_edges := 0
+		for key in first.edge_classes.keys():
+			if int(first.edge_classes[key]) == first.RoadClass.RAMP:
+				ramp_edges += 1
 		_check(
-			first.highway_nodes.is_empty(),
-			"Surface-only map still generated highway nodes"
+			ramp_edges > 0,
+			"Generator created no ramp geometry between connectors and highway"
 		)
 
 	var highway_maps: int = 0
@@ -221,8 +228,8 @@ func _run() -> void:
 		"Neighborhood and city were generated in the same corner"
 	)
 	_check(
-		highway_maps >= 22,
-		"Different-corner placement is not producing highway-heavy maps"
+		highway_maps == 24,
+		"Independent highway was not generated for every map"
 	)
 	_check(
 		highways_with_turns == 0,
