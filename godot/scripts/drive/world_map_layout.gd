@@ -119,8 +119,8 @@ static func north_surface_road() -> PackedVector2Array:
 # freeway, then converges into the rightmost freeway lane.
 static func main_onramp() -> PackedVector2Array:
 	var result := _sample_cubic(
-		Vector2(690, 555),
-		Vector2(610, 500),
+		Vector2(690, 520),
+		Vector2(615, 485),
 		Vector2(500, 500),
 		Vector2(465, 585),
 		14
