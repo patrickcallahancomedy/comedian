@@ -1,5 +1,7 @@
 extends Control
 
+signal map_generated
+
 const GENERATOR = preload("res://scripts/drive/grid_world_generator.gd")
 
 const PAGE_BG := Color(0.055, 0.06, 0.065)
@@ -51,8 +53,7 @@ func _new_map() -> void:
 
 
 func _show_whole_map() -> void:
-	show_whole_map = true
-	queue_redraw()
+	show_whole_world()
 
 
 func _show_zoom_map() -> void:
@@ -79,6 +80,16 @@ func _generate() -> void:
 	)
 
 	queue_redraw()
+	map_generated.emit()
+
+
+func show_whole_world() -> void:
+	show_whole_map = true
+	queue_redraw()
+
+
+func world_to_screen(world_point: Vector2) -> Vector2:
+	return map_origin + world_point * map_scale
 
 
 func _refresh_layout() -> void:
@@ -367,7 +378,7 @@ func _draw_point_marker(
 
 
 func _world_to_screen(world_point: Vector2) -> Vector2:
-	return map_origin + world_point * map_scale
+	return world_to_screen(world_point)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
