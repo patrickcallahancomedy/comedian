@@ -226,7 +226,12 @@ func _add_loop_connections() -> void:
 				continue
 			candidates.append([a, b, distance])
 
-	candidates.shuffle()
+	# Deterministic Fisher-Yates shuffle so the seed fully defines the map.
+	for index in range(candidates.size() - 1, 0, -1):
+		var swap_index := _rng.randi_range(0, index)
+		var temporary = candidates[index]
+		candidates[index] = candidates[swap_index]
+		candidates[swap_index] = temporary
 
 	for candidate in candidates:
 		if _rng.randf() > 0.27:
