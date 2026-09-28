@@ -243,7 +243,7 @@ func _draw_roads() -> void:
 			)
 
 	for node_id in range(generator.nodes.size()):
-		if generator.adjacency[node_id].size() < 3:
+		if _visible_degree(node_id) < 3:
 			continue
 
 		var road_class := _strongest_node_class(node_id)
@@ -275,7 +275,7 @@ func _draw_roads() -> void:
 func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
 	# The logical highway stays one graph corridor for now, but the prototype
 	# displays three drivable lanes. Pink sits one more lane-width outside.
-	var lane_spacing := 10.0
+	var lane_spacing := float(generator.HIGHWAY_LANE_SPACING)
 	var perpendicular := Vector2.ZERO
 	if is_equal_approx(start.y, finish.y):
 		perpendicular = Vector2(0.0, 1.0)
@@ -291,6 +291,24 @@ func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
 			maxf(1.0, 3.0 * map_scale),
 			true
 		)
+
+
+	for node_value in generator.auxiliary_merge_nodes:
+		var node_id: int = int(node_value)
+		draw_circle(
+			_world_to_screen(Vector2(generator.nodes[node_id])),
+			maxf(1.0, 3.0 * map_scale),
+			HIGHWAY_COLOR
+		)
+
+
+func _visible_degree(node_id: int) -> int:
+	var degree := 0
+	for neighbor_value in generator.adjacency[node_id]:
+		var neighbor: int = int(neighbor_value)
+		if generator.edge_class(node_id, neighbor) >= 0:
+			degree += 1
+	return degree
 
 
 func _strongest_node_class(node_id: int) -> int:

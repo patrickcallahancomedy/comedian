@@ -43,6 +43,7 @@ const HIGHWAY_MAX_MAJOR_NODES := 10
 const CONNECTOR_STEP := 10
 const HIGHWAY_EDGE_MARGIN := 10
 const HIGHWAY_CLEARANCE := 30
+const HIGHWAY_LANE_SPACING := 10
 const RAMP_STANDOFF := 20
 const RAMP_RUN := 100
 
@@ -60,6 +61,7 @@ var city_nodes: Array = []
 var city_grid: Array = []
 var connector_nodes: Array = []
 var highway_nodes: Array = []
+var auxiliary_merge_nodes: Array = []
 
 var neighborhood_rect := Rect2i()
 var city_rect := Rect2i()
@@ -91,6 +93,7 @@ func generate(seed_value: int) -> void:
 	city_grid.clear()
 	connector_nodes.clear()
 	highway_nodes.clear()
+	auxiliary_merge_nodes.clear()
 
 	home_node = -1
 	venue_access_node = -1
@@ -730,14 +733,17 @@ func _build_parallel_highway_access(
 ) -> Dictionary:
 	var center := Vector2i(rect.get_center())
 	var merge := Vector2i.ZERO
+	var lane_merge := Vector2i.ZERO
 	var lane_highway_end := Vector2i.ZERO
 	var lane_connector_end := Vector2i.ZERO
+	var lane_side := 1
 
 	# Pink is one auxiliary highway lane following A -> B travel.
 	# Neighborhood is the on-ramp; city is the off-ramp.
 	if horizontal_highway:
 		var highway_y: int = highway_start.y
 		var side: int = -1 if center.y < highway_y else 1
+		lane_side = side
 		var lane_y: int = highway_y + side * RAMP_STANDOFF
 		var anchor_x: int = clampi(
 			_snap_int(center.x, CONNECTOR_STEP),
@@ -762,6 +768,7 @@ func _build_parallel_highway_access(
 	else:
 		var highway_x: int = highway_start.x
 		var side: int = -1 if center.x < highway_x else 1
+		lane_side = side
 		var lane_x: int = highway_x + side * RAMP_STANDOFF
 		var anchor_y: int = clampi(
 			_snap_int(center.y, CONNECTOR_STEP),
@@ -805,8 +812,22 @@ func _build_parallel_highway_access(
 	lane_connector_end = adjusted["connector_end"]
 	merge = adjusted["merge"]
 
+	# The drivable merge point belongs to the outer red lane nearest pink,
+	# not the center routing spine.
+	if horizontal_highway:
+		lane_merge = merge + Vector2i(
+			0,
+			lane_side * HIGHWAY_LANE_SPACING
+		)
+	else:
+		lane_merge = merge + Vector2i(
+			lane_side * HIGHWAY_LANE_SPACING,
+			0
+		)
+
 	return {
 		"merge": merge,
+		"lane_merge": lane_merge,
 		"lane_highway_end": lane_highway_end,
 		"connector_target": lane_connector_end,
 	}
@@ -898,6 +919,7 @@ func _add_parallel_highway_access(access: Dictionary) -> void:
 	# The merge is a graph-only connection so the map stays visually straight.
 	var connector_end: Vector2i = access["connector_target"]
 	var highway_end: Vector2i = access["lane_highway_end"]
+	var lane_merge: Vector2i = access["lane_merge"]
 	var merge: Vector2i = access["merge"]
 
 	_add_grid_path(
@@ -907,7 +929,14 @@ func _add_parallel_highway_access(access: Dictionary) -> void:
 		CONNECTOR_STEP,
 		false
 	)
-	_add_logical_link(highway_end, merge)
+	# Pink first enters the adjacent outer red lane. The second hidden link
+	# preserves the existing single-spine highway routing graph.
+	_add_logical_link(highway_end, lane_merge)
+	_add_logical_link(lane_merge, merge)
+
+	var lane_merge_id := _node_at(lane_merge)
+	if lane_merge_id >= 0 and not auxiliary_merge_nodes.has(lane_merge_id):
+		auxiliary_merge_nodes.append(lane_merge_id)
 
 
 func _add_logical_link(start: Vector2i, finish: Vector2i) -> void:
