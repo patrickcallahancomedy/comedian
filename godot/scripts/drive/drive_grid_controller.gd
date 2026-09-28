@@ -29,7 +29,8 @@ const HIGHWAY_TRAFFIC_LANES := [2, 0, 3, 1, 2, 0]
 const HIGHWAY_TRAFFIC_START_OFFSETS_X := [24.0, 40.0, 56.0, 72.0, 88.0, 104.0]
 const HIGHWAY_TRAFFIC_APPROACH_SPEEDS := [4.0, 4.4, 4.8, 4.0, 4.4, 4.8]
 const HIGHWAY_TRAFFIC_RESPAWN_X := 108.0
-const HIGHWAY_TRAFFIC_COLLISION_X := 10.0
+const HIGHWAY_TRAFFIC_COLLISION_LENGTH_SCALE := 0.95
+const HIGHWAY_TRAFFIC_COLLISION_LATERAL := 4.2
 const HIGHWAY_TRAFFIC_SCALE := 1.0
 const HIGHWAY_COLLISION_SLOW_SECONDS := 0.8
 const HIGHWAY_COLLISION_SPEED_MULTIPLIER := 0.45
@@ -399,7 +400,7 @@ func _begin_neighborhood_step() -> void:
 	):
 		road_kind = "connector_one"
 		_stabilize_for_connector()
-		move_to = MAP.highway_entry_point()
+		move_to = MAP.highway_merge_point()
 		scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
 		motion_direction = (move_to - move_from).normalized()
 		status_label.text = "CONNECTOR"
@@ -418,6 +419,11 @@ func _begin_highway_step() -> void:
 		highway_lane = MAP.HIGHWAY_ENTRY_LANE
 		queued_highway_lane = highway_lane
 		highway_lap = 0
+		move_to = MAP.highway_entry_point()
+		scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
+		motion_direction = (move_to - move_from).normalized()
+		status_label.text = "HIGHWAY  •  EXIT LANE 4"
+		return
 
 	if highway_column >= MAP.HIGHWAY_COLUMNS - 1:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
@@ -699,12 +705,6 @@ func _update_highway_traffic(delta: float = 0.0) -> void:
 				HIGHWAY_TRAFFIC_RESPAWN_X + float(index) * 28.0
 			)
 
-		if (
-			HIGHWAY_TRAFFIC_LANES[index] == highway_lane
-			and absf(highway_traffic_offsets_x[index]) <= HIGHWAY_TRAFFIC_COLLISION_X
-		):
-			_register_highway_collision(index)
-
 		var lane_center_y := (
 			_highway_rect_for_lap(highway_lap).position.y
 			+ float(HIGHWAY_TRAFFIC_LANES[index]) * MAP.HIGHWAY_LANE_WIDTH
@@ -714,6 +714,17 @@ func _update_highway_traffic(delta: float = 0.0) -> void:
 			visual_world_position.x + highway_traffic_offsets_x[index],
 			lane_center_y
 		)
+
+		if (
+			absf(traffic_world.x - visual_world_position.x)
+				<= _highway_collision_longitudinal_distance()
+			and absf(traffic_world.y - visual_world_position.y)
+				<= HIGHWAY_TRAFFIC_COLLISION_LATERAL
+		):
+			_register_highway_collision(index)
+			traffic_world.x = (
+				visual_world_position.x + highway_traffic_offsets_x[index]
+			)
 		var screen_position := _world_to_screen(traffic_world)
 		var traffic_scale := (
 			CAR_REFERENCE_SCALE
@@ -724,6 +735,21 @@ func _update_highway_traffic(delta: float = 0.0) -> void:
 		traffic_car.scale = Vector2.ONE * traffic_scale
 		traffic_car.position = screen_position - traffic_car.size * traffic_scale * 0.5
 		traffic_car.rotation = 0.0
+
+
+func _highway_collision_longitudinal_distance() -> float:
+	var rendered_scale := (
+		CAR_REFERENCE_SCALE
+		* MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
+		* HIGHWAY_PLAYER_VISUAL_MULTIPLIER
+		* HIGHWAY_TRAFFIC_SCALE
+	)
+	var screen_car_length := player_car.size.y * rendered_scale
+	return (
+		screen_car_length
+		/ WORLD_ZOOM
+		* HIGHWAY_TRAFFIC_COLLISION_LENGTH_SCALE
+	)
 
 
 func _register_highway_collision(index: int) -> void:
@@ -748,8 +774,8 @@ func _draw() -> void:
 	_draw_neighborhood()
 
 	_draw_highway_surroundings()
-	_draw_connector_one()
 	_draw_highway()
+	_draw_connector_one()
 	_draw_city_connector()
 
 	_draw_city()
@@ -1118,21 +1144,38 @@ func _draw_terrain_patch(rect: Rect2, phase: int) -> void:
 
 
 func _draw_connector_one() -> void:
-	# Keep the logical connector length unchanged, but visually delay the merge
-	# wedge so the approach is shorter and reads like an overpass/on-ramp.
-	_draw_connector_one_highway_underlay()
+	# One coherent on-ramp model:
+	# 1) the highway visibly continues beneath the ramp,
+	# 2) the ramp reaches a real merge point at the highway edge,
+	# 3) a short acceleration segment hands directly into lane 4.
+	_draw_onramp_highway_stub()
 
-	var approach_shoulder := _connector_one_approach_points(2.5)
-	var approach_asphalt := _connector_one_approach_points(0.0)
-	_draw_world_polygon(approach_shoulder, RAMP_SHOULDER_COLOR)
-	_draw_world_polygon(approach_asphalt, RAMP_ASPHALT_COLOR)
+	var ramp_shadow := _connector_one_points(4.2)
+	_draw_world_polygon(ramp_shadow, Color(0.02, 0.025, 0.03, 0.38))
 
-	var shoulder := _connector_one_visual_points(2.5)
-	var asphalt := _connector_one_visual_points(0.0)
+	var shoulder := _connector_one_points(2.5)
+	var asphalt := _connector_one_points(0.0)
 	_draw_world_polygon(shoulder, RAMP_SHOULDER_COLOR)
 	_draw_world_polygon(asphalt, RAMP_ASPHALT_COLOR)
 	_draw_ramp_edges(asphalt, true)
 	_draw_ramp_texture(asphalt, 0)
+
+	var merge_shoulder := _connector_one_merge_points(2.5)
+	var merge_asphalt := _connector_one_merge_points(0.0)
+	_draw_world_polygon(merge_shoulder, RAMP_SHOULDER_COLOR)
+	_draw_world_polygon(merge_asphalt, RAMP_ASPHALT_COLOR)
+	_draw_world_line(
+		merge_asphalt[0],
+		merge_asphalt[1],
+		RAMP_GUIDE_COLOR,
+		1.15
+	)
+	_draw_world_line(
+		merge_asphalt[3],
+		merge_asphalt[2],
+		RAMP_EDGE_COLOR,
+		1.15
+	)
 
 
 func _draw_city_connector() -> void:
@@ -1145,64 +1188,21 @@ func _draw_city_connector() -> void:
 	_draw_ramp_texture(asphalt, 1)
 
 
-func _connector_one_visual_start_x() -> float:
-	return MAP.CONNECTOR_ONE_RECT.position.x + MAP.CONNECTOR_ONE_RECT.size.x * 0.38
-
-
-func _connector_one_approach_points(extra_width: float = 0.0) -> PackedVector2Array:
-	var rect := MAP.CONNECTOR_ONE_RECT
-	var start_center_y := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).y
-	var visual_start_x := _connector_one_visual_start_x()
-	var t := inverse_lerp(rect.position.x, rect.end.x, visual_start_x)
-	var visual_start_center_y := lerpf(
-		start_center_y,
-		MAP.highway_entry_point().y,
-		t
-	)
-	var half_width := NEIGHBORHOOD_ROAD_WIDTH * 0.5 + extra_width
-
-	return PackedVector2Array([
-		Vector2(rect.position.x, start_center_y - half_width),
-		Vector2(visual_start_x, visual_start_center_y - half_width),
-		Vector2(visual_start_x, visual_start_center_y + half_width),
-		Vector2(rect.position.x, start_center_y + half_width),
-	])
-
-
-func _connector_one_visual_points(extra_width: float = 0.0) -> PackedVector2Array:
-	var rect := MAP.CONNECTOR_ONE_RECT
-	var start_center_y := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).y
-	var end_center_y := MAP.highway_entry_point().y
-	var visual_start_x := _connector_one_visual_start_x()
-	var t := inverse_lerp(rect.position.x, rect.end.x, visual_start_x)
-	var visual_start_center_y := lerpf(start_center_y, end_center_y, t)
-	var start_half_width := NEIGHBORHOOD_ROAD_WIDTH * 0.5 + extra_width
-	var end_half_width := MAP.HIGHWAY_LANE_WIDTH * 0.5 + extra_width
-
-	return PackedVector2Array([
-		Vector2(visual_start_x, visual_start_center_y - start_half_width),
-		Vector2(rect.end.x, end_center_y - end_half_width),
-		Vector2(rect.end.x, end_center_y + end_half_width),
-		Vector2(visual_start_x, visual_start_center_y + start_half_width),
-	])
-
-
-func _draw_connector_one_highway_underlay() -> void:
-	var connector_rect := MAP.CONNECTOR_ONE_RECT
+func _draw_onramp_highway_stub() -> void:
 	var highway_rect := MAP.HIGHWAY_RECT
-	var underlay_start_x := _connector_one_visual_start_x() - 12.0
-	var underlay_rect := Rect2(
-		Vector2(underlay_start_x, highway_rect.position.y),
-		Vector2(connector_rect.end.x - underlay_start_x, highway_rect.size.y)
+	var stub_start_x := MAP.highway_merge_point().x - 50.0
+	var stub := Rect2(
+		Vector2(stub_start_x, highway_rect.position.y),
+		Vector2(highway_rect.position.x - stub_start_x, highway_rect.size.y)
 	)
 
 	for lane in range(MAP.HIGHWAY_LANES):
 		var lane_rect := Rect2(
 			Vector2(
-				underlay_rect.position.x,
-				underlay_rect.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
+				stub.position.x,
+				stub.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
 			),
-			Vector2(underlay_rect.size.x, MAP.HIGHWAY_LANE_WIDTH)
+			Vector2(stub.size.x, MAP.HIGHWAY_LANE_WIDTH)
 		)
 		var lane_color := HIGHWAY_ASPHALT_COLOR
 		if lane % 2 == 1:
@@ -1210,10 +1210,10 @@ func _draw_connector_one_highway_underlay() -> void:
 		_draw_world_rect(lane_rect, lane_color)
 
 	for lane in range(1, MAP.HIGHWAY_LANES):
-		var divider_y := underlay_rect.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
-		var dash_x := underlay_rect.position.x + 4.0
-		while dash_x < underlay_rect.end.x:
-			var dash_end := minf(dash_x + 8.0, underlay_rect.end.x)
+		var divider_y := stub.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
+		var dash_x := stub.position.x + 4.0
+		while dash_x < stub.end.x:
+			var dash_end := minf(dash_x + 8.0, stub.end.x)
 			_draw_world_line(
 				Vector2(dash_x, divider_y),
 				Vector2(dash_end, divider_y),
@@ -1223,14 +1223,14 @@ func _draw_connector_one_highway_underlay() -> void:
 			dash_x += 16.0
 
 	_draw_world_line(
-		Vector2(underlay_rect.position.x, underlay_rect.position.y + 1.2),
-		Vector2(underlay_rect.end.x, underlay_rect.position.y + 1.2),
+		Vector2(stub.position.x, stub.position.y + 1.2),
+		Vector2(stub.end.x, stub.position.y + 1.2),
 		HIGHWAY_EDGE_COLOR,
 		1.0
 	)
 	_draw_world_line(
-		Vector2(underlay_rect.position.x, underlay_rect.end.y - 1.2),
-		Vector2(underlay_rect.end.x, underlay_rect.end.y - 1.2),
+		Vector2(stub.position.x, stub.end.y - 1.2),
+		Vector2(stub.end.x, stub.end.y - 1.2),
 		HIGHWAY_EDGE_COLOR,
 		1.0
 	)
@@ -1239,7 +1239,7 @@ func _draw_connector_one_highway_underlay() -> void:
 func _connector_one_points(extra_width: float = 0.0) -> PackedVector2Array:
 	var rect := MAP.CONNECTOR_ONE_RECT
 	var start_center_y := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).y
-	var end_center_y := MAP.highway_entry_point().y
+	var end_center_y := MAP.highway_merge_point().y
 	var start_half_width := NEIGHBORHOOD_ROAD_WIDTH * 0.5 + extra_width
 	var end_half_width := MAP.HIGHWAY_LANE_WIDTH * 0.5 + extra_width
 
@@ -1248,6 +1248,21 @@ func _connector_one_points(extra_width: float = 0.0) -> PackedVector2Array:
 		Vector2(rect.end.x, end_center_y - end_half_width),
 		Vector2(rect.end.x, end_center_y + end_half_width),
 		Vector2(rect.position.x, start_center_y + start_half_width),
+	])
+
+
+func _connector_one_merge_points(
+	extra_width: float = 0.0
+) -> PackedVector2Array:
+	var start := MAP.highway_merge_point()
+	var end := MAP.highway_entry_point()
+	var half_width := MAP.HIGHWAY_LANE_WIDTH * 0.5 + extra_width
+
+	return PackedVector2Array([
+		Vector2(start.x, start.y - half_width),
+		Vector2(end.x, end.y - half_width),
+		Vector2(end.x, end.y + half_width),
+		Vector2(start.x, start.y + half_width),
 	])
 
 
