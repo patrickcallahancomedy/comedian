@@ -867,6 +867,12 @@ func _move_auxiliary_lane_clear_of_local_grids(
 				continue
 			if not WORLD_RECT.has_point(candidate_merge):
 				continue
+			var merge_axis: int = candidate_merge.x if horizontal else candidate_merge.y
+			if (
+				merge_axis < HIGHWAY_EDGE_MARGIN
+				or merge_axis > GRID_SIZE - HIGHWAY_EDGE_MARGIN
+			):
+				continue
 			if _auxiliary_lane_overlaps_local_grid(
 				candidate_highway,
 				candidate_connector
