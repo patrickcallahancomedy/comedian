@@ -263,6 +263,14 @@ func _run() -> void:
 		"Stress pass found pink merges on the wrong highway lane"
 	)
 
+	var car_script: Script = load(
+		"res://scripts/drive/grid_world_debug_car.gd"
+	) as Script
+	_check(
+		car_script != null,
+		"Debug car script failed to parse or load"
+	)
+
 	var packed: PackedScene = load(
 		"res://scenes/drive/grid_world_prototype.tscn"
 	) as PackedScene
