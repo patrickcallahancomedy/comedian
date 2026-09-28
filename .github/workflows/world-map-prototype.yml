@@ -1,0 +1,85 @@
+name: COMEDIAN WORLD MAP PROTOTYPE
+
+on:
+  push:
+    branches:
+      - world-map-prototype
+    paths:
+      - "godot/**"
+      - ".github/workflows/world-map-prototype.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comedian-world-map-prototype
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  test-export-deploy:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout map prototype
+        uses: actions/checkout@v4
+
+      - name: Import Godot project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path godot --quit
+
+      - name: Test map continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 45s godot --headless --path godot --script res://tests/world_map_prototype_test.gd
+
+      - name: Prepare export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/"
+
+      - name: Export map-only preview
+        shell: bash
+        working-directory: godot
+        run: |
+          set -euo pipefail
+
+          # Preview only: do not commit a main-scene change to the branch.
+          sed -i 's#run/main_scene="res://scenes/drive/drive_module.tscn"#run/main_scene="res://scenes/drive/world_map_prototype.tscn"#' project.godot
+
+          rm -rf build/map
+          mkdir -p build/map
+          godot --headless --path . --export-release "Web" build/map/index.html
+          touch build/map/.nojekyll
+
+          grep -a -q "world_map_prototype.gd" build/map/index.pck
+          grep -a -q "world_map_layout.gd" build/map/index.pck
+
+          BUILD_NAME="map-${GITHUB_SHA:0:8}"
+          mv build/map/index.js "build/map/${BUILD_NAME}.js"
+          mv build/map/index.wasm "build/map/${BUILD_NAME}.wasm"
+          mv build/map/index.pck "build/map/${BUILD_NAME}.pck"
+
+          sed -i "s#src=\"index.js\"#src=\"${BUILD_NAME}.js\"#" build/map/index.html
+          sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/map/index.html
+          sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/map/index.html
+          sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/map/index.html
+
+      - name: Publish map prototype
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: godot/build/map
+          target-folder: map
+          clean: true
+          force: false
