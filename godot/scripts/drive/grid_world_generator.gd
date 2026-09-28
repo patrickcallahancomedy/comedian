@@ -145,18 +145,13 @@ func generate(seed_value: int) -> void:
 	_choose_home()
 	_choose_venue_block()
 
-	neighborhood_gateway = _closest_boundary_node(
+	var farthest_gateways: Dictionary = _farthest_boundary_pair(
 		neighborhood_grid,
-		venue_block.get_center()
+		city_grid
 	)
-	city_gateway = _closest_boundary_node(
-		city_grid,
-		Vector2i(nodes[home_node])
-	)
-
-	gateway_distance = Vector2(nodes[neighborhood_gateway]).distance_to(
-		Vector2(nodes[city_gateway])
-	)
+	neighborhood_gateway = int(farthest_gateways["neighborhood"])
+	city_gateway = int(farthest_gateways["city"])
+	gateway_distance = float(farthest_gateways["distance"])
 
 	uses_highway = gateway_distance >= HIGHWAY_MIN_GATEWAY_DISTANCE
 
@@ -540,6 +535,65 @@ func _nearest_venue_access_node() -> int:
 			best = node_id
 
 	return best
+
+
+func _farthest_boundary_pair(
+	first_grid: Array,
+	second_grid: Array
+) -> Dictionary:
+	var first_boundary: Array = _boundary_nodes(first_grid)
+	var second_boundary: Array = _boundary_nodes(second_grid)
+
+	var best_first: int = -1
+	var best_second: int = -1
+	var best_distance: float = -1.0
+
+	for first_value in first_boundary:
+		var first_id: int = int(first_value)
+		var first_position: Vector2 = Vector2(nodes[first_id])
+
+		for second_value in second_boundary:
+			var second_id: int = int(second_value)
+			var distance: float = first_position.distance_to(
+				Vector2(nodes[second_id])
+			)
+
+			if distance > best_distance:
+				best_distance = distance
+				best_first = first_id
+				best_second = second_id
+
+	return {
+		"neighborhood": best_first,
+		"city": best_second,
+		"distance": best_distance,
+	}
+
+
+func _boundary_nodes(grid: Array) -> Array:
+	var result: Array = []
+	var rows: int = grid.size()
+	if rows == 0:
+		return result
+
+	var columns: int = grid[0].size()
+
+	for row in range(rows):
+		for column in range(columns):
+			var on_boundary: bool = (
+				row == 0
+				or column == 0
+				or row == rows - 1
+				or column == columns - 1
+			)
+			if not on_boundary:
+				continue
+
+			var node_id: int = int(grid[row][column])
+			if not result.has(node_id):
+				result.append(node_id)
+
+	return result
 
 
 func _closest_boundary_node(
