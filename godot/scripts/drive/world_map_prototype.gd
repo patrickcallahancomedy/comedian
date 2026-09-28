@@ -112,15 +112,15 @@ func _draw_zone_blocks() -> void:
 
 
 func _draw_local_districts() -> void:
-	for road in LAYOUT.CITY_ROADS:
+	for road in LAYOUT.city_roads():
 		_draw_road(road, true)
 
-	for road in LAYOUT.NEIGHBORHOOD_ROADS:
+	for road in LAYOUT.neighborhood_roads():
 		_draw_road(road, false)
 
-	_draw_road(LAYOUT.NEIGHBORHOOD_FEEDER, false)
-	_draw_road(LAYOUT.CITY_ENTRY_ROAD, true)
-	_draw_road(LAYOUT.WRONG_EXIT_ROAD, false)
+	_draw_road(LAYOUT.neighborhood_feeder(), false)
+	_draw_road(LAYOUT.city_entry_road(), true)
+	_draw_road(LAYOUT.wrong_exit_road(), false)
 
 
 func _draw_road(points: PackedVector2Array, city: bool) -> void:
