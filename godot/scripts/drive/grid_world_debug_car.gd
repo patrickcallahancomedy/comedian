@@ -6,6 +6,7 @@ const SPEED_LABELS := ["1×", "10×", "100×", "MAX"]
 const CAR_COLOR := Color(1.0, 0.92, 0.08)
 const CAR_OUTLINE := Color(0.02, 0.02, 0.02)
 const CAR_RADIUS := 8.0
+const HIGHWAY_EXIT_PREP_DISTANCE := 60.0
 
 var route: Array = []
 var route_index := 0
@@ -75,8 +76,9 @@ func _draw() -> void:
 	if route.is_empty():
 		return
 
-	var screen: Vector2 = map.world_to_screen(world_position)
-	var radius := CAR_RADIUS
+	var display_position: Vector2 = _display_world_position()
+	var screen: Vector2 = map.world_to_screen(display_position)
+	var radius: float = CAR_RADIUS
 
 	draw_circle(screen, radius + 3.0, CAR_OUTLINE)
 	draw_circle(screen, radius, CAR_COLOR)
@@ -92,6 +94,71 @@ func _draw() -> void:
 		11,
 		Color.WHITE
 	)
+
+
+func _display_world_position() -> Vector2:
+	if route_index >= route.size() - 1:
+		return world_position
+
+	var current_id: int = int(route[route_index])
+	var next_id: int = int(route[route_index + 1])
+	if (
+		map.generator.edge_class(current_id, next_id)
+		!= map.generator.RoadClass.HIGHWAY
+	):
+		return world_position
+
+	var exit_merge_id: int = _next_auxiliary_merge_id()
+	if exit_merge_id < 0:
+		return world_position
+
+	var highway_a: Vector2 = Vector2(
+		map.generator.nodes[int(map.generator.highway_nodes[0])]
+	)
+	var highway_b: Vector2 = Vector2(
+		map.generator.nodes[int(map.generator.highway_nodes[1])]
+	)
+	var exit_merge: Vector2 = Vector2(
+		map.generator.nodes[exit_merge_id]
+	)
+	var horizontal: bool = is_equal_approx(highway_a.y, highway_b.y)
+
+	var center_axis: float = highway_a.y if horizontal else highway_a.x
+	var merge_axis: float = exit_merge.y if horizontal else exit_merge.x
+	var side: float = signf(merge_axis - center_axis)
+	if is_zero_approx(side):
+		return world_position
+
+	var remaining_to_exit: float = (
+		absf(exit_merge.x - world_position.x)
+		if horizontal
+		else absf(exit_merge.y - world_position.y)
+	)
+	var lane_progress: float = clampf(
+		1.0 - (
+			remaining_to_exit
+			/ HIGHWAY_EXIT_PREP_DISTANCE
+		),
+		0.0,
+		1.0
+	)
+	var lane_offset: float = (
+		float(map.generator.HIGHWAY_LANE_SPACING)
+		* lane_progress
+		* side
+	)
+
+	if horizontal:
+		return world_position + Vector2(0.0, lane_offset)
+	return world_position + Vector2(lane_offset, 0.0)
+
+
+func _next_auxiliary_merge_id() -> int:
+	for future_index in range(route_index + 1, route.size()):
+		var node_id: int = int(route[future_index])
+		if map.generator.auxiliary_merge_nodes.has(node_id):
+			return node_id
+	return -1
 
 
 func _run() -> void:
