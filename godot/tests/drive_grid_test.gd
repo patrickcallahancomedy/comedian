@@ -1,6 +1,7 @@
 extends SceneTree
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
+const ROAD_NETWORK = preload("res://scripts/drive/drive_road_network.gd")
 
 var failures: Array[String] = []
 
@@ -136,14 +137,27 @@ func _run() -> void:
 		"Basic neighborhood road styling is missing"
 	)
 
-	var on_ramp_points: PackedVector2Array = drive._connector_one_points()
-	_check(on_ramp_points.size() == 4, "On-ramp is not a four-point wedge")
-	if on_ramp_points.size() == 4:
-		var on_ramp_end_width := on_ramp_points[2].y - on_ramp_points[1].y
+	var on_ramp_points: PackedVector2Array = ROAD_NETWORK.onramp_centerline()
+	_check(on_ramp_points.size() >= 7, "Continuous on-ramp does not have enough curve samples")
+	if on_ramp_points.size() >= 2:
 		_check(
-			is_equal_approx(on_ramp_end_width, float(MAP.HIGHWAY_LANE_WIDTH)),
-			"On-ramp does not finish at one highway-lane width"
+			on_ramp_points[0] == ROAD_NETWORK.neighborhood_gate_edge_point(),
+			"On-ramp centerline does not begin at the neighborhood gate edge"
 		)
+		_check(
+			on_ramp_points[on_ramp_points.size() - 1]
+				== ROAD_NETWORK.highway_lane_edge_point(),
+			"On-ramp centerline does not finish at the highway lane edge"
+		)
+		_check(
+			on_ramp_points[0].y > MAP.HIGHWAY_RECT.end.y,
+			"Highway is not physically separated from the neighborhood ramp"
+		)
+		for point_index in range(1, on_ramp_points.size()):
+			_check(
+				on_ramp_points[point_index].x > on_ramp_points[point_index - 1].x,
+				"On-ramp centerline doubles back instead of progressing toward highway"
+			)
 
 	var off_ramp_points: PackedVector2Array = drive._connector_two_points()
 	_check(off_ramp_points.size() == 4, "Off-ramp is not a four-point wedge")
@@ -341,13 +355,21 @@ func _run() -> void:
 	drive.scale_from = 1.0
 	drive._begin_neighborhood_step()
 	_check(drive.road_kind == "connector_one", "Outside gate did not enter connector")
+	var live_onramp: PackedVector2Array = ROAD_NETWORK.onramp_centerline()
+	_check(
+		drive.move_to == live_onramp[0],
+		"Driving does not enter the same on-ramp centerline that is rendered"
+	)
 	if navigation != null:
 		navigation._update_status_visibility()
 		_check(
 			not drive.status_label.visible,
 			"Legacy CONNECTOR label is visible behind GPS banner"
 		)
-	_check(is_equal_approx(drive.scale_to, 0.5), "First connector does not scale toward highway")
+	_check(
+		is_equal_approx(drive.scale_to, 1.0),
+		"Car shrinks before it has actually entered the on-ramp"
+	)
 	_check(
 		is_equal_approx(
 			drive._current_world_speed(),
@@ -373,17 +395,39 @@ func _run() -> void:
 		"On-ramp does not reach highway speed"
 	)
 
-	# Connector hands directly to the four-lane highway.
-	drive.visual_world_position = MAP.highway_entry_point()
-	drive.visual_cell_scale = 0.5
+	# Movement traverses every sample of the exact rendered centerline.
+	for path_index in range(1, live_onramp.size()):
+		drive.visual_world_position = drive.move_to
+		drive.visual_cell_scale = drive.scale_to
+		drive.move_from = drive.visual_world_position
+		drive.scale_from = drive.visual_cell_scale
+		drive._begin_connector_one_step()
+		_check(
+			drive.move_to == live_onramp[path_index],
+			"Connector movement diverged from the rendered on-ramp centerline"
+		)
+
+	_check(
+		is_equal_approx(drive.scale_to, 0.5),
+		"Car does not reach highway scale at the end of the on-ramp"
+	)
+
+	# From the lane edge, the same continuous motion carries the car into the
+	# center of the rightmost highway lane.
+	drive.visual_world_position = drive.move_to
+	drive.visual_cell_scale = drive.scale_to
 	drive.move_from = drive.visual_world_position
-	drive.scale_from = 0.5
-	drive._begin_highway_step()
+	drive.scale_from = drive.visual_cell_scale
+	drive._begin_connector_one_step()
 	_check(drive.road_kind == "highway", "Connector did not enter highway")
 	_check(
 		drive.highway_lane == MAP.HIGHWAY_ENTRY_LANE
 		and drive.highway_lane == MAP.HIGHWAY_LANES - 1,
 		"On-ramp does not merge directly into the rightmost lane"
+	)
+	_check(
+		drive.move_to == MAP.highway_entry_point(),
+		"On-ramp does not continue naturally into lane 4 center"
 	)
 	drive.road_kind = "connector_one"
 	drive.steering_feedback = 1.0
