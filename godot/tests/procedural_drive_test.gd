@@ -70,6 +70,7 @@ func _run() -> void:
 	world.current_edge_class = world.generator.RoadClass.HIGHWAY
 	world.segment_start = Vector2(world.generator.nodes[highway_a])
 	world.segment_end = Vector2(world.generator.nodes[highway_b])
+	world.heading = world._direction_between(highway_a, highway_b)
 	world.visual_world_position = world.segment_start
 	world.segment_progress = 1.0
 	world.highway_lane = 1
