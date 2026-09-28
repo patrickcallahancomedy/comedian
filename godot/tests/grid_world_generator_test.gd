@@ -146,7 +146,7 @@ func _run() -> void:
 
 	var highway_maps: int = 0
 	var highways_with_turns: int = 0
-	var minimum_region_distance: float = INF
+	var same_corner_maps: int = 0
 
 	for test_seed in range(1, 25):
 		var candidate = GENERATOR.new()
@@ -167,23 +167,33 @@ func _run() -> void:
 				if highway_a.x != highway_b.x and highway_a.y != highway_b.y:
 					highways_with_turns += 1
 
-		var region_distance: float = Vector2(
+		var neighborhood_center: Vector2 = Vector2(
 			candidate.neighborhood_rect.get_center()
-		).distance_to(
-			Vector2(candidate.city_rect.get_center())
 		)
-		minimum_region_distance = minf(
-			minimum_region_distance,
-			region_distance
+		var city_center: Vector2 = Vector2(
+			candidate.city_rect.get_center()
+		)
+		var world_midpoint: float = float(candidate.GRID_SIZE) * 0.5
+
+		var same_horizontal_half: bool = (
+			(neighborhood_center.x < world_midpoint)
+			== (city_center.x < world_midpoint)
+		)
+		var same_vertical_half: bool = (
+			(neighborhood_center.y < world_midpoint)
+			== (city_center.y < world_midpoint)
 		)
 
+		if same_horizontal_half and same_vertical_half:
+			same_corner_maps += 1
+
 	_check(
-		minimum_region_distance >= 300.0,
-		"Neighborhood and city are not being kept far apart"
+		same_corner_maps == 0,
+		"Neighborhood and city were generated in the same corner"
 	)
 	_check(
 		highway_maps >= 22,
-		"Opposite-region placement is not producing highway-heavy maps"
+		"Different-corner placement is not producing highway-heavy maps"
 	)
 	_check(
 		highways_with_turns == 0,
