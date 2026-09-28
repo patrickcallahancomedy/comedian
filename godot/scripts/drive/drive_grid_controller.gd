@@ -29,7 +29,7 @@ const HIGHWAY_TRAFFIC_LANES := [2, 0, 3, 1, 2, 0]
 const HIGHWAY_TRAFFIC_START_OFFSETS_X := [24.0, 40.0, 56.0, 72.0, 88.0, 104.0]
 const HIGHWAY_TRAFFIC_APPROACH_SPEEDS := [4.0, 4.4, 4.8, 4.0, 4.4, 4.8]
 const HIGHWAY_TRAFFIC_RESPAWN_X := 108.0
-const HIGHWAY_TRAFFIC_COLLISION_X := 7.0
+const HIGHWAY_TRAFFIC_COLLISION_X := 10.0
 const HIGHWAY_TRAFFIC_SCALE := 1.0
 const HIGHWAY_COLLISION_SLOW_SECONDS := 0.8
 const HIGHWAY_COLLISION_SPEED_MULTIPLIER := 0.45
@@ -1143,7 +1143,7 @@ func _connector_one_points(extra_width: float = 0.0) -> PackedVector2Array:
 	var start_center_y := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).y
 	var end_center_y := MAP.highway_entry_point().y
 	var start_half_width := NEIGHBORHOOD_ROAD_WIDTH * 0.5 + extra_width
-	var end_half_width := 14.0 + extra_width
+	var end_half_width := MAP.HIGHWAY_LANE_WIDTH * 0.5 + extra_width
 
 	return PackedVector2Array([
 		Vector2(rect.position.x, start_center_y - start_half_width),
