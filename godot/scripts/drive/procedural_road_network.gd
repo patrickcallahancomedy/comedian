@@ -11,20 +11,35 @@ extends RefCounted
 ## It is still one graph. The zones only influence spacing and direction.
 ## Visible roads are baked as flowing strands after the graph is complete.
 
-const WORLD_RECT := Rect2(70.0, 70.0, 1060.0, 1360.0)
+const WORLD_RECT := Rect2(70.0, 70.0, 1400.0, 2000.0)
 
-const START_DISTRICT_RECT := Rect2(565.0, 1080.0, 430.0, 285.0)
-const END_DISTRICT_RECT := Rect2(145.0, 125.0, 430.0, 285.0)
-const MIDDLE_RECT := Rect2(220.0, 390.0, 760.0, 720.0)
+# Density is the hierarchy. These are not separate gameplay modules.
+# They are three densities inside one connected road graph.
+const NEIGHBORHOOD_INTERSECTIONS := 100
+const CITY_INTERSECTIONS := 50
+const MIDDLE_INTERSECTIONS := 10
+const TARGET_NODE_COUNT := (
+	NEIGHBORHOOD_INTERSECTIONS
+	+ CITY_INTERSECTIONS
+	+ MIDDLE_INTERSECTIONS
+)
 
-const DISTRICT_ROWS := 4
-const DISTRICT_COLUMNS := 5
-const DISTRICT_JITTER := 18.0
-const DISTRICT_EDGE_KEEP_CHANCE := 0.82
+const START_DISTRICT_RECT := Rect2(760.0, 1430.0, 610.0, 520.0)
+const END_DISTRICT_RECT := Rect2(100.0, 120.0, 700.0, 520.0)
+const MIDDLE_RECT := Rect2(230.0, 590.0, 1120.0, 800.0)
 
-const TARGET_NODE_COUNT := 62
-const MIDDLE_CANDIDATES := 24
-const MIDDLE_MIN_SPACING := 125.0
+const NEIGHBORHOOD_ROWS := 10
+const NEIGHBORHOOD_COLUMNS := 10
+const CITY_ROWS := 5
+const CITY_COLUMNS := 10
+
+const NEIGHBORHOOD_JITTER := 13.0
+const CITY_JITTER := 22.0
+const NEIGHBORHOOD_EDGE_KEEP_CHANCE := 0.72
+const CITY_EDGE_KEEP_CHANCE := 0.62
+
+const MIDDLE_CANDIDATES := 28
+const MIDDLE_MIN_SPACING := 185.0
 
 const MAX_DEGREE := 4
 const LOOP_SEARCH_DISTANCE := 300.0
@@ -61,19 +76,33 @@ func generate(seed_value: int, target_nodes: int = TARGET_NODE_COUNT) -> void:
 
 	start_zone_nodes = _generate_district(
 		START_DISTRICT_RECT,
-		deg_to_rad(_rng.randf_range(-9.0, 9.0))
+		NEIGHBORHOOD_ROWS,
+		NEIGHBORHOOD_COLUMNS,
+		NEIGHBORHOOD_JITTER,
+		deg_to_rad(_rng.randf_range(-7.0, 7.0))
 	)
 	end_zone_nodes = _generate_district(
 		END_DISTRICT_RECT,
-		deg_to_rad(_rng.randf_range(-9.0, 9.0))
+		CITY_ROWS,
+		CITY_COLUMNS,
+		CITY_JITTER,
+		deg_to_rad(_rng.randf_range(-11.0, 11.0))
 	)
 
-	var dense_count := start_zone_nodes.size() + end_zone_nodes.size()
-	var middle_target := maxi(12, target_nodes - dense_count)
-	middle_zone_nodes = _generate_middle_points(middle_target)
+	middle_zone_nodes = _generate_middle_points(MIDDLE_INTERSECTIONS)
 
-	_connect_district(start_zone_nodes)
-	_connect_district(end_zone_nodes)
+	_connect_district(
+		start_zone_nodes,
+		NEIGHBORHOOD_ROWS,
+		NEIGHBORHOOD_COLUMNS,
+		NEIGHBORHOOD_EDGE_KEEP_CHANCE
+	)
+	_connect_district(
+		end_zone_nodes,
+		CITY_ROWS,
+		CITY_COLUMNS,
+		CITY_EDGE_KEEP_CHANCE
+	)
 	_connect_middle()
 	_connect_zone_to_middle(start_zone_nodes, 3)
 	_connect_zone_to_middle(end_zone_nodes, 3)
@@ -168,15 +197,21 @@ func shortest_path(from_id: int, to_id: int) -> Array:
 	return path
 
 
-func _generate_district(rect: Rect2, rotation: float) -> Array:
+func _generate_district(
+	rect: Rect2,
+	rows: int,
+	columns: int,
+	jitter: float,
+	rotation: float
+) -> Array:
 	var result: Array = []
-	var center := rect.get_center()
+	var center: Vector2 = rect.get_center()
 
-	var x_spacing := rect.size.x / float(DISTRICT_COLUMNS - 1)
-	var y_spacing := rect.size.y / float(DISTRICT_ROWS - 1)
+	var x_spacing: float = rect.size.x / float(columns - 1)
+	var y_spacing: float = rect.size.y / float(rows - 1)
 
-	for row in range(DISTRICT_ROWS):
-		for column in range(DISTRICT_COLUMNS):
+	for row in range(rows):
+		for column in range(columns):
 			var point := Vector2(
 				rect.position.x + float(column) * x_spacing,
 				rect.position.y + float(row) * y_spacing
@@ -187,8 +222,8 @@ func _generate_district(rect: Rect2, rotation: float) -> Array:
 			point += center
 
 			point += Vector2(
-				_rng.randf_range(-DISTRICT_JITTER, DISTRICT_JITTER),
-				_rng.randf_range(-DISTRICT_JITTER, DISTRICT_JITTER)
+				_rng.randf_range(-jitter, jitter),
+				_rng.randf_range(-jitter, jitter)
 			)
 
 			point.x = clampf(
@@ -243,38 +278,38 @@ func _generate_middle_points(count: int) -> Array:
 	return result
 
 
-func _connect_district(zone_nodes: Array) -> void:
-	for row in range(DISTRICT_ROWS):
-		for column in range(DISTRICT_COLUMNS):
+func _connect_district(
+	zone_nodes: Array,
+	rows: int,
+	columns: int,
+	keep_chance: float
+) -> void:
+	for row in range(rows):
+		for column in range(columns):
 			var node_id: int = int(
-				zone_nodes[row * DISTRICT_COLUMNS + column]
+				zone_nodes[row * columns + column]
 			)
 
-			if column < DISTRICT_COLUMNS - 1:
+			if column < columns - 1:
 				var right_id: int = int(
-					zone_nodes[
-						row * DISTRICT_COLUMNS + column + 1
-					]
+					zone_nodes[row * columns + column + 1]
 				)
-				# Horizontal continuity is strong; occasional gaps keep the
-				# area from reading like a perfect city-builder grid.
-				if (
-					_rng.randf() <= DISTRICT_EDGE_KEEP_CHANCE
-					or row == 1
-					or row == DISTRICT_ROWS - 2
-				):
-					_add_edge(node_id, right_id)
+				# Every row remains a continuous street. The density difference
+				# comes from block spacing and how many cross streets survive.
+				_add_edge(node_id, right_id)
 
-			if row < DISTRICT_ROWS - 1:
+			if row < rows - 1:
 				var down_id: int = int(
-					zone_nodes[
-						(row + 1) * DISTRICT_COLUMNS + column
-					]
+					zone_nodes[(row + 1) * columns + column]
+				)
+
+				var guaranteed_cross_street := (
+					column == 1
+					or column == columns - 2
 				)
 				if (
-					_rng.randf() <= DISTRICT_EDGE_KEEP_CHANCE
-					or column == 1
-					or column == DISTRICT_COLUMNS - 2
+					guaranteed_cross_street
+					or _rng.randf() <= keep_chance
 				):
 					_add_edge(node_id, down_id)
 
