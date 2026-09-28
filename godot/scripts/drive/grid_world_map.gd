@@ -18,6 +18,7 @@ const VENUE_FILL := Color(0.47, 0.20, 0.11, 0.88)
 const TOP_MARGIN := 64.0
 const SIDE_MARGIN := 14.0
 const BOTTOM_MARGIN := 92.0
+const VISIBLE_NEIGHBORHOOD_BLOCKS := 2.0
 
 @export var world_seed: int = 0
 
@@ -102,23 +103,24 @@ func _update_transform() -> void:
 		1.0,
 		size.y - TOP_MARGIN - BOTTOM_MARGIN
 	)
-	var available := minf(
-		available_width,
-		available_height
+
+	# Scale study only: keep the exact generated world, but magnify it until
+	# roughly two neighborhood blocks span the playable width.
+	var visible_world_width := (
+		float(generator.NEIGHBORHOOD_SPACING)
+		* VISIBLE_NEIGHBORHOOD_BLOCKS
+	)
+	map_scale = available_width / visible_world_width
+
+	var viewport_center := Vector2(
+		size.x * 0.5,
+		TOP_MARGIN + available_height * 0.5
+	)
+	var home_world := Vector2(
+		generator.nodes[generator.home_node]
 	)
 
-	map_scale = available / float(generator.GRID_SIZE)
-
-	var map_size := Vector2.ONE * (
-		float(generator.GRID_SIZE) * map_scale
-	)
-
-	map_origin = Vector2(
-		(size.x - map_size.x) * 0.5,
-		TOP_MARGIN + (
-			available_height - map_size.y
-		) * 0.5
-	)
+	map_origin = viewport_center - home_world * map_scale
 
 
 func _draw_grid() -> void:
