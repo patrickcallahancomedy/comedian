@@ -82,7 +82,7 @@ func _run() -> void:
 		"Generated road systems are not one connected graph"
 	)
 
-	var dead_ends := 0
+	var dead_ends: int = 0
 	for node_id in range(first.nodes.size()):
 		if first.adjacency[node_id].size() < 2:
 			dead_ends += 1
@@ -91,7 +91,7 @@ func _run() -> void:
 		"Generated map contains terminal wrong-turn roads"
 	)
 
-	var off_grid_edges := 0
+	var off_grid_edges: int = 0
 	for a in range(first.nodes.size()):
 		for b_value in first.adjacency[a]:
 			var b: int = int(b_value)
@@ -109,7 +109,7 @@ func _run() -> void:
 		"Road generator produced non-grid road geometry"
 	)
 
-	var outside_world := 0
+	var outside_world: int = 0
 	for point_value in first.nodes:
 		var point: Vector2i = point_value
 		if (
@@ -137,8 +137,8 @@ func _run() -> void:
 			"Surface-only map still generated highway nodes"
 		)
 
-	var found_highway := first.uses_highway
-	var found_surface := not first.uses_highway
+	var found_highway: bool = bool(first.uses_highway)
+	var found_surface: bool = not bool(first.uses_highway)
 
 	for test_seed in range(1, 25):
 		if found_highway and found_surface:
@@ -159,7 +159,7 @@ func _run() -> void:
 		"Generator never produced a close A/B surface-only trip"
 	)
 
-	var packed := load(
+	var packed: PackedScene = load(
 		"res://scenes/drive/grid_world_prototype.tscn"
 	) as PackedScene
 	_check(
@@ -168,7 +168,7 @@ func _run() -> void:
 	)
 
 	if packed != null:
-		var scene := packed.instantiate()
+		var scene: Node = packed.instantiate()
 		root.add_child(scene)
 
 		_check(
@@ -186,21 +186,21 @@ func _run() -> void:
 
 
 func _venue_block_has_four_road_sides(network) -> bool:
-	var top_left := network.venue_block.position
-	var top_right := (
+	var top_left: Vector2i = network.venue_block.position
+	var top_right: Vector2i = (
 		network.venue_block.position
 		+ Vector2i(network.venue_block.size.x, 0)
 	)
-	var bottom_left := (
+	var bottom_left: Vector2i = (
 		network.venue_block.position
 		+ Vector2i(0, network.venue_block.size.y)
 	)
-	var bottom_right := network.venue_block.end
+	var bottom_right: Vector2i = network.venue_block.end
 
-	var tl := _find_node(network, top_left)
-	var tr := _find_node(network, top_right)
-	var bl := _find_node(network, bottom_left)
-	var br := _find_node(network, bottom_right)
+	var tl: int = _find_node(network, top_left)
+	var tr: int = _find_node(network, top_right)
+	var bl: int = _find_node(network, bottom_left)
+	var br: int = _find_node(network, bottom_right)
 
 	if tl < 0 or tr < 0 or bl < 0 or br < 0:
 		return false
