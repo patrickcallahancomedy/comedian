@@ -1291,6 +1291,7 @@ func _draw_highway_for_lap(lap: int) -> void:
 		_draw_world_rect(lane_rect, lane_color)
 
 	var shoulder_width := 2.2
+	var exit_shoulder_width := 1.2
 	_draw_world_rect(
 		Rect2(
 			rect.position,
@@ -1300,8 +1301,8 @@ func _draw_highway_for_lap(lap: int) -> void:
 	)
 	_draw_world_rect(
 		Rect2(
-			Vector2(rect.position.x, rect.end.y - shoulder_width),
-			Vector2(rect.size.x, shoulder_width)
+			Vector2(rect.position.x, rect.end.y - exit_shoulder_width),
+			Vector2(rect.size.x, exit_shoulder_width)
 		),
 		HIGHWAY_SHOULDER_COLOR
 	)
@@ -1344,8 +1345,8 @@ func _draw_highway_for_lap(lap: int) -> void:
 		1.15
 	)
 	_draw_world_line(
-		Vector2(rect.position.x, rect.end.y - shoulder_width),
-		Vector2(rect.end.x, rect.end.y - shoulder_width),
+		Vector2(rect.position.x, rect.end.y - exit_shoulder_width),
+		Vector2(rect.end.x, rect.end.y - exit_shoulder_width),
 		HIGHWAY_EDGE_COLOR,
 		1.15
 	)
