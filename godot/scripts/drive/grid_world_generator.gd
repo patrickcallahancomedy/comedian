@@ -599,12 +599,34 @@ func _generate_highway_connection() -> void:
 
 	if dominant_horizontal:
 		var direction_x := 1 if delta.x >= 0 else -1
-		entry.x += direction_x * 30
-		exit.x -= direction_x * 30
+		var highway_y: int = _snap_int(
+			int(round((float(start.y) + float(finish.y)) * 0.5)),
+			20
+		)
+
+		entry = Vector2i(
+			start.x + direction_x * 30,
+			highway_y
+		)
+		exit = Vector2i(
+			finish.x - direction_x * 30,
+			highway_y
+		)
 	else:
 		var direction_y := 1 if delta.y >= 0 else -1
-		entry.y += direction_y * 30
-		exit.y -= direction_y * 30
+		var highway_x: int = _snap_int(
+			int(round((float(start.x) + float(finish.x)) * 0.5)),
+			20
+		)
+
+		entry = Vector2i(
+			highway_x,
+			start.y + direction_y * 30
+		)
+		exit = Vector2i(
+			highway_x,
+			finish.y - direction_y * 30
+		)
 
 	entry = _clamp_to_world(_snap_point(entry, CONNECTOR_STEP))
 	exit = _clamp_to_world(_snap_point(exit, CONNECTOR_STEP))
@@ -624,112 +646,19 @@ func _generate_highway_connection() -> void:
 		true
 	)
 
-	var highway_path := _build_sparse_highway_path(
-		entry,
-		exit
-	)
+	# Highway is one uninterrupted straight run. Any turns required to reach
+	# it belong to the connectors, not the highway itself.
+	var entry_id: int = _add_node(entry)
+	var exit_id: int = _add_node(exit)
 
-	var previous_id := -1
-
-	for point_value in highway_path:
-		var point := Vector2i(point_value)
-		var node_id := _add_node(point)
-
-		if not highway_nodes.has(node_id):
-			highway_nodes.append(node_id)
-
-		if previous_id >= 0:
-			_add_edge(
-				previous_id,
-				node_id,
-				RoadClass.HIGHWAY
-			)
-
-		previous_id = node_id
-
-
-func _build_sparse_highway_path(
-	start: Vector2i,
-	finish: Vector2i
-) -> Array:
-	var result: Array = [start]
-	var delta := finish - start
-	var dominant_horizontal: bool = abs(delta.x) >= abs(delta.y)
-
-	var distance := Vector2(start).distance_to(Vector2(finish))
-	var major_sections := clampi(
-		int(round(distance / 75.0)),
-		2,
-		4
-	)
-
-	var current := start
-
-	for section in range(1, major_sections):
-		var t := float(section) / float(major_sections)
-		var target := Vector2i(
-			_snap_int(
-				int(round(lerpf(
-					float(start.x),
-					float(finish.x),
-					t
-				))),
-				20
-			),
-			_snap_int(
-				int(round(lerpf(
-					float(start.y),
-					float(finish.y),
-					t
-				))),
-				20
-			)
+	highway_nodes.append(entry_id)
+	if exit_id != entry_id:
+		highway_nodes.append(exit_id)
+		_add_edge(
+			entry_id,
+			exit_id,
+			RoadClass.HIGHWAY
 		)
-
-		# The best corridor stays broadly monotonic, but the few major
-		# junctions can shift one coarse grid line to keep layouts varied.
-		if dominant_horizontal:
-			target.y += _rng.randi_range(-1, 1) * 20
-			target.y = clampi(
-				target.y,
-				WORLD_MARGIN,
-				GRID_SIZE - WORLD_MARGIN
-			)
-
-			var bend := Vector2i(target.x, current.y)
-			_append_unique_point(result, bend)
-			_append_unique_point(result, target)
-		else:
-			target.x += _rng.randi_range(-1, 1) * 20
-			target.x = clampi(
-				target.x,
-				WORLD_MARGIN,
-				GRID_SIZE - WORLD_MARGIN
-			)
-
-			var bend := Vector2i(current.x, target.y)
-			_append_unique_point(result, bend)
-			_append_unique_point(result, target)
-
-		current = target
-
-	if dominant_horizontal:
-		_append_unique_point(
-			result,
-			Vector2i(finish.x, current.y)
-		)
-	else:
-		_append_unique_point(
-			result,
-			Vector2i(current.x, finish.y)
-		)
-
-	_append_unique_point(result, finish)
-
-	while result.size() > HIGHWAY_MAX_MAJOR_NODES:
-		result.remove_at(result.size() - 2)
-
-	return result
 
 
 func _add_grid_path(
