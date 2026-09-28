@@ -280,8 +280,20 @@ func _run() -> void:
 			"Map prototype has no map node"
 		)
 		_check(
-			scene.find_child("PlayerCar", true, false) == null,
-			"Map-only prototype unexpectedly contains a player car"
+			scene.get_node_or_null("DebugCar") != null,
+			"Grid world prototype has no debug car layer"
+		)
+		_check(
+			scene.get_node_or_null("DriveBox/Layout/RunButton") != null,
+			"Grid world prototype has no RUN control"
+		)
+		_check(
+			scene.get_node_or_null("DriveBox/Layout/ResetButton") != null,
+			"Grid world prototype has no RESET control"
+		)
+		_check(
+			scene.get_node_or_null("DriveBox/Layout/SpeedButton") != null,
+			"Grid world prototype has no SPEED control"
 		)
 
 		scene.free()
