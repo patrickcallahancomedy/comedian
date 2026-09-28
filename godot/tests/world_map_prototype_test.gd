@@ -12,43 +12,53 @@ func _initialize() -> void:
 func _run() -> void:
 	print("WORLD MAP PROTOTYPE TEST START")
 
+	var westbound := LAYOUT.westbound_highway()
+	var eastbound := LAYOUT.eastbound_highway()
+	var overpass := LAYOUT.overpass_arterial()
+	var collector := LAYOUT.neighborhood_collector()
 	var ramp := LAYOUT.main_onramp()
 	var city_exit := LAYOUT.city_exit()
 	var wrong_exit := LAYOUT.wrong_exit()
-
-	_check(ramp.size() >= 20, "Main overpass curve is undersampled")
-	_check(city_exit.size() >= 8, "City exit curve is undersampled")
-	_check(wrong_exit.size() >= 8, "Wrong exit curve is undersampled")
-
-	var feeder := LAYOUT.neighborhood_feeder()
-	_check(
-		feeder[feeder.size() - 1].distance_to(ramp[0]) < 0.1,
-		"Neighborhood feeder does not physically meet the overpass"
-	)
-
-	var ramp_end := ramp[ramp.size() - 1]
-	_check(
-		LAYOUT.WESTBOUND_HIGHWAY.has_point(ramp_end),
-		"Main overpass does not physically merge into westbound highway"
-	)
-
-	var city_exit_start := city_exit[0]
-	_check(
-		LAYOUT.WESTBOUND_HIGHWAY.has_point(city_exit_start),
-		"Correct city exit does not branch from the highway"
-	)
-	var city_entry := LAYOUT.city_entry_road()
-	_check(
-		city_exit[city_exit.size() - 1].distance_to(city_entry[0]) < 0.1,
-		"Correct highway exit does not physically reach the city road"
-	)
-
-	var wrong_exit_start := wrong_exit[0]
-	_check(
-		LAYOUT.WESTBOUND_HIGHWAY.has_point(wrong_exit_start),
-		"Wrong exit does not branch from the physical highway"
-	)
+	var city_roads: Array = LAYOUT.city_roads()
 	var wrong_road := LAYOUT.wrong_exit_road()
+
+	_check(westbound.size() >= 40, "Westbound highway is undersampled")
+	_check(eastbound.size() == westbound.size(), "Divided highway paths disagree")
+	_check(overpass.size() >= 16, "Overpass is undersampled")
+	_check(ramp.size() >= 30, "Main on-ramp is undersampled")
+	_check(city_exit.size() >= 18, "City exit is undersampled")
+	_check(wrong_exit.size() >= 14, "Wrong exit is undersampled")
+
+	_check(
+		collector[collector.size() - 1].distance_to(overpass[0]) < 0.1,
+		"Neighborhood collector does not physically meet the overpass"
+	)
+
+	_check(
+		_min_point_distance(ramp[0], overpass) < 8.0,
+		"On-ramp does not branch from the physical overpass"
+	)
+
+	_check(
+		_min_point_distance(ramp[ramp.size() - 1], westbound) < 18.0,
+		"On-ramp does not merge alongside the westbound freeway"
+	)
+
+	_check(
+		_min_point_distance(city_exit[0], westbound) < 18.0,
+		"Correct city exit does not branch from the freeway"
+	)
+
+	var city_arterial: PackedVector2Array = city_roads[0]
+	_check(
+		city_exit[city_exit.size() - 1].distance_to(city_arterial[0]) < 0.1,
+		"Correct city exit does not physically reach the city arterial"
+	)
+
+	_check(
+		_min_point_distance(wrong_exit[0], westbound) < 18.0,
+		"Wrong exit does not branch from the physical freeway"
+	)
 	_check(
 		wrong_exit[wrong_exit.size() - 1].distance_to(wrong_road[0]) < 0.1,
 		"Wrong exit does not lead to its own physical road"
@@ -76,6 +86,13 @@ func _run() -> void:
 		scene.free()
 
 	_finish()
+
+
+func _min_point_distance(point: Vector2, path: PackedVector2Array) -> float:
+	var result := INF
+	for candidate in path:
+		result = minf(result, point.distance_to(candidate))
+	return result
 
 
 func _check(condition: bool, message: String) -> void:
