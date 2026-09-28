@@ -92,29 +92,7 @@ func _run() -> void:
 		"Generated road systems are not one connected graph"
 	)
 
-	var dead_ends: int = 0
-	for node_id in range(first.nodes.size()):
-		if (
-			first.adjacency[node_id].size() < 2
-			and not first.highway_nodes.has(node_id)
-		):
-			dead_ends += 1
-			var neighbor_details: Array = []
-			for neighbor_value in first.adjacency[node_id]:
-				var neighbor: int = int(neighbor_value)
-				neighbor_details.append({
-					"id": neighbor,
-					"pos": first.nodes[neighbor],
-					"class": first.edge_class(node_id, neighbor),
-				})
-			print(
-				"DEAD END: id=", node_id,
-				" pos=", first.nodes[node_id],
-				" details=", neighbor_details,
-				" highway=", first.highway_nodes.has(node_id),
-				" connector=", first.connector_nodes.has(node_id),
-				" aux_merge=", first.auxiliary_merge_nodes.has(node_id)
-			)
+	var dead_ends: int = _count_non_highway_dead_ends(first)
 	_check(
 		dead_ends == 0,
 		"Generated map contains terminal wrong-turn roads away from highway continuations"
@@ -199,8 +177,13 @@ func _run() -> void:
 	var highway_maps: int = 0
 	var highways_with_turns: int = 0
 	var same_corner_maps: int = 0
+	var disconnected_maps: int = 0
+	var maps_with_dead_ends: int = 0
+	var maps_with_bad_pink_geometry: int = 0
+	var maps_with_bad_merge_nodes: int = 0
+	const STRESS_SEED_COUNT := 100
 
-	for test_seed in range(1, 25):
+	for test_seed in range(1, STRESS_SEED_COUNT + 1):
 		var candidate = GENERATOR.new()
 		candidate.generate(test_seed)
 
@@ -239,17 +222,45 @@ func _run() -> void:
 		if same_horizontal_half and same_vertical_half:
 			same_corner_maps += 1
 
+		if (
+			candidate.all_nodes_reachable_from(candidate.home_node).size()
+			!= candidate.nodes.size()
+		):
+			disconnected_maps += 1
+		if _count_non_highway_dead_ends(candidate) > 0:
+			maps_with_dead_ends += 1
+		if not _pink_geometry_is_valid(candidate):
+			maps_with_bad_pink_geometry += 1
+		if not _auxiliary_merge_nodes_are_valid(candidate):
+			maps_with_bad_merge_nodes += 1
+
 	_check(
 		same_corner_maps == 0,
 		"Neighborhood and city were generated in the same corner"
 	)
 	_check(
-		highway_maps == 24,
+		highway_maps == STRESS_SEED_COUNT,
 		"Independent highway was not generated for every map"
 	)
 	_check(
 		highways_with_turns == 0,
 		"Generated highway contains a turn"
+	)
+	_check(
+		disconnected_maps == 0,
+		"Stress pass found disconnected generated maps"
+	)
+	_check(
+		maps_with_dead_ends == 0,
+		"Stress pass found terminal wrong-turn roads"
+	)
+	_check(
+		maps_with_bad_pink_geometry == 0,
+		"Stress pass found invalid pink auxiliary-lane geometry"
+	)
+	_check(
+		maps_with_bad_merge_nodes == 0,
+		"Stress pass found pink merges on the wrong highway lane"
 	)
 
 	var packed: PackedScene = load(
@@ -276,6 +287,92 @@ func _run() -> void:
 		scene.free()
 
 	_finish()
+
+
+func _count_non_highway_dead_ends(network) -> int:
+	var count := 0
+	for node_id in range(network.nodes.size()):
+		if (
+			network.adjacency[node_id].size() < 2
+			and not network.highway_nodes.has(node_id)
+		):
+			count += 1
+	return count
+
+
+func _pink_geometry_is_valid(network) -> bool:
+	if network.highway_nodes.size() != 2:
+		return false
+
+	var highway_a: Vector2i = network.nodes[int(network.highway_nodes[0])]
+	var highway_b: Vector2i = network.nodes[int(network.highway_nodes[1])]
+	var horizontal: bool = highway_a.y == highway_b.y
+	var ramp_edge_count := 0
+
+	for key in network.edge_classes.keys():
+		if int(network.edge_classes[key]) != network.RoadClass.RAMP:
+			continue
+		ramp_edge_count += 1
+		var ids: Array = str(key).split(":")
+		if ids.size() != 2:
+			return false
+		var a: int = int(ids[0])
+		var b: int = int(ids[1])
+		var pa: Vector2i = network.nodes[a]
+		var pb: Vector2i = network.nodes[b]
+
+		if horizontal and pa.y != pb.y:
+			return false
+		if not horizontal and pa.x != pb.x:
+			return false
+		if (
+			_segment_enters_rect_inclusive(pa, pb, network.neighborhood_rect)
+			or _segment_enters_rect_inclusive(pa, pb, network.city_rect)
+		):
+			return false
+
+	return ramp_edge_count > 0
+
+
+func _auxiliary_merge_nodes_are_valid(network) -> bool:
+	if network.highway_nodes.size() != 2:
+		return false
+	if network.auxiliary_merge_nodes.size() != 2:
+		return false
+
+	var highway_a: Vector2i = network.nodes[int(network.highway_nodes[0])]
+	var highway_b: Vector2i = network.nodes[int(network.highway_nodes[1])]
+	var horizontal: bool = highway_a.y == highway_b.y
+
+	for node_value in network.auxiliary_merge_nodes:
+		var point: Vector2i = network.nodes[int(node_value)]
+		var offset: int = (
+			absi(point.y - highway_a.y)
+			if horizontal
+			else absi(point.x - highway_a.x)
+		)
+		if offset != network.HIGHWAY_LANE_SPACING:
+			return false
+
+	return true
+
+
+func _segment_enters_rect_inclusive(
+	a: Vector2i,
+	b: Vector2i,
+	rect: Rect2i
+) -> bool:
+	var min_x := mini(a.x, b.x)
+	var max_x := maxi(a.x, b.x)
+	var min_y := mini(a.y, b.y)
+	var max_y := maxi(a.y, b.y)
+
+	return not (
+		max_x < rect.position.x
+		or min_x > rect.end.x
+		or max_y < rect.position.y
+		or min_y > rect.end.y
+	)
 
 
 func _highway_avoids_local_regions(network) -> bool:

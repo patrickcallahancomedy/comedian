@@ -8,8 +8,8 @@ extends RefCounted
 ## 1. Place Point A / home neighborhood.
 ## 2. Place Point B / city and reserve one full city block as the venue.
 ## 3. Generate the longest clean straight highway corridor independently.
-## 4. Build the shortest connector from each district toward that highway.
-## 5. Join each connector to the highway with a short ramp.
+## 4. Build straight pink auxiliary lanes parallel to the highway.
+## 5. Connect local streets to the pink endpoints with blue roads.
 ##
 ## The road classes are different generation rules inside one graph, not
 ## separate gameplay scenes or scale changes.
@@ -39,7 +39,6 @@ const CITY_SPACING := 30
 const CITY_INTERSECTIONS := CITY_COLUMNS * CITY_ROWS
 const CITY_PRUNE_ATTEMPTS := 14
 
-const HIGHWAY_MAX_MAJOR_NODES := 10
 const CONNECTOR_STEP := 10
 const HIGHWAY_EDGE_MARGIN := 10
 const HIGHWAY_CLEARANCE := 30
@@ -334,22 +333,6 @@ func _corner_origin_for_span(
 	)
 
 
-func _random_origin_for_span(
-	span: Vector2i,
-	snap_step: int
-) -> Vector2i:
-	var max_x := GRID_SIZE - WORLD_MARGIN - span.x
-	var max_y := GRID_SIZE - WORLD_MARGIN - span.y
-
-	var raw_x := _rng.randi_range(WORLD_MARGIN, max_x)
-	var raw_y := _rng.randi_range(WORLD_MARGIN, max_y)
-
-	return Vector2i(
-		_snap_int(raw_x, snap_step),
-		_snap_int(raw_y, snap_step)
-	)
-
-
 func _generate_grid(
 	origin: Vector2i,
 	rows: int,
@@ -535,39 +518,6 @@ func _nearest_venue_access_node() -> int:
 	return best
 
 
-func _farthest_boundary_pair(
-	first_grid: Array,
-	second_grid: Array
-) -> Dictionary:
-	var first_boundary: Array = _boundary_nodes(first_grid)
-	var second_boundary: Array = _boundary_nodes(second_grid)
-
-	var best_first: int = -1
-	var best_second: int = -1
-	var best_distance: float = -1.0
-
-	for first_value in first_boundary:
-		var first_id: int = int(first_value)
-		var first_position: Vector2 = Vector2(nodes[first_id])
-
-		for second_value in second_boundary:
-			var second_id: int = int(second_value)
-			var distance: float = first_position.distance_to(
-				Vector2(nodes[second_id])
-			)
-
-			if distance > best_distance:
-				best_distance = distance
-				best_first = first_id
-				best_second = second_id
-
-	return {
-		"neighborhood": best_first,
-		"city": best_second,
-		"distance": best_distance,
-	}
-
-
 func _boundary_nodes(grid: Array) -> Array:
 	var result: Array = []
 	var rows: int = grid.size()
@@ -627,19 +577,6 @@ func _closest_boundary_node(
 				best = node_id
 
 	return best
-
-
-func _generate_surface_connection() -> void:
-	var start := Vector2i(nodes[neighborhood_gateway])
-	var finish := Vector2i(nodes[city_gateway])
-
-	_add_grid_path(
-		start,
-		finish,
-		RoadClass.CONNECTOR,
-		CONNECTOR_STEP,
-		true
-	)
 
 
 func _generate_highway_connection() -> void:
@@ -1153,17 +1090,6 @@ func _distance_from_grid_to_vertical(
 	return best
 
 
-func _project_rect_center_to_highway(
-	rect: Rect2i,
-	horizontal: bool,
-	highway_start: Vector2i
-) -> Vector2i:
-	var center := Vector2i(rect.get_center())
-	if horizontal:
-		return Vector2i(center.x, highway_start.y)
-	return Vector2i(highway_start.x, center.y)
-
-
 func _add_highway_with_merges(
 	start: Vector2i,
 	finish: Vector2i,
@@ -1198,76 +1124,6 @@ func _add_highway_with_merges(
 		var b := _node_at(Vector2i(points[index + 1]))
 		if a != b:
 			_add_edge(a, b, RoadClass.HIGHWAY)
-
-
-func _safe_horizontal_highway_y() -> int:
-	var neighborhood_top: int = neighborhood_rect.position.y
-	var neighborhood_bottom: int = neighborhood_rect.end.y
-	var city_top: int = city_rect.position.y
-	var city_bottom: int = city_rect.end.y
-	var raw_y: int = 0
-
-	# If the two districts occupy different rows, use the open space between
-	# them. Otherwise, place the highway on the inward side of both districts.
-	if neighborhood_bottom < city_top:
-		raw_y = int(round(
-			(float(neighborhood_bottom) + float(city_top)) * 0.5
-		))
-	elif city_bottom < neighborhood_top:
-		raw_y = int(round(
-			(float(city_bottom) + float(neighborhood_top)) * 0.5
-		))
-	else:
-		var combined_center: float = (
-			float(mini(neighborhood_top, city_top))
-			+ float(maxi(neighborhood_bottom, city_bottom))
-		) * 0.5
-
-		if combined_center < float(GRID_SIZE) * 0.5:
-			raw_y = maxi(neighborhood_bottom, city_bottom) + 20
-		else:
-			raw_y = mini(neighborhood_top, city_top) - 20
-
-	return clampi(
-		_snap_int(raw_y, CONNECTOR_STEP),
-		WORLD_MARGIN,
-		GRID_SIZE - WORLD_MARGIN
-	)
-
-
-func _safe_vertical_highway_x() -> int:
-	var neighborhood_left: int = neighborhood_rect.position.x
-	var neighborhood_right: int = neighborhood_rect.end.x
-	var city_left: int = city_rect.position.x
-	var city_right: int = city_rect.end.x
-	var raw_x: int = 0
-
-	# If the two districts occupy different columns, use the open space
-	# between them. Otherwise, place the highway on the inward side of both.
-	if neighborhood_right < city_left:
-		raw_x = int(round(
-			(float(neighborhood_right) + float(city_left)) * 0.5
-		))
-	elif city_right < neighborhood_left:
-		raw_x = int(round(
-			(float(city_right) + float(neighborhood_left)) * 0.5
-		))
-	else:
-		var combined_center: float = (
-			float(mini(neighborhood_left, city_left))
-			+ float(maxi(neighborhood_right, city_right))
-		) * 0.5
-
-		if combined_center < float(GRID_SIZE) * 0.5:
-			raw_x = maxi(neighborhood_right, city_right) + 20
-		else:
-			raw_x = mini(neighborhood_left, city_left) - 20
-
-	return clampi(
-		_snap_int(raw_x, CONNECTOR_STEP),
-		WORLD_MARGIN,
-		GRID_SIZE - WORLD_MARGIN
-	)
 
 
 func _add_grid_path(

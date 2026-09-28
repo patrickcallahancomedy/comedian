@@ -271,6 +271,8 @@ func _draw_roads() -> void:
 			color
 		)
 
+	_draw_auxiliary_merge_nodes()
+
 
 func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
 	# The logical highway stays one graph corridor for now, but the prototype
@@ -293,6 +295,7 @@ func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
 		)
 
 
+func _draw_auxiliary_merge_nodes() -> void:
 	for node_value in generator.auxiliary_merge_nodes:
 		var node_id: int = int(node_value)
 		draw_circle(
