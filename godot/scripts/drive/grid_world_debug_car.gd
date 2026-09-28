@@ -37,7 +37,11 @@ func _process(delta: float) -> void:
 	if not running or route.size() < 2:
 		return
 
-	var remaining := BASE_SPEED * SPEED_MULTIPLIERS[speed_index] * delta
+	var remaining: float = (
+		BASE_SPEED
+		* float(SPEED_MULTIPLIERS[speed_index])
+		* delta
+	)
 
 	while remaining > 0.0 and running:
 		if route_index >= route.size() - 1:
@@ -71,7 +75,7 @@ func _draw() -> void:
 	if route.is_empty():
 		return
 
-	var screen := map.world_to_screen(world_position)
+	var screen: Vector2 = map.world_to_screen(world_position)
 	var radius := CAR_RADIUS
 
 	draw_circle(screen, radius + 3.0, CAR_OUTLINE)
