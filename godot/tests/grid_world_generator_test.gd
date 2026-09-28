@@ -65,6 +65,12 @@ func _run() -> void:
 		"Venue block has no road access node"
 	)
 
+	_check(
+		_gateway_pair_is_max_distance(first),
+		"Highway gateways are not the farthest neighborhood/city boundary pair"
+	)
+
+
 	var route: Array = first.shortest_path(
 		first.home_node,
 		first.venue_access_node
@@ -224,6 +230,62 @@ func _run() -> void:
 		scene.free()
 
 	_finish()
+
+
+func _gateway_pair_is_max_distance(network) -> bool:
+	var neighborhood_boundary: Array = _boundary_nodes(
+		network.neighborhood_grid
+	)
+	var city_boundary: Array = _boundary_nodes(
+		network.city_grid
+	)
+
+	var maximum_distance: float = -1.0
+
+	for first_value in neighborhood_boundary:
+		var first_id: int = int(first_value)
+
+		for second_value in city_boundary:
+			var second_id: int = int(second_value)
+			var distance: float = Vector2(
+				network.nodes[first_id]
+			).distance_to(
+				Vector2(network.nodes[second_id])
+			)
+			maximum_distance = maxf(
+				maximum_distance,
+				distance
+			)
+
+	return is_equal_approx(
+		network.gateway_distance,
+		maximum_distance
+	)
+
+
+func _boundary_nodes(grid: Array) -> Array:
+	var result: Array = []
+	var rows: int = grid.size()
+	if rows == 0:
+		return result
+
+	var columns: int = grid[0].size()
+
+	for row in range(rows):
+		for column in range(columns):
+			if (
+				row != 0
+				and column != 0
+				and row != rows - 1
+				and column != columns - 1
+			):
+				continue
+
+			var node_id: int = int(grid[row][column])
+			if not result.has(node_id):
+				result.append(node_id)
+
+	return result
 
 
 func _venue_block_has_four_road_sides(network) -> bool:
