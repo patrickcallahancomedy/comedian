@@ -526,13 +526,13 @@ func _closest_boundary_node(
 	if rows == 0:
 		return -1
 
-	var columns := grid[0].size()
+	var columns: int = grid[0].size()
 	var best := -1
 	var best_distance := INF
 
 	for row in range(rows):
 		for column in range(columns):
-			var on_boundary := (
+			var on_boundary: bool = (
 				row == 0
 				or column == 0
 				or row == rows - 1
@@ -571,7 +571,7 @@ func _generate_highway_connection() -> void:
 	var finish := Vector2i(nodes[city_gateway])
 	var delta := finish - start
 
-	var dominant_horizontal := abs(delta.x) >= abs(delta.y)
+	var dominant_horizontal: bool = abs(delta.x) >= abs(delta.y)
 	var entry := start
 	var exit := finish
 
@@ -632,7 +632,7 @@ func _build_sparse_highway_path(
 ) -> Array:
 	var result: Array = [start]
 	var delta := finish - start
-	var dominant_horizontal := abs(delta.x) >= abs(delta.y)
+	var dominant_horizontal: bool = abs(delta.x) >= abs(delta.y)
 
 	var distance := Vector2(start).distance_to(Vector2(finish))
 	var major_sections := clampi(
