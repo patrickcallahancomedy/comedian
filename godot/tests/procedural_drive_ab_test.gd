@@ -27,8 +27,64 @@ func _run() -> void:
 		"Same seed produced different road geometry"
 	)
 	_check(
+		first.adjacency == second.adjacency,
+		"Same seed produced different road connections"
+	)
+	_check(
 		first.start_node >= 0 and first.destination_node >= 0,
 		"Generator did not choose A and B"
+	)
+	_check(
+		first.start_zone_nodes.has(first.start_node),
+		"Point A is not inside the tight starting street network"
+	)
+	_check(
+		first.end_zone_nodes.has(first.destination_node),
+		"Point B is not inside the tight destination street network"
+	)
+	_check(
+		first.neighbors(first.start_node).size() >= 2
+		and first.neighbors(first.destination_node).size() >= 2,
+		"A or B was placed on an artificial terminal branch"
+	)
+
+	var dead_end_count := 0
+	for node_id in range(first.nodes.size()):
+		if first.neighbors(node_id).size() < 2:
+			dead_end_count += 1
+	_check(
+		dead_end_count == 0,
+		"Generated network contains dead-end wrong turns"
+	)
+
+	var start_spacing := _average_nearest_distance(
+		first,
+		first.start_zone_nodes
+	)
+	var middle_spacing := _average_nearest_distance(
+		first,
+		first.middle_zone_nodes
+	)
+	var end_spacing := _average_nearest_distance(
+		first,
+		first.end_zone_nodes
+	)
+	_check(
+		start_spacing < middle_spacing
+		and end_spacing < middle_spacing,
+		"Road density does not loosen in the middle"
+	)
+
+	var longest_strand_points := 0
+	for strand_value in first.strand_curves:
+		var strand: PackedVector2Array = strand_value
+		longest_strand_points = maxi(
+			longest_strand_points,
+			strand.size()
+		)
+	_check(
+		longest_strand_points > first.CURVE_SAMPLES_PER_EDGE + 1,
+		"Visible road network is still only one-edge road pieces"
 	)
 
 	var visited := _reachable_nodes(first, first.start_node)
@@ -134,6 +190,36 @@ func _run() -> void:
 
 	scene.free()
 	_finish()
+
+
+func _average_nearest_distance(
+	network,
+	node_ids: Array
+) -> float:
+	if node_ids.size() < 2:
+		return INF
+
+	var total := 0.0
+
+	for node_value in node_ids:
+		var node_id: int = int(node_value)
+		var nearest := INF
+
+		for other_value in node_ids:
+			var other_id: int = int(other_value)
+			if other_id == node_id:
+				continue
+
+			nearest = minf(
+				nearest,
+				network.nodes[node_id].distance_to(
+					network.nodes[other_id]
+				)
+			)
+
+		total += nearest
+
+	return total / float(node_ids.size())
 
 
 func _reachable_nodes(network, start_id: int) -> Array:
