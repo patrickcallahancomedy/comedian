@@ -123,7 +123,6 @@ var highway_column := 0
 var highway_lane := MAP.HIGHWAY_ENTRY_LANE
 var queued_highway_lane := MAP.HIGHWAY_ENTRY_LANE
 var highway_lap := 0
-var connector_one_path_index := 0
 
 var move_from := Vector2.ZERO
 var move_to := Vector2.ZERO
@@ -209,7 +208,6 @@ func _reset_to_start() -> void:
 	highway_lane = MAP.HIGHWAY_ENTRY_LANE
 	queued_highway_lane = highway_lane
 	highway_lap = 0
-	connector_one_path_index = 0
 	visual_world_position = MAP.neighborhood_cell_center(neighborhood_cell)
 	visual_cell_scale = MAP.car_scale_for_cell(MAP.NEIGHBORHOOD_CELL)
 	move_from = visual_world_position
@@ -371,7 +369,7 @@ func _begin_next_step() -> void:
 		"neighborhood":
 			_begin_neighborhood_step()
 		"connector_one":
-			_begin_connector_one_step()
+			_begin_highway_step()
 		"highway":
 			_begin_highway_step()
 		"connector_two":
@@ -402,9 +400,10 @@ func _begin_neighborhood_step() -> void:
 	):
 		road_kind = "connector_one"
 		_stabilize_for_connector()
-		connector_one_path_index = 0
-		var onramp_path := MAP.onramp_path_points()
-		_set_connector_one_target(onramp_path[connector_one_path_index])
+		move_to = MAP.highway_entry_point()
+		scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
+		motion_direction = (move_to - move_from).normalized()
+		status_label.text = "CONNECTOR"
 		return
 
 	move_to = move_from
@@ -413,41 +412,14 @@ func _begin_neighborhood_step() -> void:
 	status_label.text = "WALL - TURN"
 
 
-func _begin_connector_one_step() -> void:
-	var onramp_path := MAP.onramp_path_points()
-
-	if connector_one_path_index < onramp_path.size() - 1:
-		connector_one_path_index += 1
-		_set_connector_one_target(onramp_path[connector_one_path_index])
-		return
-
-	# The final ramp point is the highway edge. From there the car follows the
-	# same lane geometry into the center of lane 4.
-	road_kind = "highway"
-	highway_column = 0
-	highway_lane = MAP.HIGHWAY_ENTRY_LANE
-	queued_highway_lane = highway_lane
-	highway_lap = 0
-	move_to = MAP.highway_entry_point()
-	scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
-	motion_direction = (move_to - move_from).normalized()
-	map_rotation_from = map_rotation
-	map_rotation_to = -PI / 2.0 - motion_direction.angle()
-	turn_elapsed = 0.0
-	status_label.text = "HIGHWAY  •  EXIT LANE 4"
-
-
-func _set_connector_one_target(target: Vector2) -> void:
-	move_to = target
-	scale_to = MAP.car_scale_for_cell(MAP.HIGHWAY_CELL)
-	motion_direction = (move_to - move_from).normalized()
-	map_rotation_from = map_rotation
-	map_rotation_to = -PI / 2.0 - motion_direction.angle()
-	turn_elapsed = 0.0
-	status_label.text = "CONNECTOR"
-
-
 func _begin_highway_step() -> void:
+	if road_kind == "connector_one":
+		road_kind = "highway"
+		highway_column = 0
+		highway_lane = MAP.HIGHWAY_ENTRY_LANE
+		queued_highway_lane = highway_lane
+		highway_lap = 0
+
 	if highway_column >= MAP.HIGHWAY_COLUMNS - 1:
 		if highway_lane == MAP.HIGHWAY_EXIT_LANE:
 			road_kind = "connector_two"
@@ -794,12 +766,11 @@ func _draw() -> void:
 	# Fill the space around the ramps before drawing the neighborhood/highway
 	# on top, so there is never a black void between map modules.
 	_draw_connector_surroundings()
-	_draw_onramp_highway_underlay()
 	_draw_neighborhood()
 
 	_draw_highway_surroundings()
-	_draw_highway()
 	_draw_connector_one()
+	_draw_highway()
 	_draw_city_connector()
 
 	_draw_city()
@@ -1168,36 +1139,14 @@ func _draw_terrain_patch(rect: Rect2, phase: int) -> void:
 
 
 func _draw_connector_one() -> void:
-	var path := MAP.onramp_path_points()
-	if path.size() < 2:
-		return
-
-	# The elevated ramp and the moving car use the exact same centerline.
-	for index in range(path.size() - 1):
-		var shadow := _road_segment_points(
-			path[index] + Vector2(2.2, 2.2),
-			path[index + 1] + Vector2(2.2, 2.2),
-			MAP.HIGHWAY_LANE_WIDTH * 0.5 + 4.0
-		)
-		_draw_world_polygon(shadow, Color(0.02, 0.025, 0.03, 0.38))
-
-	for index in range(path.size() - 1):
-		var shoulder := _road_segment_points(
-			path[index],
-			path[index + 1],
-			MAP.HIGHWAY_LANE_WIDTH * 0.5 + 2.5
-		)
-		_draw_world_polygon(shoulder, RAMP_SHOULDER_COLOR)
-
-	for index in range(path.size() - 1):
-		var asphalt := _road_segment_points(
-			path[index],
-			path[index + 1],
-			MAP.HIGHWAY_LANE_WIDTH * 0.5
-		)
-		_draw_world_polygon(asphalt, RAMP_ASPHALT_COLOR)
-		_draw_world_line(asphalt[0], asphalt[1], RAMP_GUIDE_COLOR, 1.15)
-		_draw_world_line(asphalt[3], asphalt[2], RAMP_EDGE_COLOR, 1.15)
+	# On-ramp: narrow where it leaves the neighborhood, then opens into the
+	# highway merge area.
+	var shoulder := _connector_one_points(2.5)
+	var asphalt := _connector_one_points(0.0)
+	_draw_world_polygon(shoulder, RAMP_SHOULDER_COLOR)
+	_draw_world_polygon(asphalt, RAMP_ASPHALT_COLOR)
+	_draw_ramp_edges(asphalt, true)
+	_draw_ramp_texture(asphalt, 0)
 
 
 func _draw_city_connector() -> void:
@@ -1210,70 +1159,18 @@ func _draw_city_connector() -> void:
 	_draw_ramp_texture(asphalt, 1)
 
 
-func _draw_onramp_highway_underlay() -> void:
-	# Extend the main highway behind the neighborhood so there is no visible
-	# "beginning" of the highway at the ramp. The neighborhood is drawn later
-	# and naturally occludes the hidden portion.
-	var highway_rect := MAP.HIGHWAY_RECT
-	var underlay_start_x := MAP.NEIGHBORHOOD_RECT.position.x
-	var underlay_end_x := highway_rect.position.x + MAP.HIGHWAY_CELL
-	var underlay := Rect2(
-		Vector2(underlay_start_x, highway_rect.position.y),
-		Vector2(underlay_end_x - underlay_start_x, highway_rect.size.y)
-	)
+func _connector_one_points(extra_width: float = 0.0) -> PackedVector2Array:
+	var rect := MAP.CONNECTOR_ONE_RECT
+	var start_center_y := MAP.neighborhood_cell_center(MAP.NEIGHBORHOOD_GATE).y
+	var end_center_y := MAP.highway_entry_point().y
+	var start_half_width := NEIGHBORHOOD_ROAD_WIDTH * 0.5 + extra_width
+	var end_half_width := MAP.HIGHWAY_LANE_WIDTH * 0.5 + extra_width
 
-	for lane in range(MAP.HIGHWAY_LANES):
-		var lane_rect := Rect2(
-			Vector2(
-				underlay.position.x,
-				underlay.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
-			),
-			Vector2(underlay.size.x, MAP.HIGHWAY_LANE_WIDTH)
-		)
-		var lane_color := HIGHWAY_ASPHALT_COLOR
-		if lane % 2 == 1:
-			lane_color = HIGHWAY_ASPHALT_ALT
-		_draw_world_rect(lane_rect, lane_color)
-
-	for lane in range(1, MAP.HIGHWAY_LANES):
-		var divider_y := underlay.position.y + lane * MAP.HIGHWAY_LANE_WIDTH
-		var dash_x := underlay.position.x + 4.0
-		while dash_x < underlay.end.x:
-			var dash_end := minf(dash_x + 8.0, underlay.end.x)
-			_draw_world_line(
-				Vector2(dash_x, divider_y),
-				Vector2(dash_end, divider_y),
-				HIGHWAY_MARKING_COLOR,
-				0.9
-			)
-			dash_x += 16.0
-
-	_draw_world_line(
-		Vector2(underlay.position.x, underlay.position.y + 1.2),
-		Vector2(underlay.end.x, underlay.position.y + 1.2),
-		HIGHWAY_EDGE_COLOR,
-		1.0
-	)
-	_draw_world_line(
-		Vector2(underlay.position.x, underlay.end.y - 1.2),
-		Vector2(underlay.end.x, underlay.end.y - 1.2),
-		HIGHWAY_EDGE_COLOR,
-		1.0
-	)
-
-
-func _road_segment_points(
-	start: Vector2,
-	end: Vector2,
-	half_width: float
-) -> PackedVector2Array:
-	var direction := (end - start).normalized()
-	var normal := Vector2(-direction.y, direction.x) * half_width
 	return PackedVector2Array([
-		start - normal,
-		end - normal,
-		end + normal,
-		start + normal,
+		Vector2(rect.position.x, start_center_y - start_half_width),
+		Vector2(rect.end.x, end_center_y - end_half_width),
+		Vector2(rect.end.x, end_center_y + end_half_width),
+		Vector2(rect.position.x, start_center_y + start_half_width),
 	])
 
 
