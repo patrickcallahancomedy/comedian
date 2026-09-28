@@ -224,8 +224,11 @@ func _draw_roads() -> void:
 					width = 4.0
 					color = RAMP_COLOR
 				generator.RoadClass.HIGHWAY:
-					width = 5.2
-					color = HIGHWAY_COLOR
+					_draw_three_lane_highway(
+						Vector2(generator.nodes[a]),
+						Vector2(generator.nodes[b])
+					)
+					continue
 
 			draw_line(
 				_world_to_screen(
@@ -266,6 +269,27 @@ func _draw_roads() -> void:
 			),
 			maxf(1.0, radius * map_scale),
 			color
+		)
+
+
+func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
+	# The logical highway stays one graph corridor for now, but the prototype
+	# displays three drivable lanes. Pink sits one more lane-width outside.
+	var lane_spacing := 10.0
+	var perpendicular := Vector2.ZERO
+	if is_equal_approx(start.y, finish.y):
+		perpendicular = Vector2(0.0, 1.0)
+	else:
+		perpendicular = Vector2(1.0, 0.0)
+
+	for lane_offset in [-lane_spacing, 0.0, lane_spacing]:
+		var offset: Vector2 = perpendicular * float(lane_offset)
+		draw_line(
+			_world_to_screen(start + offset),
+			_world_to_screen(finish + offset),
+			HIGHWAY_COLOR,
+			maxf(1.0, 3.0 * map_scale),
+			true
 		)
 
 
