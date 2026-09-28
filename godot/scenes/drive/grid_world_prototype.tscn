@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/drive/grid_world_map.gd" id="1_map"]
+[ext_resource type="Script" path="res://scripts/drive/grid_world_debug_car.gd" id="2_car"]
 
 [sub_resource type="StyleBoxFlat" id="SettingsPanel"]
 bg_color = Color(0.08, 0.09, 0.10, 0.96)
@@ -44,6 +45,16 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_map")
+
+[node name="DebugCar" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_car")
 
 [node name="Title" type="Label" parent="."]
 layout_mode = 0
@@ -110,6 +121,54 @@ focus_mode = 0
 custom_minimum_size = Vector2(0, 32)
 theme_override_font_sizes/font_size = 12
 text = "2 × 2 ZOOM"
+
+[node name="DriveBox" type="PanelContainer" parent="."]
+z_index = 10
+layout_mode = 0
+offset_left = 16.0
+offset_top = 68.0
+offset_right = 182.0
+offset_bottom = 232.0
+theme_override_styles/panel = SubResource("SettingsPanel")
+
+[node name="Layout" type="VBoxContainer" parent="DriveBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DriveLabel" type="Label" parent="DriveBox/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "DEBUG DRIVE"
+horizontal_alignment = 1
+
+[node name="RunButton" type="Button" parent="DriveBox/Layout"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 32)
+theme_override_font_sizes/font_size = 12
+text = "RUN"
+
+[node name="ResetButton" type="Button" parent="DriveBox/Layout"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 32)
+theme_override_font_sizes/font_size = 12
+text = "RESET"
+
+[node name="SpeedButton" type="Button" parent="DriveBox/Layout"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 32)
+theme_override_font_sizes/font_size = 12
+text = "SPEED  1×"
+
+[node name="StatusLabel" type="Label" parent="DriveBox/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.75, 0.72, 1)
+theme_override_font_sizes/font_size = 10
+text = "READY"
+horizontal_alignment = 1
 
 [node name="Legend" type="Label" parent="."]
 layout_mode = 1
