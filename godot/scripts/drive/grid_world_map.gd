@@ -26,14 +26,19 @@ var generator := GENERATOR.new()
 var actual_seed := 0
 var map_scale := 1.0
 var map_origin := Vector2.ZERO
+var show_whole_map := false
 
 @onready var seed_label: Label = $"../SeedLabel"
 @onready var mode_label: Label = $"../ModeLabel"
 @onready var new_map_button: Button = $"../NewMapButton"
+@onready var whole_map_button: Button = $"../SettingsBox/Layout/WholeMapButton"
+@onready var zoom_map_button: Button = $"../SettingsBox/Layout/ZoomMapButton"
 
 
 func _ready() -> void:
 	new_map_button.pressed.connect(_new_map)
+	whole_map_button.pressed.connect(_show_whole_map)
+	zoom_map_button.pressed.connect(_show_zoom_map)
 	resized.connect(_refresh_layout)
 	_generate()
 	call_deferred("_refresh_layout")
@@ -42,6 +47,16 @@ func _ready() -> void:
 func _new_map() -> void:
 	world_seed = 0
 	_generate()
+
+
+func _show_whole_map() -> void:
+	show_whole_map = true
+	queue_redraw()
+
+
+func _show_zoom_map() -> void:
+	show_whole_map = false
+	queue_redraw()
 
 
 func _generate() -> void:
@@ -104,8 +119,26 @@ func _update_transform() -> void:
 		size.y - TOP_MARGIN - BOTTOM_MARGIN
 	)
 
-	# Scale study only: keep the exact generated world, but magnify it until
-	# roughly two neighborhood blocks span the playable width.
+	if show_whole_map:
+		var available := minf(
+			available_width,
+			available_height
+		)
+		map_scale = available / float(generator.GRID_SIZE)
+
+		var map_size := Vector2.ONE * (
+			float(generator.GRID_SIZE) * map_scale
+		)
+		map_origin = Vector2(
+			(size.x - map_size.x) * 0.5,
+			TOP_MARGIN + (
+				available_height - map_size.y
+			) * 0.5
+		)
+		return
+
+	# Same generated map, only magnified until roughly two neighborhood
+	# blocks span the playable width. No regeneration happens on view change.
 	var visible_world_width := (
 		float(generator.NEIGHBORHOOD_SPACING)
 		* VISIBLE_NEIGHBORHOOD_BLOCKS
