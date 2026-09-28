@@ -276,11 +276,13 @@ func _choose_region_origins() -> Dictionary:
 		(CITY_ROWS - 1) * CITY_SPACING
 	)
 
-	# Put the two generated regions in opposite corners of the 500x500 world.
-	# Small snapped inward jitter keeps seeds different while preserving the
-	# long trip that makes highway travel very likely.
+	# Put each generated region in a corner of the 500x500 world, but never
+	# the same corner. This keeps them distinct while allowing adjacent-corner
+	# and opposite-corner trips.
 	var neighborhood_corner: int = _rng.randi_range(0, 3)
-	var city_corner: int = 3 - neighborhood_corner
+	var city_corner: int = _rng.randi_range(0, 2)
+	if city_corner >= neighborhood_corner:
+		city_corner += 1
 
 	var neighborhood_origin := _corner_origin_for_span(
 		neighborhood_span,
