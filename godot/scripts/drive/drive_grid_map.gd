@@ -154,11 +154,27 @@ static func neighborhood_gate_outside_point() -> Vector2:
 	) * NEIGHBORHOOD_CELL
 
 
+static func onramp_path_points() -> PackedVector2Array:
+	var gate_center := neighborhood_cell_center(NEIGHBORHOOD_GATE)
+	var highway_lane_y := highway_cell_center(0, HIGHWAY_ENTRY_LANE).y
+	var outside_lane_y := HIGHWAY_RECT.end.y + float(MASTER_UNIT)
+
+	return PackedVector2Array([
+		Vector2(CONNECTOR_ONE_RECT.position.x, gate_center.y),
+		Vector2(CONNECTOR_ONE_RECT.position.x + 40.0, outside_lane_y),
+		Vector2(CONNECTOR_ONE_RECT.end.x, outside_lane_y),
+		Vector2(HIGHWAY_RECT.position.x, highway_lane_y),
+	])
+
+
 static func highway_merge_point() -> Vector2:
-	return Vector2(
-		CONNECTOR_ONE_RECT.end.x,
-		highway_cell_center(0, HIGHWAY_ENTRY_LANE).y
-	)
+	var path := onramp_path_points()
+	return path[path.size() - 2]
+
+
+static func highway_lane_edge_point() -> Vector2:
+	var path := onramp_path_points()
+	return path[path.size() - 1]
 
 
 static func highway_entry_point() -> Vector2:
