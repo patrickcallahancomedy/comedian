@@ -99,6 +99,11 @@ func _run() -> void:
 			and not first.highway_nodes.has(node_id)
 		):
 			dead_ends += 1
+			print(
+				"DEAD END: id=", node_id,
+				" pos=", first.nodes[node_id],
+				" neighbors=", first.adjacency[node_id]
+			)
 	_check(
 		dead_ends == 0,
 		"Generated map contains terminal wrong-turn roads away from highway continuations"
