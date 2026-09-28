@@ -89,6 +89,9 @@ func show_whole_world() -> void:
 
 
 func world_to_screen(world_point: Vector2) -> Vector2:
+	# Debug/playback layers may ask for coordinates before this Control has
+	# received its next draw callback after a view change.
+	_update_transform()
 	return map_origin + world_point * map_scale
 
 
