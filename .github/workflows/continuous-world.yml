@@ -1,0 +1,81 @@
+name: COMEDIAN CONTINUOUS WORLD
+
+on:
+  push:
+    branches:
+      - continuous-world-prototype
+    paths:
+      - "godot/**"
+      - ".github/workflows/continuous-world.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comedian-continuous-world
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  test-export-deploy:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout continuous-world prototype
+        uses: actions/checkout@v4
+
+      - name: Import Godot project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path godot --quit
+
+      - name: Test driving module
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 45s godot --headless --path godot --script res://tests/drive_grid_test.gd
+
+      - name: Prepare export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/"
+
+      - name: Export continuous-world preview
+        shell: bash
+        working-directory: godot
+        run: |
+          set -euo pipefail
+          rm -rf build/world
+          mkdir -p build/world
+          godot --headless --path . --export-release "Web" build/world/index.html
+          touch build/world/.nojekyll
+
+          grep -a -q "drive_grid_controller.gd" build/world/index.pck
+          grep -a -q "drive_road_network.gd" build/world/index.pck
+
+          BUILD_NAME="world-${GITHUB_SHA:0:8}"
+          mv build/world/index.js "build/world/${BUILD_NAME}.js"
+          mv build/world/index.wasm "build/world/${BUILD_NAME}.wasm"
+          mv build/world/index.pck "build/world/${BUILD_NAME}.pck"
+
+          sed -i "s#src=\"index.js\"#src=\"${BUILD_NAME}.js\"#" build/world/index.html
+          sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/world/index.html
+          sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/world/index.html
+          sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/world/index.html
+
+      - name: Publish continuous-world preview
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: godot/build/world
+          target-folder: world
+          clean: true
+          force: false
