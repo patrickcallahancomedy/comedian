@@ -65,11 +65,15 @@ func _run() -> void:
 		"Venue block has no road access node"
 	)
 
-	_check(
-		_gateway_pair_is_max_distance(first),
-		"Highway gateways are not the farthest neighborhood/city boundary pair"
-	)
-
+	if first.uses_highway:
+		_check(
+			_highway_avoids_local_regions(first),
+			"Highway passes through the neighborhood or city street grid"
+		)
+		_check(
+			_highway_spans_local_extents(first),
+			"Highway no longer spans the far extents of the local regions"
+		)
 
 	var route: Array = first.shortest_path(
 		first.home_node,
@@ -232,60 +236,91 @@ func _run() -> void:
 	_finish()
 
 
-func _gateway_pair_is_max_distance(network) -> bool:
-	var neighborhood_boundary: Array = _boundary_nodes(
-		network.neighborhood_grid
-	)
-	var city_boundary: Array = _boundary_nodes(
-		network.city_grid
-	)
+func _highway_avoids_local_regions(network) -> bool:
+	if network.highway_nodes.size() != 2:
+		return false
 
-	var maximum_distance: float = -1.0
+	var a: Vector2i = network.nodes[int(network.highway_nodes[0])]
+	var b: Vector2i = network.nodes[int(network.highway_nodes[1])]
 
-	for first_value in neighborhood_boundary:
-		var first_id: int = int(first_value)
-
-		for second_value in city_boundary:
-			var second_id: int = int(second_value)
-			var distance: float = Vector2(
-				network.nodes[first_id]
-			).distance_to(
-				Vector2(network.nodes[second_id])
-			)
-			maximum_distance = maxf(
-				maximum_distance,
-				distance
-			)
-
-	return is_equal_approx(
-		network.gateway_distance,
-		maximum_distance
+	return (
+		not _segment_enters_rect(a, b, network.neighborhood_rect)
+		and not _segment_enters_rect(a, b, network.city_rect)
 	)
 
 
-func _boundary_nodes(grid: Array) -> Array:
-	var result: Array = []
-	var rows: int = grid.size()
-	if rows == 0:
-		return result
+func _segment_enters_rect(
+	a: Vector2i,
+	b: Vector2i,
+	rect: Rect2i
+) -> bool:
+	if a.y == b.y:
+		var y: int = a.y
+		if y <= rect.position.y or y >= rect.end.y:
+			return false
 
-	var columns: int = grid[0].size()
+		var segment_left: int = mini(a.x, b.x)
+		var segment_right: int = maxi(a.x, b.x)
+		return (
+			segment_right > rect.position.x
+			and segment_left < rect.end.x
+		)
 
-	for row in range(rows):
-		for column in range(columns):
-			if (
-				row != 0
-				and column != 0
-				and row != rows - 1
-				and column != columns - 1
-			):
-				continue
+	if a.x == b.x:
+		var x: int = a.x
+		if x <= rect.position.x or x >= rect.end.x:
+			return false
 
-			var node_id: int = int(grid[row][column])
-			if not result.has(node_id):
-				result.append(node_id)
+		var segment_top: int = mini(a.y, b.y)
+		var segment_bottom: int = maxi(a.y, b.y)
+		return (
+			segment_bottom > rect.position.y
+			and segment_top < rect.end.y
+		)
 
-	return result
+	return true
+
+
+func _highway_spans_local_extents(network) -> bool:
+	if network.highway_nodes.size() != 2:
+		return false
+
+	var a: Vector2i = network.nodes[int(network.highway_nodes[0])]
+	var b: Vector2i = network.nodes[int(network.highway_nodes[1])]
+
+	if a.y == b.y:
+		var highway_left: int = mini(a.x, b.x)
+		var highway_right: int = maxi(a.x, b.x)
+		var region_left: int = mini(
+			network.neighborhood_rect.position.x,
+			network.city_rect.position.x
+		)
+		var region_right: int = maxi(
+			network.neighborhood_rect.end.x,
+			network.city_rect.end.x
+		)
+		return (
+			highway_left <= region_left
+			and highway_right >= region_right
+		)
+
+	if a.x == b.x:
+		var highway_top: int = mini(a.y, b.y)
+		var highway_bottom: int = maxi(a.y, b.y)
+		var region_top: int = mini(
+			network.neighborhood_rect.position.y,
+			network.city_rect.position.y
+		)
+		var region_bottom: int = maxi(
+			network.neighborhood_rect.end.y,
+			network.city_rect.end.y
+		)
+		return (
+			highway_top <= region_top
+			and highway_bottom >= region_bottom
+		)
+
+	return false
 
 
 func _venue_block_has_four_road_sides(network) -> bool:
