@@ -13,7 +13,7 @@ func _run() -> void:
 	print("DRIVE GRID v0.1 TEST START")
 
 	_check(MAP.MAP_SIZE == Vector2i(1760, 1600), "Logical map size is wrong")
-	_check(is_equal_approx(MAP.CONNECTOR_ONE_RECT.size.x, 160.0), "Connector one is not doubled to 160 units")
+	_check(is_equal_approx(MAP.CONNECTOR_ONE_RECT.size.x, 120.0), "Connector one is not the shortened 120-unit ramp")
 	_check(is_equal_approx(MAP.CONNECTOR_TWO_RECT.size.x, 160.0), "Connector two is not doubled to 160 units")
 	_check(MAP.MASTER_UNIT == 10, "Master snap unit changed")
 	_check(MAP.rect_is_master_snapped(MAP.NEIGHBORHOOD_RECT), "Neighborhood is off master grid")
@@ -112,8 +112,12 @@ func _run() -> void:
 	for speed in drive.HIGHWAY_TRAFFIC_APPROACH_SPEEDS:
 		_check(speed < 5.0, "Highway traffic approaches too quickly to dodge")
 	_check(
-		drive.HIGHWAY_TRAFFIC_COLLISION_X >= 6.0,
-		"Highway traffic collision window is too tight for a fender bender"
+		drive.HIGHWAY_TRAFFIC_COLLISION_LATERAL < float(MAP.HIGHWAY_LANE_WIDTH) * 0.5,
+		"Highway collision width overlaps adjacent lanes"
+	)
+	_check(
+		drive._highway_collision_longitudinal_distance() >= 8.0,
+		"Highway collision length is too short for a fender bender"
 	)
 	_check(
 		is_equal_approx(drive.HIGHWAY_TRAFFIC_SCALE, 1.0),
@@ -337,6 +341,10 @@ func _run() -> void:
 	drive.scale_from = 1.0
 	drive._begin_neighborhood_step()
 	_check(drive.road_kind == "connector_one", "Outside gate did not enter connector")
+	_check(
+		drive.move_to == MAP.highway_merge_point(),
+		"On-ramp movement does not target the visual merge point"
+	)
 	if navigation != null:
 		navigation._update_status_visibility()
 		_check(
@@ -352,7 +360,7 @@ func _run() -> void:
 		"On-ramp does not start at neighborhood speed"
 	)
 
-	# The highway connector accelerates across its physical 80-unit ramp.
+	# The shortened ramp accelerates continuously to highway speed.
 	drive.visual_world_position.x = MAP.CONNECTOR_ONE_RECT.position.x
 	var ramp_start_speed: float = drive._current_world_speed()
 	drive.visual_world_position.x = MAP.CONNECTOR_ONE_RECT.position.x + MAP.CONNECTOR_ONE_RECT.size.x * 0.5
@@ -369,8 +377,9 @@ func _run() -> void:
 		"On-ramp does not reach highway speed"
 	)
 
-	# Connector hands directly to the four-lane highway.
-	drive.visual_world_position = MAP.highway_entry_point()
+	# Connector reaches the merge point first, then follows a short merge
+	# segment into the center of the rightmost highway lane.
+	drive.visual_world_position = MAP.highway_merge_point()
 	drive.visual_cell_scale = 0.5
 	drive.move_from = drive.visual_world_position
 	drive.scale_from = 0.5
@@ -380,6 +389,10 @@ func _run() -> void:
 		drive.highway_lane == MAP.HIGHWAY_ENTRY_LANE
 		and drive.highway_lane == MAP.HIGHWAY_LANES - 1,
 		"On-ramp does not merge directly into the rightmost lane"
+	)
+	_check(
+		drive.move_to == MAP.highway_entry_point(),
+		"Highway handoff does not follow the visible merge segment"
 	)
 	drive.road_kind = "connector_one"
 	drive.steering_feedback = 1.0
@@ -407,9 +420,20 @@ func _run() -> void:
 
 	# A traffic collision should register once, visibly slow the player, and
 	# move the struck car forward so it cannot multi-hit every frame.
-	drive.highway_lane = drive.HIGHWAY_TRAFFIC_LANES[0]
+	drive.highway_lane = MAP.HIGHWAY_ENTRY_LANE
 	drive.queued_highway_lane = drive.highway_lane
-	drive.highway_traffic_offsets_x[0] = 0.0
+	var traffic_lane_center_y := (
+		drive._highway_rect_for_lap(drive.highway_lap).position.y
+		+ float(drive.HIGHWAY_TRAFFIC_LANES[0]) * MAP.HIGHWAY_LANE_WIDTH
+		+ MAP.HIGHWAY_LANE_WIDTH * 0.5
+	)
+	drive.visual_world_position = Vector2(
+		MAP.highway_entry_point().x,
+		traffic_lane_center_y + drive.HIGHWAY_TRAFFIC_COLLISION_LATERAL - 0.1
+	)
+	drive.highway_traffic_offsets_x[0] = (
+		drive._highway_collision_longitudinal_distance() - 0.1
+	)
 	var bumps_before: int = drive.bumps
 	drive._update_highway_traffic(0.0)
 	_check(drive.bumps == bumps_before + 1, "Highway collision did not register a bump")
