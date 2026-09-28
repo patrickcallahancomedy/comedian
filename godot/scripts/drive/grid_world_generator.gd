@@ -704,24 +704,73 @@ func _generate_highway_connection() -> void:
 		city_connector_target
 	)
 
-	_add_grid_path(
+	_add_connector_to_auxiliary_lane(
 		Vector2i(nodes[neighborhood_gateway]),
 		neighborhood_connector_target,
-		RoadClass.CONNECTOR,
-		CONNECTOR_STEP,
-		false
+		horizontal,
+		neighborhood_rect
 	)
-	_add_grid_path(
+	_add_connector_to_auxiliary_lane(
 		Vector2i(nodes[city_gateway]),
 		city_connector_target,
-		RoadClass.CONNECTOR,
-		CONNECTOR_STEP,
-		false
+		horizontal,
+		city_rect
 	)
 
 	gateway_distance = Vector2(
 		nodes[neighborhood_gateway]
 	).distance_to(Vector2(nodes[city_gateway]))
+
+
+
+func _add_connector_to_auxiliary_lane(
+	start: Vector2i,
+	target: Vector2i,
+	horizontal_highway: bool,
+	local_rect: Rect2i
+) -> void:
+	# Blue must meet the END of pink instead of overlapping the pink lane.
+	# Force the final blue segment to approach perpendicular to the highway.
+	var approach := target
+	var center := Vector2i(local_rect.get_center())
+
+	if horizontal_highway:
+		approach.y = start.y
+		if approach.y == target.y:
+			var direction := signi(center.y - target.y)
+			if direction == 0:
+				direction = 1 if target.y < GRID_SIZE / 2 else -1
+			approach.y = clampi(
+				target.y + direction * CONNECTOR_STEP,
+				0,
+				GRID_SIZE - 1
+			)
+	else:
+		approach.x = start.x
+		if approach.x == target.x:
+			var direction := signi(center.x - target.x)
+			if direction == 0:
+				direction = 1 if target.x < GRID_SIZE / 2 else -1
+			approach.x = clampi(
+				target.x + direction * CONNECTOR_STEP,
+				0,
+				GRID_SIZE - 1
+			)
+
+	_add_grid_path(
+		start,
+		approach,
+		RoadClass.CONNECTOR,
+		CONNECTOR_STEP,
+		false
+	)
+	_add_grid_path(
+		approach,
+		target,
+		RoadClass.CONNECTOR,
+		CONNECTOR_STEP,
+		false
+	)
 
 
 func _build_parallel_highway_access(
