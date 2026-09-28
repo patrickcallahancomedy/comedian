@@ -276,45 +276,67 @@ func _choose_region_origins() -> Dictionary:
 		(CITY_ROWS - 1) * CITY_SPACING
 	)
 
-	var neighborhood_origin := _random_origin_for_span(
+	# Put the two generated regions in opposite corners of the 500x500 world.
+	# Small snapped inward jitter keeps seeds different while preserving the
+	# long trip that makes highway travel very likely.
+	var neighborhood_corner: int = _rng.randi_range(0, 3)
+	var city_corner: int = 3 - neighborhood_corner
+
+	var neighborhood_origin := _corner_origin_for_span(
 		neighborhood_span,
-		NEIGHBORHOOD_SPACING
+		neighborhood_corner,
+		NEIGHBORHOOD_SPACING,
+		30
 	)
-	var city_origin := _random_origin_for_span(
+	var city_origin := _corner_origin_for_span(
 		city_span,
-		CONNECTOR_STEP
+		city_corner,
+		CONNECTOR_STEP,
+		30
 	)
-
-	# Keep results broad. A and B can be close enough to need only surface
-	# streets or far enough apart to justify a highway, but avoid placing the
-	# entire city directly on top of the neighborhood.
-	var tries := 0
-	while tries < 24:
-		tries += 1
-
-		var n_rect := Rect2i(
-			neighborhood_origin,
-			neighborhood_span
-		)
-		var c_rect := Rect2i(
-			city_origin,
-			city_span
-		)
-
-		# Keep the two generators physically distinct, but they may sit close
-		# enough that the connecting corridor never needs a highway.
-		if not n_rect.grow(10).intersects(c_rect):
-			break
-
-		city_origin = _random_origin_for_span(
-			city_span,
-			CONNECTOR_STEP
-		)
 
 	return {
 		"neighborhood": neighborhood_origin,
 		"city": city_origin,
 	}
+
+
+func _corner_origin_for_span(
+	span: Vector2i,
+	corner: int,
+	snap_step: int,
+	max_jitter: int
+) -> Vector2i:
+	var max_x: int = GRID_SIZE - WORLD_MARGIN - span.x
+	var max_y: int = GRID_SIZE - WORLD_MARGIN - span.y
+
+	var jitter_x: int = _snap_int(
+		_rng.randi_range(0, max_jitter),
+		snap_step
+	)
+	var jitter_y: int = _snap_int(
+		_rng.randi_range(0, max_jitter),
+		snap_step
+	)
+
+	var use_right: bool = corner == 1 or corner == 3
+	var use_bottom: bool = corner == 2 or corner == 3
+
+	var origin_x: int = (
+		max_x - jitter_x
+		if use_right
+		else WORLD_MARGIN + jitter_x
+	)
+	var origin_y: int = (
+		max_y - jitter_y
+		if use_bottom
+		else WORLD_MARGIN + jitter_y
+	)
+
+	return Vector2i(
+		clampi(_snap_int(origin_x, snap_step), WORLD_MARGIN, max_x),
+		clampi(_snap_int(origin_y, snap_step), WORLD_MARGIN, max_y)
+	)
 
 
 func _random_origin_for_span(
