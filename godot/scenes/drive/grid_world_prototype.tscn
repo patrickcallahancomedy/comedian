@@ -60,6 +60,36 @@ theme_override_font_sizes/font_size = 11
 text = "CONNECTION"
 horizontal_alignment = 2
 
+
+[node name="SettingsBox" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 282.0
+offset_top = 66.0
+offset_right = 414.0
+offset_bottom = 154.0
+
+[node name="Layout" type="VBoxContainer" parent="SettingsBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SettingsLabel" type="Label" parent="SettingsBox/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "VIEW"
+horizontal_alignment = 1
+
+[node name="WholeMapButton" type="Button" parent="SettingsBox/Layout"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "WHOLE MAP"
+
+[node name="ZoomMapButton" type="Button" parent="SettingsBox/Layout"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "2 × 2 ZOOM"
+
 [node name="Legend" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 12
