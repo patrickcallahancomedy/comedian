@@ -94,12 +94,23 @@ func _run() -> void:
 
 	var dead_ends: int = 0
 	for node_id in range(first.nodes.size()):
-		if first.adjacency[node_id].size() < 2:
+		if (
+			first.adjacency[node_id].size() < 2
+			and not first.highway_nodes.has(node_id)
+		):
 			dead_ends += 1
 	_check(
 		dead_ends == 0,
-		"Generated map contains terminal wrong-turn roads"
+		"Generated map contains terminal wrong-turn roads away from highway continuations"
 	)
+
+	if first.uses_highway:
+		_check(
+			first.highway_nodes.size() == 2
+			and first.adjacency[int(first.highway_nodes[0])].size() == 1
+			and first.adjacency[int(first.highway_nodes[1])].size() == 1,
+			"Highway does not continue past both interchanges"
+		)
 
 	var off_grid_edges: int = 0
 	for a in range(first.nodes.size()):
@@ -138,7 +149,7 @@ func _run() -> void:
 	if first.uses_highway:
 		_check(
 			first.highway_nodes.size() == 2,
-			"Highway is not one uninterrupted straight segment"
+			"Highway does not expose two straight continuation endpoints"
 		)
 		if first.highway_nodes.size() == 2:
 			var first_highway_a: Vector2i = first.nodes[int(first.highway_nodes[0])]
