@@ -3,7 +3,7 @@ extends RefCounted
 
 const MAP = preload("res://scripts/drive/drive_grid_map.gd")
 
-const ONRAMP_SAMPLE_COUNT := 18
+const ONRAMP_SAMPLE_COUNT := 8
 
 
 static func neighborhood_gate_edge_point() -> Vector2:
