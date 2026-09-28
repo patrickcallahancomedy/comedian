@@ -301,14 +301,9 @@ func _choose_region_origins() -> Dictionary:
 			city_span
 		)
 
-		var overlap := n_rect.intersection(c_rect)
-		var overlap_area := overlap.size.x * overlap.size.y
-		var neighborhood_area := maxi(
-			1,
-			n_rect.size.x * n_rect.size.y
-		)
-
-		if float(overlap_area) / float(neighborhood_area) < 0.35:
+		# Keep the two generators physically distinct, but they may sit close
+		# enough that the connecting corridor never needs a highway.
+		if not n_rect.grow(10).intersects(c_rect):
 			break
 
 		city_origin = _random_origin_for_span(
