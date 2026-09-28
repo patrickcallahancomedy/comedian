@@ -99,10 +99,21 @@ func _run() -> void:
 			and not first.highway_nodes.has(node_id)
 		):
 			dead_ends += 1
+			var neighbor_details: Array = []
+			for neighbor_value in first.adjacency[node_id]:
+				var neighbor: int = int(neighbor_value)
+				neighbor_details.append({
+					"id": neighbor,
+					"pos": first.nodes[neighbor],
+					"class": first.edge_class(node_id, neighbor),
+				})
 			print(
 				"DEAD END: id=", node_id,
 				" pos=", first.nodes[node_id],
-				" neighbors=", first.adjacency[node_id]
+				" details=", neighbor_details,
+				" highway=", first.highway_nodes.has(node_id),
+				" connector=", first.connector_nodes.has(node_id),
+				" aux_merge=", first.auxiliary_merge_nodes.has(node_id)
 			)
 	_check(
 		dead_ends == 0,
