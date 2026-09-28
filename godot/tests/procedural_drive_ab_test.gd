@@ -17,7 +17,22 @@ func _run() -> void:
 	first.generate(1337)
 	second.generate(1337)
 
-	_check(first.nodes.size() >= 35, "Generator produced too few road nodes")
+	_check(
+		first.start_zone_nodes.size() == first.NEIGHBORHOOD_INTERSECTIONS,
+		"Neighborhood density is not approximately the 100-intersection tier"
+	)
+	_check(
+		first.end_zone_nodes.size() == first.CITY_INTERSECTIONS,
+		"City density is not approximately the 50-intersection tier"
+	)
+	_check(
+		first.middle_zone_nodes.size() == first.MIDDLE_INTERSECTIONS,
+		"Middle/highway density is not approximately the 10-intersection tier"
+	)
+	_check(
+		first.nodes.size() == first.TARGET_NODE_COUNT,
+		"Generated road graph does not match the density hierarchy"
+	)
 	_check(
 		first.nodes.size() == second.nodes.size(),
 		"Same seed produced different node counts"
@@ -70,9 +85,9 @@ func _run() -> void:
 		first.end_zone_nodes
 	)
 	_check(
-		start_spacing < middle_spacing
+		start_spacing < end_spacing
 		and end_spacing < middle_spacing,
-		"Road density does not loosen in the middle"
+		"Road density does not progress neighborhood → city → loose middle"
 	)
 
 	var longest_strand_points := 0
