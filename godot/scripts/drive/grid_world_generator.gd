@@ -44,7 +44,7 @@ const CONNECTOR_STEP := 10
 const HIGHWAY_EDGE_MARGIN := 10
 const HIGHWAY_CLEARANCE := 30
 const RAMP_STANDOFF := 20
-const RAMP_RUN := 60
+const RAMP_RUN := 100
 
 const WORLD_MARGIN := 20
 
@@ -792,11 +792,105 @@ func _build_parallel_highway_access(
 		_snap_point(lane_connector_end, CONNECTOR_STEP)
 	)
 
+	# Pink may never occupy either local-road footprint. If the first
+	# placement conflicts, slide the whole auxiliary lane along the highway
+	# until the nearest clear 100-unit segment is found.
+	var adjusted := _move_auxiliary_lane_clear_of_local_grids(
+		lane_highway_end,
+		lane_connector_end,
+		merge,
+		horizontal_highway
+	)
+	lane_highway_end = adjusted["highway_end"]
+	lane_connector_end = adjusted["connector_end"]
+	merge = adjusted["merge"]
+
 	return {
 		"merge": merge,
 		"lane_highway_end": lane_highway_end,
 		"connector_target": lane_connector_end,
 	}
+
+
+func _move_auxiliary_lane_clear_of_local_grids(
+	highway_end: Vector2i,
+	connector_end: Vector2i,
+	merge: Vector2i,
+	horizontal: bool
+) -> Dictionary:
+	if not _auxiliary_lane_overlaps_local_grid(highway_end, connector_end):
+		return {
+			"highway_end": highway_end,
+			"connector_end": connector_end,
+			"merge": merge,
+		}
+
+	var original_highway := highway_end
+	var original_connector := connector_end
+	var original_merge := merge
+
+	for distance in range(CONNECTOR_STEP, GRID_SIZE, CONNECTOR_STEP):
+		for direction in [-1, 1]:
+			var delta := (
+				Vector2i(distance * direction, 0)
+				if horizontal
+				else Vector2i(0, distance * direction)
+			)
+			var candidate_highway := original_highway + delta
+			var candidate_connector := original_connector + delta
+			var candidate_merge := original_merge + delta
+
+			if not WORLD_RECT.has_point(candidate_highway):
+				continue
+			if not WORLD_RECT.has_point(candidate_connector):
+				continue
+			if not WORLD_RECT.has_point(candidate_merge):
+				continue
+			if _auxiliary_lane_overlaps_local_grid(
+				candidate_highway,
+				candidate_connector
+			):
+				continue
+
+			return {
+				"highway_end": candidate_highway,
+				"connector_end": candidate_connector,
+				"merge": candidate_merge,
+			}
+
+	return {
+		"highway_end": highway_end,
+		"connector_end": connector_end,
+		"merge": merge,
+	}
+
+
+func _auxiliary_lane_overlaps_local_grid(
+	start: Vector2i,
+	finish: Vector2i
+) -> bool:
+	return (
+		_segment_hits_rect_inclusive(start, finish, neighborhood_rect)
+		or _segment_hits_rect_inclusive(start, finish, city_rect)
+	)
+
+
+func _segment_hits_rect_inclusive(
+	start: Vector2i,
+	finish: Vector2i,
+	rect: Rect2i
+) -> bool:
+	var min_x := mini(start.x, finish.x)
+	var max_x := maxi(start.x, finish.x)
+	var min_y := mini(start.y, finish.y)
+	var max_y := maxi(start.y, finish.y)
+
+	return not (
+		max_x < rect.position.x
+		or min_x > rect.end.x
+		or max_y < rect.position.y
+		or min_y > rect.end.y
+	)
 
 
 func _add_parallel_highway_access(access: Dictionary) -> void:
