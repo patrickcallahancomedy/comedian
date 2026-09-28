@@ -69,9 +69,9 @@ func generate(seed_value: int, target_nodes: int = TARGET_NODE_COUNT) -> void:
 		var angle: float = angle_choices[
 			_rng.randi_range(0, angle_choices.size() - 1)
 		]
-		var direction := base_direction.rotated(angle).normalized()
-		var length := _rng.randf_range(MIN_SEGMENT_LENGTH, MAX_SEGMENT_LENGTH)
-		var candidate := nodes[parent_id] + direction * length
+		var direction: Vector2 = base_direction.rotated(angle).normalized()
+		var length: float = _rng.randf_range(MIN_SEGMENT_LENGTH, MAX_SEGMENT_LENGTH)
+		var candidate: Vector2 = nodes[parent_id] + direction * length
 
 		if not WORLD_RECT.grow(-24.0).has_point(candidate):
 			continue
@@ -80,7 +80,7 @@ func generate(seed_value: int, target_nodes: int = TARGET_NODE_COUNT) -> void:
 		if _would_cross_existing(parent_id, candidate):
 			continue
 
-		var new_id := _add_node(candidate, direction)
+		var new_id: int = _add_node(candidate, direction)
 		_add_edge(parent_id, new_id)
 
 		if adjacency[parent_id].size() >= MAX_DEGREE:
@@ -156,7 +156,7 @@ func shortest_path(from_id: int, to_id: int) -> Array:
 		for neighbor in adjacency[current]:
 			if not unvisited.has(neighbor):
 				continue
-			var alt := best_distance + nodes[current].distance_to(nodes[neighbor])
+			var alt: float = best_distance + nodes[current].distance_to(nodes[neighbor])
 			if alt < float(distances[neighbor]):
 				distances[neighbor] = alt
 				previous[neighbor] = current
@@ -193,12 +193,12 @@ func _add_edge(a: int, b: int) -> void:
 
 	var start: Vector2 = nodes[min(a, b)]
 	var finish: Vector2 = nodes[max(a, b)]
-	var delta := finish - start
-	var normal := Vector2(-delta.y, delta.x).normalized()
+	var delta: Vector2 = finish - start
+	var normal: Vector2 = Vector2(-delta.y, delta.x).normalized()
 
-	var curve_amount := _rng.randf_range(-0.12, 0.12) * delta.length()
-	var control_one := start + delta * 0.34 + normal * curve_amount
-	var control_two := start + delta * 0.68 + normal * curve_amount
+	var curve_amount: float = _rng.randf_range(-0.12, 0.12) * delta.length()
+	var control_one: Vector2 = start + delta * 0.34 + normal * curve_amount
+	var control_two: Vector2 = start + delta * 0.68 + normal * curve_amount
 	edge_curves[_edge_key(a, b)] = _sample_cubic(
 		start,
 		control_one,
@@ -219,7 +219,7 @@ func _add_loop_connections() -> void:
 			if adjacency[a].has(b):
 				continue
 
-			var distance := nodes[a].distance_to(nodes[b])
+			var distance: float = nodes[a].distance_to(nodes[b])
 			if distance < MIN_SEGMENT_LENGTH * 0.75:
 				continue
 			if distance > LOOP_MAX_DISTANCE:
@@ -267,8 +267,8 @@ func _choose_far_apart_endpoints() -> void:
 	for endpoint in endpoints:
 		if endpoint == start_node:
 			continue
-		var path := shortest_path(start_node, endpoint)
-		var path_length := _path_length(path)
+		var path: Array = shortest_path(start_node, endpoint)
+		var path_length: float = _path_length(path)
 		if path_length > farthest_length:
 			farthest_length = path_length
 			farthest = endpoint
