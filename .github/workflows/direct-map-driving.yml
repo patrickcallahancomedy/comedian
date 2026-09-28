@@ -1,0 +1,91 @@
+name: COMEDIAN DIRECT MAP DRIVING
+
+on:
+  push:
+    branches:
+      - direct-map-driving-prototype
+    paths:
+      - "godot/**"
+      - ".github/workflows/direct-map-driving.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comedian-direct-map-driving
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  test-export-deploy:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout direct map drive
+        uses: actions/checkout@v4
+
+      - name: Import Godot project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path godot --quit
+
+      - name: Test grid world generator
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 45s godot --headless --path godot --script res://tests/grid_world_generator_test.gd
+
+      - name: Test direct map driving
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 45s godot --headless --path godot --script res://tests/direct_map_drive_test.gd
+
+      - name: Prepare export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/"
+
+      - name: Export direct map drive preview
+        shell: bash
+        working-directory: godot
+        run: |
+          set -euo pipefail
+
+          # Preview only. The committed COMEDIAN main scene remains untouched.
+          sed -i 's#run/main_scene="res://scenes/drive/drive_module.tscn"#run/main_scene="res://scenes/drive/direct_map_drive_prototype.tscn"#' project.godot
+
+          rm -rf build/direct-map-drive
+          mkdir -p build/direct-map-drive
+          godot --headless --path . --export-release "Web" build/direct-map-drive/index.html
+          touch build/direct-map-drive/.nojekyll
+
+          grep -a -q "grid_world_generator.gd" build/direct-map-drive/index.pck
+          grep -a -q "direct_map_drive_controller.gd" build/direct-map-drive/index.pck
+
+          BUILD_NAME="direct-map-drive-${GITHUB_SHA:0:8}"
+          mv build/direct-map-drive/index.js "build/direct-map-drive/${BUILD_NAME}.js"
+          mv build/direct-map-drive/index.wasm "build/direct-map-drive/${BUILD_NAME}.wasm"
+          mv build/direct-map-drive/index.pck "build/direct-map-drive/${BUILD_NAME}.pck"
+
+          sed -i "s#src=\"index.js\"#src=\"${BUILD_NAME}.js\"#" build/direct-map-drive/index.html
+          sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/direct-map-drive/index.html
+          sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/direct-map-drive/index.html
+          sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/direct-map-drive/index.html
+
+      - name: Publish direct map drive preview
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: godot/build/direct-map-drive
+          target-folder: direct-map-drive
+          clean: true
+          force: false
