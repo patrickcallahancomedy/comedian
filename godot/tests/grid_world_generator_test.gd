@@ -137,26 +137,33 @@ func _run() -> void:
 			"Surface-only map still generated highway nodes"
 		)
 
-	var found_highway: bool = bool(first.uses_highway)
-	var found_surface: bool = not bool(first.uses_highway)
+	var highway_maps: int = 0
+	var minimum_region_distance: float = INF
 
 	for test_seed in range(1, 25):
-		if found_highway and found_surface:
-			break
-
 		var candidate = GENERATOR.new()
 		candidate.generate(test_seed)
 
-		found_highway = found_highway or candidate.uses_highway
-		found_surface = found_surface or not candidate.uses_highway
+		if candidate.uses_highway:
+			highway_maps += 1
+
+		var region_distance: float = Vector2(
+			candidate.neighborhood_rect.get_center()
+		).distance_to(
+			Vector2(candidate.city_rect.get_center())
+		)
+		minimum_region_distance = minf(
+			minimum_region_distance,
+			region_distance
+		)
 
 	_check(
-		found_highway,
-		"Generator never produced a geography requiring highway"
+		minimum_region_distance >= 300.0,
+		"Neighborhood and city are not being kept far apart"
 	)
 	_check(
-		found_surface,
-		"Generator never produced a close A/B surface-only trip"
+		highway_maps >= 22,
+		"Opposite-region placement is not producing highway-heavy maps"
 	)
 
 	var packed: PackedScene = load(
