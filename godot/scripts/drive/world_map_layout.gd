@@ -117,6 +117,26 @@ const VENUE_PARKING_RECT := Rect2(105, 250, 70, 50)
 const HOME_RECT := Rect2(812, 950, 44, 34)
 
 
+static func neighborhood_roads() -> Array:
+	return NEIGHBORHOOD_ROADS
+
+
+static func city_roads() -> Array:
+	return CITY_ROADS
+
+
+static func neighborhood_feeder() -> PackedVector2Array:
+	return NEIGHBORHOOD_FEEDER
+
+
+static func city_entry_road() -> PackedVector2Array:
+	return CITY_ENTRY_ROAD
+
+
+static func wrong_exit_road() -> PackedVector2Array:
+	return WRONG_EXIT_ROAD
+
+
 static func westbound_lane_center(lane: int) -> float:
 	return (
 		WESTBOUND_HIGHWAY.position.y
