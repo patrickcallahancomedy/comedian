@@ -135,11 +135,10 @@ func _run() -> void:
 	var on_ramp_points: PackedVector2Array = drive._connector_one_points()
 	_check(on_ramp_points.size() == 4, "On-ramp is not a four-point wedge")
 	if on_ramp_points.size() == 4:
-		var on_ramp_start_width := on_ramp_points[3].y - on_ramp_points[0].y
 		var on_ramp_end_width := on_ramp_points[2].y - on_ramp_points[1].y
 		_check(
-			on_ramp_end_width > on_ramp_start_width,
-			"On-ramp does not widen toward the highway"
+			is_equal_approx(on_ramp_end_width, float(MAP.HIGHWAY_LANE_WIDTH)),
+			"On-ramp does not finish at one highway-lane width"
 		)
 
 	var off_ramp_points: PackedVector2Array = drive._connector_two_points()
@@ -377,6 +376,11 @@ func _run() -> void:
 	drive.scale_from = 0.5
 	drive._begin_highway_step()
 	_check(drive.road_kind == "highway", "Connector did not enter highway")
+	_check(
+		drive.highway_lane == MAP.HIGHWAY_ENTRY_LANE
+		and drive.highway_lane == MAP.HIGHWAY_LANES - 1,
+		"On-ramp does not merge directly into the rightmost lane"
+	)
 	drive.road_kind = "connector_one"
 	drive.steering_feedback = 1.0
 	drive.turn_drift_direction = 1.0
@@ -423,11 +427,8 @@ func _run() -> void:
 	)
 	drive.highway_collision_slow_remaining = 0.0
 
-	_check(
-		drive.highway_lane == MAP.HIGHWAY_ENTRY_LANE
-		and drive.highway_lane == MAP.HIGHWAY_LANES - 1,
-		"On-ramp does not merge directly into the rightmost lane"
-	)
+	drive.highway_lane = MAP.HIGHWAY_ENTRY_LANE
+	drive.queued_highway_lane = drive.highway_lane
 	var lane_before: int = drive.queued_highway_lane
 	var target_y_before: float = drive.move_to.y
 	drive._turn_left()
