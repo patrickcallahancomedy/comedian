@@ -41,6 +41,8 @@ const CITY_PRUNE_ATTEMPTS := 14
 const HIGHWAY_MIN_GATEWAY_DISTANCE := 115.0
 const HIGHWAY_MAX_MAJOR_NODES := 10
 const CONNECTOR_STEP := 10
+const HIGHWAY_EXTENSION := 40
+const RAMP_LOOP_OFFSET := 30
 
 const WORLD_MARGIN := 20
 
@@ -650,97 +652,180 @@ func _generate_highway_connection() -> void:
 	var delta := city_center - neighborhood_center
 	var dominant_horizontal: bool = abs(delta.x) >= abs(delta.y)
 
-	var entry := Vector2i.ZERO
-	var exit := Vector2i.ZERO
+	var neighborhood_merge := Vector2i.ZERO
+	var city_merge := Vector2i.ZERO
+	var highway_start := Vector2i.ZERO
+	var highway_end := Vector2i.ZERO
 
 	if dominant_horizontal:
 		var highway_y: int = _safe_horizontal_highway_y()
+		var travel_sign: int = 1 if city_center.x >= neighborhood_center.x else -1
 
-		if city_center.x >= neighborhood_center.x:
-			entry = Vector2i(
-				neighborhood_rect.position.x,
-				highway_y
-			)
-			exit = Vector2i(
-				city_rect.end.x,
-				highway_y
-			)
-		else:
-			entry = Vector2i(
-				neighborhood_rect.end.x,
-				highway_y
-			)
-			exit = Vector2i(
-				city_rect.position.x,
-				highway_y
-			)
+		neighborhood_merge = Vector2i(
+			neighborhood_center.x + travel_sign * RAMP_LOOP_OFFSET,
+			highway_y
+		)
+		city_merge = Vector2i(
+			city_center.x - travel_sign * RAMP_LOOP_OFFSET,
+			highway_y
+		)
+
+		var left_extent: int = mini(
+			neighborhood_rect.position.x,
+			city_rect.position.x
+		) - HIGHWAY_EXTENSION
+		var right_extent: int = maxi(
+			neighborhood_rect.end.x,
+			city_rect.end.x
+		) + HIGHWAY_EXTENSION
+
+		highway_start = Vector2i(left_extent, highway_y)
+		highway_end = Vector2i(right_extent, highway_y)
 	else:
 		var highway_x: int = _safe_vertical_highway_x()
+		var travel_sign: int = 1 if city_center.y >= neighborhood_center.y else -1
 
-		if city_center.y >= neighborhood_center.y:
-			entry = Vector2i(
-				highway_x,
-				neighborhood_rect.position.y
-			)
-			exit = Vector2i(
-				highway_x,
-				city_rect.end.y
-			)
-		else:
-			entry = Vector2i(
-				highway_x,
-				neighborhood_rect.end.y
-			)
-			exit = Vector2i(
-				highway_x,
-				city_rect.position.y
-			)
+		neighborhood_merge = Vector2i(
+			highway_x,
+			neighborhood_center.y + travel_sign * RAMP_LOOP_OFFSET
+		)
+		city_merge = Vector2i(
+			highway_x,
+			city_center.y - travel_sign * RAMP_LOOP_OFFSET
+		)
 
-	entry = _clamp_to_world(_snap_point(entry, CONNECTOR_STEP))
-	exit = _clamp_to_world(_snap_point(exit, CONNECTOR_STEP))
+		var top_extent: int = mini(
+			neighborhood_rect.position.y,
+			city_rect.position.y
+		) - HIGHWAY_EXTENSION
+		var bottom_extent: int = maxi(
+			neighborhood_rect.end.y,
+			city_rect.end.y
+		) + HIGHWAY_EXTENSION
 
-	# Re-pick the local gateways for this safe external corridor. The long
-	# highway stays outside both generated street grids, while short connector
-	# roads bridge from each district boundary to its highway endpoint.
+		highway_start = Vector2i(highway_x, top_extent)
+		highway_end = Vector2i(highway_x, bottom_extent)
+
+	neighborhood_merge = _clamp_to_world(
+		_snap_point(neighborhood_merge, CONNECTOR_STEP)
+	)
+	city_merge = _clamp_to_world(
+		_snap_point(city_merge, CONNECTOR_STEP)
+	)
+	highway_start = _clamp_to_world(
+		_snap_point(highway_start, CONNECTOR_STEP)
+	)
+	highway_end = _clamp_to_world(
+		_snap_point(highway_end, CONNECTOR_STEP)
+	)
+
+	# Local roads stay exactly as generated. Each district picks the nearest
+	# boundary street to its interchange, then reaches the highway through a
+	# stepped rectangular ramp instead of touching the highway directly.
 	neighborhood_gateway = _closest_boundary_node(
 		neighborhood_grid,
-		entry
+		neighborhood_merge
 	)
 	city_gateway = _closest_boundary_node(
 		city_grid,
-		exit
+		city_merge
 	)
 
-	var start := Vector2i(nodes[neighborhood_gateway])
-	var finish := Vector2i(nodes[city_gateway])
+	var neighborhood_start := Vector2i(nodes[neighborhood_gateway])
+	var city_finish := Vector2i(nodes[city_gateway])
+
+	_add_stepped_ramp_loop(
+		neighborhood_start,
+		neighborhood_merge,
+		dominant_horizontal
+	)
+	_add_stepped_ramp_loop(
+		city_finish,
+		city_merge,
+		dominant_horizontal
+	)
+
+	# The highway now continues beyond both interchanges. Merge points are
+	# interior highway nodes rather than the ends of the highway.
+	var start_id: int = _add_node(highway_start)
+	var neighborhood_merge_id: int = _add_node(neighborhood_merge)
+	var city_merge_id: int = _add_node(city_merge)
+	var end_id: int = _add_node(highway_end)
+
+	highway_nodes.append(start_id)
+	if end_id != start_id:
+		highway_nodes.append(end_id)
+
+	var ordered: Array = [
+		start_id,
+		neighborhood_merge_id,
+		city_merge_id,
+		end_id,
+	]
+	ordered.sort_custom(func(a, b):
+		var pa: Vector2i = nodes[int(a)]
+		var pb: Vector2i = nodes[int(b)]
+		return pa.x < pb.x if dominant_horizontal else pa.y < pb.y
+	)
+
+	for index in range(ordered.size() - 1):
+		var a: int = int(ordered[index])
+		var b: int = int(ordered[index + 1])
+		if a != b:
+			_add_edge(a, b, RoadClass.HIGHWAY)
+
+
+func _add_stepped_ramp_loop(
+	gateway: Vector2i,
+	merge: Vector2i,
+	horizontal_highway: bool
+) -> void:
+	var bend_one := gateway
+	var bend_two := merge
+
+	if horizontal_highway:
+		var side: int = signi(gateway.y - merge.y)
+		if side == 0:
+			side = 1
+		var loop_y: int = merge.y + side * RAMP_LOOP_OFFSET
+		bend_one = Vector2i(gateway.x, loop_y)
+		bend_two = Vector2i(merge.x, loop_y)
+	else:
+		var side: int = signi(gateway.x - merge.x)
+		if side == 0:
+			side = 1
+		var loop_x: int = merge.x + side * RAMP_LOOP_OFFSET
+		bend_one = Vector2i(loop_x, gateway.y)
+		bend_two = Vector2i(loop_x, merge.y)
+
+	bend_one = _clamp_to_world(
+		_snap_point(bend_one, CONNECTOR_STEP)
+	)
+	bend_two = _clamp_to_world(
+		_snap_point(bend_two, CONNECTOR_STEP)
+	)
 
 	_add_grid_path(
-		start,
-		entry,
+		gateway,
+		bend_one,
 		RoadClass.CONNECTOR,
 		CONNECTOR_STEP,
-		true
+		false
 	)
 	_add_grid_path(
-		exit,
-		finish,
+		bend_one,
+		bend_two,
 		RoadClass.CONNECTOR,
 		CONNECTOR_STEP,
-		true
+		false
 	)
-
-	# Highway remains one uninterrupted straight run.
-	var entry_id: int = _add_node(entry)
-	var exit_id: int = _add_node(exit)
-
-	highway_nodes.append(entry_id)
-	if exit_id != entry_id:
-		highway_nodes.append(exit_id)
-		_add_edge(
-			entry_id,
-			exit_id,
-			RoadClass.HIGHWAY
-		)
+	_add_grid_path(
+		bend_two,
+		merge,
+		RoadClass.CONNECTOR,
+		CONNECTOR_STEP,
+		false
+	)
 
 
 func _safe_horizontal_highway_y() -> int:
