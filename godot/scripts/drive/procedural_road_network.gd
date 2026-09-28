@@ -3,22 +3,32 @@ extends RefCounted
 
 ## Road-first generator for COMEDIAN.
 ##
-## Important separation:
-## - nodes / adjacency are routing data.
-## - strand_curves are the visible roads.
+## The network has a density field:
+## - dense, imperfect grid-like streets around Point A
+## - a looser organic middle
+## - dense, imperfect grid-like streets around Point B
 ##
-## We first make one connected planar-ish graph, close every leaf into a loop,
-## then bake degree-2 chains into long Catmull-Rom road strands. The player
-## therefore sees roads that flow through the graph instead of individual
-## edge pieces stitched together.
+## It is still one graph. The zones only influence spacing and direction.
+## Visible roads are baked as flowing strands after the graph is complete.
 
 const WORLD_RECT := Rect2(70.0, 70.0, 1060.0, 1360.0)
-const TARGET_NODE_COUNT := 64
-const POINT_CANDIDATES := 22
-const MIN_POINT_SPACING := 82.0
+
+const START_DISTRICT_RECT := Rect2(565.0, 1080.0, 430.0, 285.0)
+const END_DISTRICT_RECT := Rect2(145.0, 125.0, 430.0, 285.0)
+const MIDDLE_RECT := Rect2(220.0, 390.0, 760.0, 720.0)
+
+const DISTRICT_ROWS := 4
+const DISTRICT_COLUMNS := 5
+const DISTRICT_JITTER := 18.0
+const DISTRICT_EDGE_KEEP_CHANCE := 0.82
+
+const TARGET_NODE_COUNT := 62
+const MIDDLE_CANDIDATES := 24
+const MIDDLE_MIN_SPACING := 125.0
+
 const MAX_DEGREE := 4
-const LOOP_SEARCH_DISTANCE := 310.0
-const EXTRA_EDGE_TARGET_MULTIPLIER := 1.18
+const LOOP_SEARCH_DISTANCE := 300.0
+const EXTRA_EDGE_TARGET_MULTIPLIER := 1.22
 const CURVE_SAMPLES_PER_EDGE := 10
 
 var seed := 0
@@ -26,6 +36,10 @@ var nodes: Array = []
 var adjacency: Array = []
 var edge_curves: Dictionary = {}
 var strand_curves: Array = []
+
+var start_zone_nodes: Array = []
+var middle_zone_nodes: Array = []
+var end_zone_nodes: Array = []
 
 var start_node := -1
 var destination_node := -1
@@ -36,17 +50,40 @@ var _rng := RandomNumberGenerator.new()
 func generate(seed_value: int, target_nodes: int = TARGET_NODE_COUNT) -> void:
 	seed = seed_value
 	_rng.seed = seed_value
+
 	nodes.clear()
 	adjacency.clear()
 	edge_curves.clear()
 	strand_curves.clear()
+	start_zone_nodes.clear()
+	middle_zone_nodes.clear()
+	end_zone_nodes.clear()
 
-	_generate_organic_points(target_nodes)
-	_build_connected_skeleton()
+	start_zone_nodes = _generate_district(
+		START_DISTRICT_RECT,
+		deg_to_rad(_rng.randf_range(-9.0, 9.0))
+	)
+	end_zone_nodes = _generate_district(
+		END_DISTRICT_RECT,
+		deg_to_rad(_rng.randf_range(-9.0, 9.0))
+	)
+
+	var dense_count := start_zone_nodes.size() + end_zone_nodes.size()
+	var middle_target := maxi(12, target_nodes - dense_count)
+	middle_zone_nodes = _generate_middle_points(middle_target)
+
+	_connect_district(start_zone_nodes)
+	_connect_district(end_zone_nodes)
+	_connect_middle()
+	_connect_zone_to_middle(start_zone_nodes, 3)
+	_connect_zone_to_middle(end_zone_nodes, 3)
+
 	_close_all_dead_ends()
 	_add_extra_loops()
+	_close_all_dead_ends()
+
 	_bake_visible_strands()
-	_choose_far_apart_points()
+	_choose_a_and_b()
 
 
 func neighbors(node_id: int) -> Array:
@@ -100,6 +137,7 @@ func shortest_path(from_id: int, to_id: int) -> Array:
 				best_distance = candidate_distance
 
 		unvisited.remove_at(best_slot)
+
 		if current == to_id:
 			break
 		if is_inf(best_distance):
@@ -111,9 +149,9 @@ func shortest_path(from_id: int, to_id: int) -> Array:
 				continue
 
 			var weight: float = nodes[current].distance_to(nodes[neighbor])
-			var alt: float = best_distance + weight
-			if alt < float(distances[neighbor]):
-				distances[neighbor] = alt
+			var alternate: float = best_distance + weight
+			if alternate < float(distances[neighbor]):
+				distances[neighbor] = alternate
 				previous[neighbor] = current
 
 	if int(previous[to_id]) == -1:
@@ -126,53 +164,129 @@ func shortest_path(from_id: int, to_id: int) -> Array:
 		if cursor < 0:
 			return []
 		path.push_front(cursor)
+
 	return path
 
 
-func _generate_organic_points(target_nodes: int) -> void:
-	# Best-candidate blue-noise placement. There is no grid and no tile size.
-	# Each accepted point is simply the best-spaced location from a small
-	# random candidate pool, which produces irregular but usable road density.
-	var center := WORLD_RECT.get_center()
-	_add_node(center)
+func _generate_district(rect: Rect2, rotation: float) -> Array:
+	var result: Array = []
+	var center := rect.get_center()
 
-	while nodes.size() < target_nodes:
+	var x_spacing := rect.size.x / float(DISTRICT_COLUMNS - 1)
+	var y_spacing := rect.size.y / float(DISTRICT_ROWS - 1)
+
+	for row in range(DISTRICT_ROWS):
+		for column in range(DISTRICT_COLUMNS):
+			var point := Vector2(
+				rect.position.x + float(column) * x_spacing,
+				rect.position.y + float(row) * y_spacing
+			)
+
+			point -= center
+			point = point.rotated(rotation)
+			point += center
+
+			point += Vector2(
+				_rng.randf_range(-DISTRICT_JITTER, DISTRICT_JITTER),
+				_rng.randf_range(-DISTRICT_JITTER, DISTRICT_JITTER)
+			)
+
+			point.x = clampf(
+				point.x,
+				WORLD_RECT.position.x + 16.0,
+				WORLD_RECT.end.x - 16.0
+			)
+			point.y = clampf(
+				point.y,
+				WORLD_RECT.position.y + 16.0,
+				WORLD_RECT.end.y - 16.0
+			)
+
+			result.append(_add_node(point))
+
+	return result
+
+
+func _generate_middle_points(count: int) -> Array:
+	var result: Array = []
+
+	while result.size() < count:
 		var best_candidate := Vector2.ZERO
 		var best_clearance := -1.0
 
-		for candidate_index in range(POINT_CANDIDATES):
+		for candidate_index in range(MIDDLE_CANDIDATES):
 			var candidate := Vector2(
 				_rng.randf_range(
-					WORLD_RECT.position.x,
-					WORLD_RECT.end.x
+					MIDDLE_RECT.position.x,
+					MIDDLE_RECT.end.x
 				),
 				_rng.randf_range(
-					WORLD_RECT.position.y,
-					WORLD_RECT.end.y
+					MIDDLE_RECT.position.y,
+					MIDDLE_RECT.end.y
 				)
 			)
+
 			var clearance := _nearest_node_distance(candidate)
 			if clearance > best_clearance:
 				best_clearance = clearance
 				best_candidate = candidate
 
+		# The center deliberately has larger spacing than the two dense ends.
 		if (
-			best_clearance >= MIN_POINT_SPACING
-			or nodes.size() >= target_nodes - 4
+			best_clearance >= MIDDLE_MIN_SPACING
+			or result.size() >= count - 3
 		):
-			_add_node(best_candidate)
+			result.append(_add_node(best_candidate))
 		else:
-			# Relax only when the remaining space is genuinely full.
-			_add_node(best_candidate)
+			result.append(_add_node(best_candidate))
+
+	return result
 
 
-func _build_connected_skeleton() -> void:
-	# Prim-style nearest growth makes one connected base web. Crossing edges
-	# are avoided whenever there is a reasonable non-crossing alternative.
-	var connected: Array = [0]
+func _connect_district(zone_nodes: Array) -> void:
+	for row in range(DISTRICT_ROWS):
+		for column in range(DISTRICT_COLUMNS):
+			var node_id: int = int(
+				zone_nodes[row * DISTRICT_COLUMNS + column]
+			)
+
+			if column < DISTRICT_COLUMNS - 1:
+				var right_id: int = int(
+					zone_nodes[
+						row * DISTRICT_COLUMNS + column + 1
+					]
+				)
+				# Horizontal continuity is strong; occasional gaps keep the
+				# area from reading like a perfect city-builder grid.
+				if (
+					_rng.randf() <= DISTRICT_EDGE_KEEP_CHANCE
+					or row == 1
+					or row == DISTRICT_ROWS - 2
+				):
+					_add_edge(node_id, right_id)
+
+			if row < DISTRICT_ROWS - 1:
+				var down_id: int = int(
+					zone_nodes[
+						(row + 1) * DISTRICT_COLUMNS + column
+					]
+				)
+				if (
+					_rng.randf() <= DISTRICT_EDGE_KEEP_CHANCE
+					or column == 1
+					or column == DISTRICT_COLUMNS - 2
+				):
+					_add_edge(node_id, down_id)
+
+
+func _connect_middle() -> void:
+	if middle_zone_nodes.is_empty():
+		return
+
+	var connected: Array = [int(middle_zone_nodes[0])]
 	var unconnected: Array = []
-	for node_id in range(1, nodes.size()):
-		unconnected.append(node_id)
+	for index in range(1, middle_zone_nodes.size()):
+		unconnected.append(int(middle_zone_nodes[index]))
 
 	while not unconnected.is_empty():
 		var best_a := -1
@@ -217,10 +331,46 @@ func _build_connected_skeleton() -> void:
 		unconnected.erase(best_b)
 
 
+func _connect_zone_to_middle(zone_nodes: Array, connection_count: int) -> void:
+	var candidates: Array = []
+
+	for zone_value in zone_nodes:
+		var zone_id: int = int(zone_value)
+		for middle_value in middle_zone_nodes:
+			var middle_id: int = int(middle_value)
+			var distance: float = nodes[zone_id].distance_to(
+				nodes[middle_id]
+			)
+			candidates.append([zone_id, middle_id, distance])
+
+	candidates.sort_custom(
+		func(a: Array, b: Array) -> bool:
+			return float(a[2]) < float(b[2])
+	)
+
+	var added := 0
+	for candidate in candidates:
+		if added >= connection_count:
+			break
+
+		var a: int = int(candidate[0])
+		var b: int = int(candidate[1])
+
+		if adjacency[a].size() >= MAX_DEGREE:
+			continue
+		if adjacency[b].size() >= MAX_DEGREE:
+			continue
+		if adjacency[a].has(b):
+			continue
+		if _edge_would_cross(a, b):
+			continue
+
+		_add_edge(a, b)
+		added += 1
+
+
 func _close_all_dead_ends() -> void:
-	# A branch is never allowed to remain a gameplay trap. Leaves are tied
-	# back into the existing network until every road point has degree >= 2.
-	var safety := nodes.size() * 12
+	var safety := nodes.size() * 16
 
 	while safety > 0:
 		safety -= 1
@@ -241,10 +391,11 @@ func _add_extra_loops() -> void:
 	var desired_edges := int(ceil(
 		float(nodes.size()) * EXTRA_EDGE_TARGET_MULTIPLIER
 	))
-	var attempts := nodes.size() * 40
+	var attempts := nodes.size() * 48
 
 	while _edge_count() < desired_edges and attempts > 0:
 		attempts -= 1
+
 		var a := _rng.randi_range(0, nodes.size() - 1)
 		if adjacency[a].size() >= MAX_DEGREE:
 			continue
@@ -253,7 +404,9 @@ func _add_extra_loops() -> void:
 		if nearby.is_empty():
 			continue
 
-		var b: int = int(nearby[_rng.randi_range(0, nearby.size() - 1)])
+		var b: int = int(
+			nearby[_rng.randi_range(0, nearby.size() - 1)]
+		)
 		if adjacency[b].size() >= MAX_DEGREE:
 			continue
 		if adjacency[a].has(b):
@@ -270,8 +423,6 @@ func _bake_visible_strands() -> void:
 
 	var visited_edges: Dictionary = {}
 
-	# Start at actual junctions first. Degree-2 points disappear into a single
-	# flowing visible road strand.
 	for node_id in range(nodes.size()):
 		if adjacency[node_id].size() == 2:
 			continue
@@ -289,12 +440,12 @@ func _bake_visible_strands() -> void:
 			)
 			_bake_sequence(sequence, false)
 
-	# Any remaining edges belong to closed all-degree-2 loops.
 	for a in range(nodes.size()):
 		for b_value in adjacency[a]:
 			var b: int = int(b_value)
 			if b <= a:
 				continue
+
 			var key := _edge_key(a, b)
 			if visited_edges.has(key):
 				continue
@@ -325,8 +476,9 @@ func _follow_strand(
 
 		var first: int = int(adjacency[current][0])
 		var second: int = int(adjacency[current][1])
-		var next := second if first == previous else first
+		var next: int = second if first == previous else first
 		var next_key := _edge_key(current, next)
+
 		if visited_edges.has(next_key):
 			break
 
@@ -351,7 +503,7 @@ func _follow_closed_loop(
 
 		var first: int = int(adjacency[current][0])
 		var second: int = int(adjacency[current][1])
-		var next := second if first == previous else first
+		var next: int = second if first == previous else first
 
 		if next == start:
 			visited_edges[_edge_key(current, next)] = true
@@ -377,11 +529,11 @@ func _bake_sequence(sequence: Array, closed: bool) -> void:
 	for index in range(sequence.size() - 1):
 		var p1_id: int = int(sequence[index])
 		var p2_id: int = int(sequence[index + 1])
+
 		var p1: Vector2 = nodes[p1_id]
 		var p2: Vector2 = nodes[p2_id]
-
-		var p0 := p1
-		var p3 := p2
+		var p0: Vector2 = p1
+		var p3: Vector2 = p2
 
 		if index > 0:
 			p0 = nodes[int(sequence[index - 1])]
@@ -400,7 +552,6 @@ func _bake_sequence(sequence: Array, closed: bool) -> void:
 			p3,
 			CURVE_SAMPLES_PER_EDGE
 		)
-
 		_store_edge_curve(p1_id, p2_id, curve)
 
 		for point_index in range(curve.size()):
@@ -418,6 +569,7 @@ func _store_edge_curve(
 	curve_from_a_to_b: PackedVector2Array
 ) -> void:
 	var stored := curve_from_a_to_b
+
 	if a > b:
 		stored = PackedVector2Array()
 		for index in range(
@@ -443,52 +595,56 @@ func _sample_catmull_rom(
 		var t := float(index) / float(samples)
 		var t2 := t * t
 		var t3 := t2 * t
-		var point := 0.5 * (
+		var point: Vector2 = 0.5 * (
 			2.0 * p1
 			+ (-p0 + p2) * t
-			+ (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
-			+ (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3
+			+ (
+				2.0 * p0
+				- 5.0 * p1
+				+ 4.0 * p2
+				- p3
+			) * t2
+			+ (
+				-p0
+				+ 3.0 * p1
+				- 3.0 * p2
+				+ p3
+			) * t3
 		)
 		points.append(point)
 
 	return points
 
 
-func _choose_far_apart_points() -> void:
-	# Diameter approximation on graph distance. A and B are ordinary road
-	# points inside the network, never artificial terminal branches.
-	var first := _farthest_node_from(0)
-	start_node = _farthest_node_from(first)
-	destination_node = _farthest_node_from(start_node)
+func _choose_a_and_b() -> void:
+	start_node = _closest_usable_node(
+		start_zone_nodes,
+		START_DISTRICT_RECT.get_center()
+	)
+	destination_node = _closest_usable_node(
+		end_zone_nodes,
+		END_DISTRICT_RECT.get_center()
+	)
 
 
-func _farthest_node_from(source: int) -> int:
-	var farthest := source
-	var farthest_length := -1.0
+func _closest_usable_node(
+	candidates: Array,
+	target: Vector2
+) -> int:
+	var best := -1
+	var best_distance := INF
 
-	for candidate in range(nodes.size()):
-		if candidate == source:
+	for candidate_value in candidates:
+		var candidate: int = int(candidate_value)
+		if adjacency[candidate].size() < 2:
 			continue
 
-		var path := shortest_path(source, candidate)
-		if path.is_empty():
-			continue
+		var distance: float = nodes[candidate].distance_to(target)
+		if distance < best_distance:
+			best_distance = distance
+			best = candidate
 
-		var path_length := _path_length(path)
-		if path_length > farthest_length:
-			farthest_length = path_length
-			farthest = candidate
-
-	return farthest
-
-
-func _path_length(path: Array) -> float:
-	var result := 0.0
-	for index in range(path.size() - 1):
-		result += nodes[int(path[index])].distance_to(
-			nodes[int(path[index + 1])]
-		)
-	return result
+	return best
 
 
 func _first_leaf() -> int:
@@ -498,7 +654,10 @@ func _first_leaf() -> int:
 	return -1
 
 
-func _best_loop_target(leaf: int, require_no_crossing: bool) -> int:
+func _best_loop_target(
+	leaf: int,
+	require_no_crossing: bool
+) -> int:
 	var best := -1
 	var best_score := INF
 
@@ -510,14 +669,12 @@ func _best_loop_target(leaf: int, require_no_crossing: bool) -> int:
 		if adjacency[candidate].size() >= MAX_DEGREE:
 			continue
 
-		var distance := nodes[leaf].distance_to(nodes[candidate])
+		var distance: float = nodes[leaf].distance_to(nodes[candidate])
 		if distance > LOOP_SEARCH_DISTANCE:
 			continue
 		if require_no_crossing and _edge_would_cross(leaf, candidate):
 			continue
 
-		# Avoid closing a leaf straight back to the other end of the same tiny
-		# local wedge when a broader loop is available.
 		var score := distance
 		if adjacency[leaf].size() == 1:
 			var existing: int = int(adjacency[leaf][0])
@@ -540,7 +697,9 @@ func _nearby_candidates(node_id: int) -> Array:
 		if adjacency[node_id].has(candidate):
 			continue
 
-		var distance := nodes[node_id].distance_to(nodes[candidate])
+		var distance: float = nodes[node_id].distance_to(
+			nodes[candidate]
+		)
 		if distance > LOOP_SEARCH_DISTANCE:
 			continue
 
@@ -552,8 +711,9 @@ func _nearby_candidates(node_id: int) -> Array:
 	)
 
 	var result: Array = []
-	for index in range(mini(6, scored.size())):
+	for index in range(mini(7, scored.size())):
 		result.append(int(scored[index][0]))
+
 	return result
 
 
@@ -563,7 +723,10 @@ func _nearest_node_distance(point: Vector2) -> float:
 
 	var result := INF
 	for existing in nodes:
-		result = minf(result, point.distance_to(existing))
+		result = minf(
+			result,
+			point.distance_to(existing)
+		)
 	return result
 
 
@@ -579,6 +742,11 @@ func _add_edge(a: int, b: int) -> void:
 		return
 	if adjacency[a].has(b):
 		return
+	if adjacency[a].size() >= MAX_DEGREE:
+		return
+	if adjacency[b].size() >= MAX_DEGREE:
+		return
+
 	adjacency[a].append(b)
 	adjacency[b].append(a)
 
@@ -598,6 +766,7 @@ func _edge_would_cross(a: int, b: int) -> bool:
 				continue
 			if c == a or c == b or d == a or d == b:
 				continue
+
 			if _segments_intersect(
 				nodes[a],
 				nodes[b],
@@ -605,6 +774,7 @@ func _edge_would_cross(a: int, b: int) -> bool:
 				nodes[d]
 			):
 				return true
+
 	return false
 
 
@@ -618,6 +788,7 @@ func _segments_intersect(
 		(a2.x - a1.x) * (b2.y - b1.y)
 		- (a2.y - a1.y) * (b2.x - b1.x)
 	)
+
 	if absf(denominator) < 0.0001:
 		return false
 
@@ -630,7 +801,12 @@ func _segments_intersect(
 		- (a2.y - a1.y) * (a1.x - b1.x)
 	) / denominator
 
-	return ua > 0.02 and ua < 0.98 and ub > 0.02 and ub < 0.98
+	return (
+		ua > 0.02
+		and ua < 0.98
+		and ub > 0.02
+		and ub < 0.98
+	)
 
 
 func _edge_key(a: int, b: int) -> String:
