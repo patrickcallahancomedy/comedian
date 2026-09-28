@@ -860,11 +860,13 @@ func _add_fast_access_to_highway(
 	if horizontal_highway:
 		var highway_y: int = highway_start.y
 		var side: int = -1 if gateway.y < highway_y else 1
-		var merge_x: int = clampi(
+		var connector_x: int = clampi(
 			_snap_int(gateway.x, CONNECTOR_STEP),
 			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
 			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
 		)
+		var run_sign: int = 1 if connector_x < GRID_SIZE / 2 else -1
+		var merge_x: int = connector_x + run_sign * RAMP_RUN
 
 		merge = Vector2i(merge_x, highway_y)
 		ramp_turn = Vector2i(
@@ -872,17 +874,19 @@ func _add_fast_access_to_highway(
 			highway_y + side * RAMP_STANDOFF
 		)
 		connector_end = Vector2i(
-			gateway.x,
+			connector_x,
 			ramp_turn.y
 		)
 	else:
 		var highway_x: int = highway_start.x
 		var side: int = -1 if gateway.x < highway_x else 1
-		var merge_y: int = clampi(
+		var connector_y: int = clampi(
 			_snap_int(gateway.y, CONNECTOR_STEP),
 			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
 			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
 		)
+		var run_sign: int = 1 if connector_y < GRID_SIZE / 2 else -1
+		var merge_y: int = connector_y + run_sign * RAMP_RUN
 
 		merge = Vector2i(highway_x, merge_y)
 		ramp_turn = Vector2i(
@@ -891,7 +895,7 @@ func _add_fast_access_to_highway(
 		)
 		connector_end = Vector2i(
 			ramp_turn.x,
-			gateway.y
+			connector_y
 		)
 
 	connector_end = _clamp_to_world(
@@ -914,7 +918,8 @@ func _add_fast_access_to_highway(
 		false
 	)
 
-	# Purple ramp: one clean turn from the connector into the highway.
+	# Purple ramp: first runs parallel to the highway, then makes the short
+	# final turn into the highway. The blue connector meets its outer end.
 	_add_grid_path(
 		connector_end,
 		ramp_turn,
