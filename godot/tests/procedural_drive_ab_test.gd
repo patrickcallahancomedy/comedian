@@ -156,7 +156,7 @@ func _find_reroutable_turn(network, route: Array) -> Dictionary:
 		var previous: int = int(route[index - 1])
 		var junction: int = int(route[index])
 		var expected: int = int(route[index + 1])
-		var incoming := (
+		var incoming: Vector2 = (
 			network.nodes[junction] - network.nodes[previous]
 		).normalized()
 
@@ -165,10 +165,10 @@ func _find_reroutable_turn(network, route: Array) -> Dictionary:
 			if candidate == previous or candidate == expected:
 				continue
 
-			var outgoing := (
+			var outgoing: Vector2 = (
 				network.nodes[candidate] - network.nodes[junction]
 			).normalized()
-			var cross := incoming.x * outgoing.y - incoming.y * outgoing.x
+			var cross: float = incoming.x * outgoing.y - incoming.y * outgoing.x
 			var dot := clampf(incoming.dot(outgoing), -1.0, 1.0)
 			var angle := atan2(cross, dot)
 
