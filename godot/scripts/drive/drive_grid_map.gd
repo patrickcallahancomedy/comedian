@@ -28,7 +28,7 @@ const NEIGHBORHOOD_START := Vector2i(1, 3)
 const NEIGHBORHOOD_GATE := Vector2i(3, 1)
 const NEIGHBORHOOD_GATE_SIDE := Vector2i.RIGHT
 
-const HIGHWAY_ENTRY_LANE := 2
+const HIGHWAY_ENTRY_LANE := 3
 const HIGHWAY_EXIT_LANE := 3
 
 const CITY_ENTRY := Vector2i(0, 2)
