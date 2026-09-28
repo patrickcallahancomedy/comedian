@@ -304,8 +304,10 @@ func _connect_district(
 				)
 
 				var guaranteed_cross_street := (
-					column == 1
+					column == 0
+					or column == 1
 					or column == columns - 2
+					or column == columns - 1
 				)
 				if (
 					guaranteed_cross_street
@@ -315,55 +317,52 @@ func _connect_district(
 
 
 func _connect_middle() -> void:
-	if middle_zone_nodes.is_empty():
+	if middle_zone_nodes.size() < 2:
 		return
 
-	var connected: Array = [int(middle_zone_nodes[0])]
-	var unconnected: Array = []
-	for index in range(1, middle_zone_nodes.size()):
-		unconnected.append(int(middle_zone_nodes[index]))
+	# The sparse middle is a road web, not a tree. Sort the few major
+	# junctions around their centroid and connect them into one continuous
+	# loop so there is never a terminal "wrong exit."
+	var center := Vector2.ZERO
+	for node_value in middle_zone_nodes:
+		center += nodes[int(node_value)]
+	center /= float(middle_zone_nodes.size())
 
-	while not unconnected.is_empty():
-		var best_a := -1
-		var best_b := -1
-		var best_distance := INF
-		var fallback_a := -1
-		var fallback_b := -1
-		var fallback_distance := INF
+	var ordered := middle_zone_nodes.duplicate()
+	ordered.sort_custom(
+		func(a_value, b_value) -> bool:
+			var a: Vector2 = nodes[int(a_value)] - center
+			var b: Vector2 = nodes[int(b_value)] - center
+			return a.angle() < b.angle()
+	)
 
-		for a_value in connected:
-			var a: int = int(a_value)
-			if adjacency[a].size() >= MAX_DEGREE:
-				continue
+	for index in range(ordered.size()):
+		var a: int = int(ordered[index])
+		var b: int = int(ordered[(index + 1) % ordered.size()])
+		_add_edge(a, b)
 
-			for b_value in unconnected:
-				var b: int = int(b_value)
-				var distance: float = nodes[a].distance_to(nodes[b])
+	# A couple of short non-crossing chords make it a network rather than one
+	# giant ring, while keeping the middle dramatically looser than either end.
+	var chord_attempts := middle_zone_nodes.size() * 3
+	while chord_attempts > 0:
+		chord_attempts -= 1
 
-				if distance < fallback_distance:
-					fallback_distance = distance
-					fallback_a = a
-					fallback_b = b
+		var a: int = int(
+			middle_zone_nodes[
+				_rng.randi_range(0, middle_zone_nodes.size() - 1)
+			]
+		)
+		var nearby := _nearby_candidates(a)
+		if nearby.is_empty():
+			continue
 
-				if distance >= best_distance:
-					continue
-				if _edge_would_cross(a, b):
-					continue
+		var b: int = int(nearby[0])
+		if adjacency[a].has(b):
+			continue
+		if _edge_would_cross(a, b):
+			continue
 
-				best_distance = distance
-				best_a = a
-				best_b = b
-
-		if best_a < 0:
-			best_a = fallback_a
-			best_b = fallback_b
-
-		if best_a < 0 or best_b < 0:
-			break
-
-		_add_edge(best_a, best_b)
-		connected.append(best_b)
-		unconnected.erase(best_b)
+		_add_edge(a, b)
 
 
 func _connect_zone_to_middle(zone_nodes: Array, connection_count: int) -> void:
@@ -705,7 +704,7 @@ func _best_loop_target(
 			continue
 
 		var distance: float = nodes[leaf].distance_to(nodes[candidate])
-		if distance > LOOP_SEARCH_DISTANCE:
+		if require_no_crossing and distance > LOOP_SEARCH_DISTANCE:
 			continue
 		if require_no_crossing and _edge_would_cross(leaf, candidate):
 			continue
