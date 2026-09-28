@@ -668,6 +668,22 @@ func _generate_highway_connection() -> void:
 		false
 	)
 
+	# Generation order is deliberate:
+	# RED highway -> PINK auxiliary lanes -> nearest local road -> BLUE.
+	# Access geometry is already planned above, but no pink/blue graph exists yet.
+	_add_highway_with_merges(
+		highway_start,
+		highway_end,
+		[
+			neighborhood_access["merge"],
+			city_access["merge"],
+		],
+		horizontal
+	)
+
+	_add_parallel_highway_access(neighborhood_access)
+	_add_parallel_highway_access(city_access)
+
 	var neighborhood_connector_target: Vector2i = (
 		neighborhood_access["connector_target"]
 	)
@@ -675,8 +691,7 @@ func _generate_highway_connection() -> void:
 		city_access["connector_target"]
 	)
 
-	# Blue connector selection happens from the finished pink lane endpoint.
-	# The nearest district boundary point wins.
+	# Only after each pink lane exists do local streets react to its endpoint.
 	neighborhood_gateway = _closest_boundary_node(
 		neighborhood_grid,
 		neighborhood_connector_target
@@ -704,16 +719,6 @@ func _generate_highway_connection() -> void:
 	gateway_distance = Vector2(
 		nodes[neighborhood_gateway]
 	).distance_to(Vector2(nodes[city_gateway]))
-
-	_add_highway_with_merges(
-		highway_start,
-		highway_end,
-		[
-			neighborhood_access["merge"],
-			city_access["merge"],
-		],
-		horizontal
-	)
 
 
 func _build_parallel_highway_access(
@@ -787,27 +792,33 @@ func _build_parallel_highway_access(
 		_snap_point(lane_connector_end, CONNECTOR_STEP)
 	)
 
-	# Draw the long pink portion parallel to the red highway first, then only
-	# the short merge/diverge into the highway. Blue meets the other pink end.
+	return {
+		"merge": merge,
+		"lane_highway_end": lane_highway_end,
+		"connector_target": lane_connector_end,
+	}
+
+
+func _add_parallel_highway_access(access: Dictionary) -> void:
+	# Pink is materialized only after the red highway exists.
+	var connector_end: Vector2i = access["connector_target"]
+	var highway_end: Vector2i = access["lane_highway_end"]
+	var merge: Vector2i = access["merge"]
+
 	_add_grid_path(
-		lane_connector_end,
-		lane_highway_end,
+		connector_end,
+		highway_end,
 		RoadClass.RAMP,
 		CONNECTOR_STEP,
 		false
 	)
 	_add_grid_path(
-		lane_highway_end,
+		highway_end,
 		merge,
 		RoadClass.RAMP,
 		CONNECTOR_STEP,
 		false
 	)
-
-	return {
-		"merge": merge,
-		"connector_target": lane_connector_end,
-	}
 
 
 func _choose_longest_highway_corridor() -> Dictionary:
