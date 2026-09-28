@@ -127,10 +127,17 @@ func _run() -> void:
 
 	if first.uses_highway:
 		_check(
-			first.highway_nodes.size()
-			<= first.HIGHWAY_MAX_MAJOR_NODES,
-			"Highway network exceeds the sparse major-junction budget"
+			first.highway_nodes.size() == 2,
+			"Highway is not one uninterrupted straight segment"
 		)
+		if first.highway_nodes.size() == 2:
+			var first_highway_a: Vector2i = first.nodes[int(first.highway_nodes[0])]
+			var first_highway_b: Vector2i = first.nodes[int(first.highway_nodes[1])]
+			_check(
+				first_highway_a.x == first_highway_b.x
+				or first_highway_a.y == first_highway_b.y,
+				"Highway endpoints are not grid-aligned"
+			)
 	else:
 		_check(
 			first.highway_nodes.is_empty(),
@@ -138,6 +145,7 @@ func _run() -> void:
 		)
 
 	var highway_maps: int = 0
+	var highways_with_turns: int = 0
 	var minimum_region_distance: float = INF
 
 	for test_seed in range(1, 25):
@@ -146,6 +154,18 @@ func _run() -> void:
 
 		if candidate.uses_highway:
 			highway_maps += 1
+
+			if candidate.highway_nodes.size() != 2:
+				highways_with_turns += 1
+			else:
+				var highway_a: Vector2i = candidate.nodes[
+					int(candidate.highway_nodes[0])
+				]
+				var highway_b: Vector2i = candidate.nodes[
+					int(candidate.highway_nodes[1])
+				]
+				if highway_a.x != highway_b.x and highway_a.y != highway_b.y:
+					highways_with_turns += 1
 
 		var region_distance: float = Vector2(
 			candidate.neighborhood_rect.get_center()
@@ -164,6 +184,10 @@ func _run() -> void:
 	_check(
 		highway_maps >= 22,
 		"Opposite-region placement is not producing highway-heavy maps"
+	)
+	_check(
+		highways_with_turns == 0,
+		"Generated highway contains a turn"
 	)
 
 	var packed: PackedScene = load(
