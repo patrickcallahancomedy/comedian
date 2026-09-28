@@ -10,11 +10,10 @@ const TURN_SECONDS := 0.28
 const CAR_SCALE := 0.72
 
 const GROUND_COLOR := Color(0.18, 0.27, 0.16)
-const ROAD_SHOULDER_COLOR := Color(0.48, 0.47, 0.42)
-const ROAD_COLOR := Color(0.13, 0.145, 0.16)
-const INTERSECTION_COLOR := Color(0.145, 0.16, 0.175)
-const ROUTE_SHADOW_COLOR := Color(0.02, 0.08, 0.18, 0.58)
+const ROAD_COLOR := Color(0.12, 0.13, 0.145)
+const ROAD_WIDTH := 11.0
 const ROUTE_COLOR := Color(0.12, 0.43, 0.98, 0.96)
+const ROUTE_WIDTH := 3.5
 const POINT_A_COLOR := Color(0.24, 0.68, 1.0)
 const POINT_B_COLOR := Color(0.96, 0.35, 0.23)
 
@@ -420,17 +419,20 @@ func next_route_instruction() -> Dictionary:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), GROUND_COLOR, true)
 
-	for a in range(network.nodes.size()):
-		for b_value in network.adjacency[a]:
-			var b: int = int(b_value)
-			if b <= a:
-				continue
-			var curve := network.edge_curve(a, b)
-			_draw_world_polyline(curve, ROAD_SHOULDER_COLOR, 16.0)
-			_draw_world_polyline(curve, ROAD_COLOR, 11.0)
+	# Visible roads are long baked strands, not individually decorated edges.
+	# One asphalt stroke + matching junction fill keeps the network reading as
+	# a continuous road surface instead of assembled pieces.
+	for strand_value in network.strand_curves:
+		var strand: PackedVector2Array = strand_value
+		_draw_world_polyline(strand, ROAD_COLOR, ROAD_WIDTH)
 
-	for point in network.nodes:
-		_draw_world_circle(point, 6.0, INTERSECTION_COLOR)
+	for node_id in range(network.nodes.size()):
+		if network.adjacency[node_id].size() >= 3:
+			_draw_world_circle(
+				network.nodes[node_id],
+				ROAD_WIDTH * 0.52,
+				ROAD_COLOR
+			)
 
 	_draw_route_line()
 	_draw_world_marker(
@@ -453,14 +455,12 @@ func _draw_route_line() -> void:
 		var remaining_edge := PackedVector2Array([visual_world_position])
 		for index in range(edge_point_index, current_edge_points.size()):
 			remaining_edge.append(current_edge_points[index])
-		_draw_world_polyline(remaining_edge, ROUTE_SHADOW_COLOR, 6.0)
-		_draw_world_polyline(remaining_edge, ROUTE_COLOR, 3.6)
+		_draw_world_polyline(remaining_edge, ROUTE_COLOR, ROUTE_WIDTH)
 
 	var route := current_route_after_edge()
 	for index in range(route.size() - 1):
 		var curve := network.edge_curve(int(route[index]), int(route[index + 1]))
-		_draw_world_polyline(curve, ROUTE_SHADOW_COLOR, 6.0)
-		_draw_world_polyline(curve, ROUTE_COLOR, 3.6)
+		_draw_world_polyline(curve, ROUTE_COLOR, ROUTE_WIDTH)
 
 
 func _draw_world_marker(
