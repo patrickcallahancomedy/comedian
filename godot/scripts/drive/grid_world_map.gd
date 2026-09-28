@@ -208,6 +208,9 @@ func _draw_roads() -> void:
 				continue
 
 			var road_class := generator.edge_class(a, b)
+			# Graph-only highway/ramp merge links are intentionally invisible.
+			if road_class < 0:
+				continue
 			var width := 2.4
 			var color := ROAD_COLOR
 

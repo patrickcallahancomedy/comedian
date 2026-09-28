@@ -800,7 +800,8 @@ func _build_parallel_highway_access(
 
 
 func _add_parallel_highway_access(access: Dictionary) -> void:
-	# Pink is materialized only after the red highway exists.
+	# Pink is one straight auxiliary lane. It never turns toward the highway.
+	# The merge is a graph-only connection so the map stays visually straight.
 	var connector_end: Vector2i = access["connector_target"]
 	var highway_end: Vector2i = access["lane_highway_end"]
 	var merge: Vector2i = access["merge"]
@@ -812,13 +813,18 @@ func _add_parallel_highway_access(access: Dictionary) -> void:
 		CONNECTOR_STEP,
 		false
 	)
-	_add_grid_path(
-		highway_end,
-		merge,
-		RoadClass.RAMP,
-		CONNECTOR_STEP,
-		false
-	)
+	_add_logical_link(highway_end, merge)
+
+
+func _add_logical_link(start: Vector2i, finish: Vector2i) -> void:
+	var a := _add_node(start)
+	var b := _add_node(finish)
+	if a == b:
+		return
+	if not adjacency[a].has(b):
+		adjacency[a].append(b)
+	if not adjacency[b].has(a):
+		adjacency[b].append(a)
 
 
 func _choose_longest_highway_corridor() -> Dictionary:
