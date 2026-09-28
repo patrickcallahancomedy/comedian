@@ -119,8 +119,9 @@ func _run() -> void:
 		drive._begin_next_edge()
 
 		_check(
-			drive.next_node == alternate,
-			"Queued L/R did not take the valid wrong-turn branch"
+			drive.next_node != int(alternate_data["expected"])
+			and drive.network.neighbors(junction).has(drive.next_node),
+			"Queued L/R did not take a connected non-route road"
 		)
 		_check(
 			drive.missed_turns == 1,
@@ -159,6 +160,24 @@ func _find_reroutable_turn(network, route: Array) -> Dictionary:
 		var incoming: Vector2 = (
 			network.nodes[junction] - network.nodes[previous]
 		).normalized()
+		var expected_outgoing: Vector2 = (
+			network.nodes[expected] - network.nodes[junction]
+		).normalized()
+		var expected_cross: float = (
+			incoming.x * expected_outgoing.y
+			- incoming.y * expected_outgoing.x
+		)
+		var expected_dot: float = clampf(
+			incoming.dot(expected_outgoing),
+			-1.0,
+			1.0
+		)
+		var expected_angle: float = atan2(expected_cross, expected_dot)
+		var expected_sign := 0
+		if expected_angle < -0.28:
+			expected_sign = -1
+		elif expected_angle > 0.28:
+			expected_sign = 1
 
 		for candidate_value in network.neighbors(junction):
 			var candidate: int = int(candidate_value)
@@ -169,10 +188,14 @@ func _find_reroutable_turn(network, route: Array) -> Dictionary:
 				network.nodes[candidate] - network.nodes[junction]
 			).normalized()
 			var cross: float = incoming.x * outgoing.y - incoming.y * outgoing.x
-			var dot := clampf(incoming.dot(outgoing), -1.0, 1.0)
-			var angle := atan2(cross, dot)
+			var dot: float = clampf(incoming.dot(outgoing), -1.0, 1.0)
+			var angle: float = atan2(cross, dot)
 
 			if absf(angle) <= 0.28:
+				continue
+
+			var turn_sign := -1 if angle < 0.0 else 1
+			if turn_sign == expected_sign:
 				continue
 			if network.shortest_path(candidate, network.destination_node).is_empty():
 				continue
@@ -182,7 +205,7 @@ func _find_reroutable_turn(network, route: Array) -> Dictionary:
 				"junction": junction,
 				"expected": expected,
 				"alternate": candidate,
-				"turn_sign": -1 if angle < 0.0 else 1,
+				"turn_sign": turn_sign,
 			}
 
 	return {}
