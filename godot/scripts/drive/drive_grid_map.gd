@@ -14,7 +14,7 @@ const HIGHWAY_LANE_WIDTH := 10
 const CITY_CELL := 120
 
 const NEIGHBORHOOD_RECT := Rect2(20, 620, 320, 320)
-const CONNECTOR_ONE_RECT := Rect2(340, 730, 160, 20)
+const CONNECTOR_ONE_RECT := Rect2(340, 730, 120, 20)
 const HIGHWAY_RECT := Rect2(500, 720, 600, 40)
 const CONNECTOR_TWO_RECT := Rect2(1100, 760, 160, 20)
 const CITY_RECT := Rect2(1260, 480, 480, 480)
@@ -152,6 +152,13 @@ static func neighborhood_gate_outside_point() -> Vector2:
 		NEIGHBORHOOD_GATE_SIDE.x,
 		NEIGHBORHOOD_GATE_SIDE.y
 	) * NEIGHBORHOOD_CELL
+
+
+static func highway_merge_point() -> Vector2:
+	return Vector2(
+		CONNECTOR_ONE_RECT.end.x,
+		highway_cell_center(0, HIGHWAY_ENTRY_LANE).y
+	)
 
 
 static func highway_entry_point() -> Vector2:
