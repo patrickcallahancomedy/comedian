@@ -44,7 +44,7 @@ const CONNECTOR_STEP := 10
 const HIGHWAY_EDGE_MARGIN := 10
 const HIGHWAY_CLEARANCE := 30
 const RAMP_STANDOFF := 20
-const RAMP_RUN := 20
+const RAMP_RUN := 60
 
 const WORLD_MARGIN := 20
 
