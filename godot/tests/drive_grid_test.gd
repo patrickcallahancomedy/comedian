@@ -422,7 +422,7 @@ func _run() -> void:
 	# move the struck car forward so it cannot multi-hit every frame.
 	drive.highway_lane = MAP.HIGHWAY_ENTRY_LANE
 	drive.queued_highway_lane = drive.highway_lane
-	var traffic_lane_center_y := (
+	var traffic_lane_center_y: float = (
 		drive._highway_rect_for_lap(drive.highway_lap).position.y
 		+ float(drive.HIGHWAY_TRAFFIC_LANES[0]) * MAP.HIGHWAY_LANE_WIDTH
 		+ MAP.HIGHWAY_LANE_WIDTH * 0.5
