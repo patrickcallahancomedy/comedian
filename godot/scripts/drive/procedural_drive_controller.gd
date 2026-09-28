@@ -157,15 +157,15 @@ func _process(delta: float) -> void:
 
 
 func _advance_along_road(delta: float) -> void:
-	var remaining := WORLD_SPEED * delta
+	var remaining: float = WORLD_SPEED * delta
 
 	while remaining > 0.0 and started and not drive_complete:
-		var distance_to_target := visual_world_position.distance_to(move_to)
+		var distance_to_target: float = visual_world_position.distance_to(move_to)
 		if distance_to_target <= 0.001:
 			_reach_curve_point()
 			continue
 
-		var step := minf(remaining, distance_to_target)
+		var step: float = minf(remaining, distance_to_target)
 		visual_world_position = visual_world_position.move_toward(move_to, step)
 		remaining -= step
 
@@ -199,12 +199,12 @@ func _begin_next_edge() -> void:
 	if previous_node >= 0 and candidates.size() > 1:
 		candidates.erase(previous_node)
 
-	var expected_next := -1
+	var expected_next: int = -1
 	_recalculate_route()
 	if route_nodes.size() > 1:
 		expected_next = int(route_nodes[1])
 
-	var selected := _choose_candidate(candidates, expected_next)
+	var selected: int = _choose_candidate(candidates, expected_next)
 	if selected < 0:
 		selected = int(candidates[0])
 
@@ -229,21 +229,21 @@ func _choose_candidate(candidates: Array, expected_next: int) -> int:
 	if previous_node < 0:
 		return expected_next if expected_next >= 0 else int(candidates[0])
 
-	var incoming := heading.normalized()
-	var straightest := int(candidates[0])
-	var straightest_abs := INF
-	var requested := -1
-	var requested_abs := INF
+	var incoming: Vector2 = heading.normalized()
+	var straightest: int = int(candidates[0])
+	var straightest_abs: float = INF
+	var requested: int = -1
+	var requested_abs: float = INF
 
 	for candidate_value in candidates:
 		var candidate: int = int(candidate_value)
-		var outgoing := (
+		var outgoing: Vector2 = (
 			network.nodes[candidate] - network.nodes[current_node]
 		).normalized()
-		var cross := incoming.x * outgoing.y - incoming.y * outgoing.x
-		var dot := clampf(incoming.dot(outgoing), -1.0, 1.0)
-		var angle := atan2(cross, dot)
-		var angle_abs := absf(angle)
+		var cross: float = incoming.x * outgoing.y - incoming.y * outgoing.x
+		var dot: float = clampf(incoming.dot(outgoing), -1.0, 1.0)
+		var angle: float = atan2(cross, dot)
+		var angle_abs: float = absf(angle)
 
 		if angle_abs < straightest_abs:
 			straightest_abs = angle_abs
@@ -379,8 +379,8 @@ func next_route_instruction() -> Dictionary:
 			"key": "arrive",
 		}
 
-	var junction_node := next_node if next_node >= 0 else current_node
-	var incoming_direction := heading
+	var junction_node: int = next_node if next_node >= 0 else current_node
+	var incoming_direction: Vector2 = heading
 
 	if next_node >= 0:
 		incoming_direction = (
@@ -390,12 +390,12 @@ func next_route_instruction() -> Dictionary:
 	if route[0] != junction_node:
 		junction_node = int(route[0])
 
-	var outgoing := (
+	var outgoing: Vector2 = (
 		network.nodes[int(route[1])] - network.nodes[junction_node]
 	).normalized()
-	var cross := incoming_direction.x * outgoing.y - incoming_direction.y * outgoing.x
-	var dot := clampf(incoming_direction.dot(outgoing), -1.0, 1.0)
-	var angle := atan2(cross, dot)
+	var cross: float = incoming_direction.x * outgoing.y - incoming_direction.y * outgoing.x
+	var dot: float = clampf(incoming_direction.dot(outgoing), -1.0, 1.0)
+	var angle: float = atan2(cross, dot)
 
 	var turn := "straight"
 	if angle < -0.35:
