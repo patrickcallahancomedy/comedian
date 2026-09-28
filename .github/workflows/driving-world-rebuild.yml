@@ -1,0 +1,81 @@
+name: COMEDIAN DRIVING WORLD REBUILD
+
+on:
+  push:
+    branches:
+      - driving-world-rebuild
+    paths:
+      - "godot/**"
+      - ".github/workflows/driving-world-rebuild.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comedian-driving-world-rebuild
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  test-export-deploy:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.7.1
+
+    steps:
+      - name: Checkout rebuild
+        uses: actions/checkout@v4
+
+      - name: Import Godot project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path godot --quit
+
+      - name: Test rebuilt driving world
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 45s godot --headless --path godot --script res://tests/drive_world_test.gd
+
+      - name: Prepare export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/"
+
+      - name: Export rebuild preview
+        shell: bash
+        working-directory: godot
+        run: |
+          set -euo pipefail
+          rm -rf build/rebuild
+          mkdir -p build/rebuild
+          godot --headless --path . --export-release "Web" build/rebuild/index.html
+          touch build/rebuild/.nojekyll
+
+          grep -a -q "drive_world_controller.gd" build/rebuild/index.pck
+          grep -a -q "drive_world_map.gd" build/rebuild/index.pck
+
+          BUILD_NAME="rebuild-${GITHUB_SHA:0:8}"
+          mv build/rebuild/index.js "build/rebuild/${BUILD_NAME}.js"
+          mv build/rebuild/index.wasm "build/rebuild/${BUILD_NAME}.wasm"
+          mv build/rebuild/index.pck "build/rebuild/${BUILD_NAME}.pck"
+
+          sed -i "s#src=\"index.js\"#src=\"${BUILD_NAME}.js\"#" build/rebuild/index.html
+          sed -i "s#\"executable\":\"index\"#\"executable\":\"${BUILD_NAME}\"#" build/rebuild/index.html
+          sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/rebuild/index.html
+          sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/rebuild/index.html
+
+      - name: Publish rebuild preview
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: godot/build/rebuild
+          target-folder: rebuild
+          clean: true
+          force: false
