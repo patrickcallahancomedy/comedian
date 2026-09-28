@@ -368,9 +368,13 @@ func _select_local_candidate(
 	return ""
 
 
-func _begin_ramp(kind: String) -> void:
+func _begin_ramp(kind: String, reroute: bool = false) -> void:
 	road_kind = kind
-	path_points = MAP.onramp_points() if kind == "onramp" else MAP.offramp_points()
+	path_points = (
+		MAP.onramp_points()
+		if kind == "onramp"
+		else MAP.offramp_points(reroute)
+	)
 	path_index = 0
 	queued_turn = 0
 	steering_feedback = 0.0
@@ -442,7 +446,16 @@ func _begin_highway_step() -> void:
 		highway_exit_passed = true
 		missed_turns += 1
 
-	# Keep the freeway continuous even after a missed exit.
+	if (
+		highway_exit_passed
+		and visual_world_position.x <= MAP.HIGHWAY_REROUTE_EXIT_X + 1.0
+		and highway_lane == MAP.HIGHWAY_EXIT_LANE
+	):
+		_begin_ramp("offramp", true)
+		return
+
+	# Keep the freeway continuous after a missed exit until the second physical
+	# interchange gives the player another chance to leave.
 	highway_target_x -= MAP.HIGHWAY_STEP
 	move_to = MAP.highway_lane_center(highway_lane, highway_target_x)
 	scale_to = HIGHWAY_PLAYER_SCALE
@@ -744,6 +757,7 @@ func _draw() -> void:
 	_draw_local_network("city")
 	_draw_ramp(MAP.onramp_points())
 	_draw_ramp(MAP.offramp_points())
+	_draw_ramp(MAP.offramp_points(true))
 	_draw_neighborhood_blocks()
 	_draw_city_blocks()
 	_draw_parking_and_venue()
