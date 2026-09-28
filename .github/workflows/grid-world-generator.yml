@@ -75,6 +75,13 @@ jobs:
           sed -i "s#\"index.pck\":#\"${BUILD_NAME}.pck\":#" build/gridworld/index.html
           sed -i "s#\"index.wasm\":#\"${BUILD_NAME}.wasm\":#" build/gridworld/index.html
 
+          # Also publish this exact build at a unique path. Mobile browsers can
+          # aggressively reuse the fixed /gridworld/ page even with a query
+          # string, while a new pathname guarantees a fresh Godot shell.
+          VERSION_DIR="build/gridworld/v-${GITHUB_SHA:0:8}"
+          mkdir -p "${VERSION_DIR}"
+          find build/gridworld -maxdepth 1 -type f -exec cp -a {} "${VERSION_DIR}/" \\;
+
       - name: Publish grid world preview
         uses: JamesIves/github-pages-deploy-action@v4
         with:
