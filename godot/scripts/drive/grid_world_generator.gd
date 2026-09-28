@@ -7,9 +7,9 @@ extends RefCounted
 ## Generation order:
 ## 1. Place Point A / home neighborhood.
 ## 2. Place Point B / city and reserve one full city block as the venue.
-## 3. Choose the closest useful gateways between those two road systems.
-## 4. Build the shortest practical connecting corridor.
-## 5. Use a sparse highway corridor only when the geography actually needs it.
+## 3. Generate the longest clean straight highway corridor independently.
+## 4. Build the shortest connector from each district toward that highway.
+## 5. Join each connector to the highway with a short ramp.
 ##
 ## The road classes are different generation rules inside one graph, not
 ## separate gameplay scenes or scale changes.
@@ -18,6 +18,7 @@ enum RoadClass {
 	NEIGHBORHOOD,
 	CITY,
 	CONNECTOR,
+	RAMP,
 	HIGHWAY,
 }
 
@@ -38,11 +39,12 @@ const CITY_SPACING := 30
 const CITY_INTERSECTIONS := CITY_COLUMNS * CITY_ROWS
 const CITY_PRUNE_ATTEMPTS := 14
 
-const HIGHWAY_MIN_GATEWAY_DISTANCE := 115.0
 const HIGHWAY_MAX_MAJOR_NODES := 10
 const CONNECTOR_STEP := 10
-const HIGHWAY_EXTENSION := 40
-const RAMP_LOOP_OFFSET := 30
+const HIGHWAY_EDGE_MARGIN := 10
+const HIGHWAY_CLEARANCE := 20
+const RAMP_STANDOFF := 20
+const RAMP_RUN := 20
 
 const WORLD_MARGIN := 20
 
@@ -147,20 +149,11 @@ func generate(seed_value: int) -> void:
 	_choose_home()
 	_choose_venue_block()
 
-	var farthest_gateways: Dictionary = _farthest_boundary_pair(
-		neighborhood_grid,
-		city_grid
-	)
-	neighborhood_gateway = int(farthest_gateways["neighborhood"])
-	city_gateway = int(farthest_gateways["city"])
-	gateway_distance = float(farthest_gateways["distance"])
-
-	uses_highway = gateway_distance >= HIGHWAY_MIN_GATEWAY_DISTANCE
-
-	if uses_highway:
-		_generate_highway_connection()
-	else:
-		_generate_surface_connection()
+	# The highway is generated independently from A/B. It first claims the
+	# longest clean straight corridor across the world, then each district
+	# gets its own shortest practical connector to that corridor.
+	uses_highway = true
+	_generate_highway_connection()
 
 	# Re-bake these two after the connection exists. If a connector happened
 	# to meet a local grid coordinate it should be a real shared intersection.
@@ -647,185 +640,317 @@ func _generate_surface_connection() -> void:
 
 
 func _generate_highway_connection() -> void:
-	var neighborhood_center := Vector2i(neighborhood_rect.get_center())
-	var city_center := Vector2i(city_rect.get_center())
-	var delta := city_center - neighborhood_center
-	var dominant_horizontal: bool = abs(delta.x) >= abs(delta.y)
+	var corridor: Dictionary = _choose_longest_highway_corridor()
+	var horizontal: bool = bool(corridor["horizontal"])
+	var highway_start: Vector2i = corridor["start"]
+	var highway_end: Vector2i = corridor["end"]
 
-	var neighborhood_merge := Vector2i.ZERO
-	var city_merge := Vector2i.ZERO
-	var highway_start := Vector2i.ZERO
-	var highway_end := Vector2i.ZERO
-
-	if dominant_horizontal:
-		var highway_y: int = _safe_horizontal_highway_y()
-		var travel_sign: int = 1 if city_center.x >= neighborhood_center.x else -1
-
-		neighborhood_merge = Vector2i(
-			neighborhood_center.x + travel_sign * RAMP_LOOP_OFFSET,
-			highway_y
-		)
-		city_merge = Vector2i(
-			city_center.x - travel_sign * RAMP_LOOP_OFFSET,
-			highway_y
-		)
-
-		var left_extent: int = mini(
-			neighborhood_rect.position.x,
-			city_rect.position.x
-		) - HIGHWAY_EXTENSION
-		var right_extent: int = maxi(
-			neighborhood_rect.end.x,
-			city_rect.end.x
-		) + HIGHWAY_EXTENSION
-
-		highway_start = Vector2i(left_extent, highway_y)
-		highway_end = Vector2i(right_extent, highway_y)
-	else:
-		var highway_x: int = _safe_vertical_highway_x()
-		var travel_sign: int = 1 if city_center.y >= neighborhood_center.y else -1
-
-		neighborhood_merge = Vector2i(
-			highway_x,
-			neighborhood_center.y + travel_sign * RAMP_LOOP_OFFSET
-		)
-		city_merge = Vector2i(
-			highway_x,
-			city_center.y - travel_sign * RAMP_LOOP_OFFSET
-		)
-
-		var top_extent: int = mini(
-			neighborhood_rect.position.y,
-			city_rect.position.y
-		) - HIGHWAY_EXTENSION
-		var bottom_extent: int = maxi(
-			neighborhood_rect.end.y,
-			city_rect.end.y
-		) + HIGHWAY_EXTENSION
-
-		highway_start = Vector2i(highway_x, top_extent)
-		highway_end = Vector2i(highway_x, bottom_extent)
-
-	neighborhood_merge = _clamp_to_world(
-		_snap_point(neighborhood_merge, CONNECTOR_STEP)
+	var neighborhood_target := _project_rect_center_to_highway(
+		neighborhood_rect,
+		horizontal,
+		highway_start
 	)
-	city_merge = _clamp_to_world(
-		_snap_point(city_merge, CONNECTOR_STEP)
-	)
-	highway_start = _clamp_to_world(
-		_snap_point(highway_start, CONNECTOR_STEP)
-	)
-	highway_end = _clamp_to_world(
-		_snap_point(highway_end, CONNECTOR_STEP)
+	var city_target := _project_rect_center_to_highway(
+		city_rect,
+		horizontal,
+		highway_start
 	)
 
-	# Local roads stay exactly as generated. Each district picks the nearest
-	# boundary street to its interchange, then reaches the highway through a
-	# stepped rectangular ramp instead of touching the highway directly.
 	neighborhood_gateway = _closest_boundary_node(
 		neighborhood_grid,
-		neighborhood_merge
+		neighborhood_target
 	)
 	city_gateway = _closest_boundary_node(
 		city_grid,
-		city_merge
+		city_target
 	)
 
-	var neighborhood_start := Vector2i(nodes[neighborhood_gateway])
-	var city_finish := Vector2i(nodes[city_gateway])
-
-	_add_stepped_ramp_loop(
-		neighborhood_start,
-		neighborhood_merge,
-		dominant_horizontal
+	var neighborhood_merge: Vector2i = _add_fast_access_to_highway(
+		neighborhood_gateway,
+		horizontal,
+		highway_start
 	)
-	_add_stepped_ramp_loop(
-		city_finish,
-		city_merge,
-		dominant_horizontal
+	var city_merge: Vector2i = _add_fast_access_to_highway(
+		city_gateway,
+		horizontal,
+		highway_start
 	)
 
-	# The highway now continues beyond both interchanges. Merge points are
-	# interior highway nodes rather than the ends of the highway.
-	var start_id: int = _add_node(highway_start)
-	var neighborhood_merge_id: int = _add_node(neighborhood_merge)
-	var city_merge_id: int = _add_node(city_merge)
-	var end_id: int = _add_node(highway_end)
+	gateway_distance = Vector2(
+		nodes[neighborhood_gateway]
+	).distance_to(Vector2(nodes[city_gateway]))
 
-	highway_nodes.append(start_id)
-	if end_id != start_id:
-		highway_nodes.append(end_id)
-
-	var ordered: Array = [
-		start_id,
-		neighborhood_merge_id,
-		city_merge_id,
-		end_id,
-	]
-	ordered.sort_custom(func(a, b):
-		var pa: Vector2i = nodes[int(a)]
-		var pb: Vector2i = nodes[int(b)]
-		return pa.x < pb.x if dominant_horizontal else pa.y < pb.y
+	_add_highway_with_merges(
+		highway_start,
+		highway_end,
+		[neighborhood_merge, city_merge],
+		horizontal
 	)
 
-	for index in range(ordered.size() - 1):
-		var a: int = int(ordered[index])
-		var b: int = int(ordered[index + 1])
-		if a != b:
-			_add_edge(a, b, RoadClass.HIGHWAY)
+
+func _choose_longest_highway_corridor() -> Dictionary:
+	var best_horizontal := true
+	var best_coordinate := HIGHWAY_EDGE_MARGIN
+	var best_length := -1
+	var best_connector_cost := INF
+	var start_axis := HIGHWAY_EDGE_MARGIN
+	var end_axis := GRID_SIZE - HIGHWAY_EDGE_MARGIN
+	var corridor_length := end_axis - start_axis
+
+	for coordinate in range(
+		HIGHWAY_EDGE_MARGIN,
+		GRID_SIZE - HIGHWAY_EDGE_MARGIN + 1,
+		CONNECTOR_STEP
+	):
+		if _horizontal_corridor_is_clear(coordinate):
+			var connector_cost := (
+				_distance_from_grid_to_horizontal(
+					neighborhood_grid,
+					coordinate
+				)
+				+ _distance_from_grid_to_horizontal(
+					city_grid,
+					coordinate
+				)
+			)
+			if (
+				corridor_length > best_length
+				or (
+					corridor_length == best_length
+					and connector_cost < best_connector_cost
+				)
+			):
+				best_horizontal = true
+				best_coordinate = coordinate
+				best_length = corridor_length
+				best_connector_cost = connector_cost
+
+	for coordinate in range(
+		HIGHWAY_EDGE_MARGIN,
+		GRID_SIZE - HIGHWAY_EDGE_MARGIN + 1,
+		CONNECTOR_STEP
+	):
+		if _vertical_corridor_is_clear(coordinate):
+			var connector_cost := (
+				_distance_from_grid_to_vertical(
+					neighborhood_grid,
+					coordinate
+				)
+				+ _distance_from_grid_to_vertical(
+					city_grid,
+					coordinate
+				)
+			)
+			if (
+				corridor_length > best_length
+				or (
+					corridor_length == best_length
+					and connector_cost < best_connector_cost
+				)
+			):
+				best_horizontal = false
+				best_coordinate = coordinate
+				best_length = corridor_length
+				best_connector_cost = connector_cost
+
+	if best_horizontal:
+		return {
+			"horizontal": true,
+			"start": Vector2i(start_axis, best_coordinate),
+			"end": Vector2i(end_axis, best_coordinate),
+		}
+
+	return {
+		"horizontal": false,
+		"start": Vector2i(best_coordinate, start_axis),
+		"end": Vector2i(best_coordinate, end_axis),
+	}
 
 
-func _add_stepped_ramp_loop(
-	gateway: Vector2i,
-	merge: Vector2i,
-	horizontal_highway: bool
-) -> void:
-	var bend_one := gateway
-	var bend_two := merge
+func _horizontal_corridor_is_clear(y: int) -> bool:
+	return (
+		_line_has_clearance_from_rect(
+			y,
+			neighborhood_rect,
+			true
+		)
+		and _line_has_clearance_from_rect(
+			y,
+			city_rect,
+			true
+		)
+	)
+
+
+func _vertical_corridor_is_clear(x: int) -> bool:
+	return (
+		_line_has_clearance_from_rect(
+			x,
+			neighborhood_rect,
+			false
+		)
+		and _line_has_clearance_from_rect(
+			x,
+			city_rect,
+			false
+		)
+	)
+
+
+func _line_has_clearance_from_rect(
+	coordinate: int,
+	rect: Rect2i,
+	horizontal: bool
+) -> bool:
+	if horizontal:
+		return (
+			coordinate <= rect.position.y - HIGHWAY_CLEARANCE
+			or coordinate >= rect.end.y + HIGHWAY_CLEARANCE
+		)
+
+	return (
+		coordinate <= rect.position.x - HIGHWAY_CLEARANCE
+		or coordinate >= rect.end.x + HIGHWAY_CLEARANCE
+	)
+
+
+func _distance_from_grid_to_horizontal(
+	grid: Array,
+	y: int
+) -> float:
+	var best := INF
+	for node_value in _boundary_nodes(grid):
+		var point: Vector2i = nodes[int(node_value)]
+		best = minf(best, absf(float(point.y - y)))
+	return best
+
+
+func _distance_from_grid_to_vertical(
+	grid: Array,
+	x: int
+) -> float:
+	var best := INF
+	for node_value in _boundary_nodes(grid):
+		var point: Vector2i = nodes[int(node_value)]
+		best = minf(best, absf(float(point.x - x)))
+	return best
+
+
+func _project_rect_center_to_highway(
+	rect: Rect2i,
+	horizontal: bool,
+	highway_start: Vector2i
+) -> Vector2i:
+	var center := Vector2i(rect.get_center())
+	if horizontal:
+		return Vector2i(center.x, highway_start.y)
+	return Vector2i(highway_start.x, center.y)
+
+
+func _add_fast_access_to_highway(
+	gateway_id: int,
+	horizontal_highway: bool,
+	highway_start: Vector2i
+) -> Vector2i:
+	var gateway := Vector2i(nodes[gateway_id])
+	var merge := gateway
+	var approach := gateway
+	var ramp_corner := gateway
 
 	if horizontal_highway:
-		var side: int = signi(gateway.y - merge.y)
-		if side == 0:
-			side = 1
-		var loop_y: int = merge.y + side * RAMP_LOOP_OFFSET
-		bend_one = Vector2i(gateway.x, loop_y)
-		bend_two = Vector2i(merge.x, loop_y)
+		var side: int = -1 if gateway.y < highway_start.y else 1
+		var merge_x: int = clampi(
+			_snap_int(gateway.x, CONNECTOR_STEP),
+			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
+			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
+		)
+		var run_sign: int = 1 if merge_x < GRID_SIZE / 2 else -1
+		merge = Vector2i(merge_x, highway_start.y)
+		ramp_corner = Vector2i(
+			merge_x,
+			highway_start.y + side * RAMP_STANDOFF
+		)
+		approach = Vector2i(
+			merge_x - run_sign * RAMP_RUN,
+			ramp_corner.y
+		)
 	else:
-		var side: int = signi(gateway.x - merge.x)
-		if side == 0:
-			side = 1
-		var loop_x: int = merge.x + side * RAMP_LOOP_OFFSET
-		bend_one = Vector2i(loop_x, gateway.y)
-		bend_two = Vector2i(loop_x, merge.y)
-
-	bend_one = _clamp_to_world(
-		_snap_point(bend_one, CONNECTOR_STEP)
-	)
-	bend_two = _clamp_to_world(
-		_snap_point(bend_two, CONNECTOR_STEP)
-	)
+		var side: int = -1 if gateway.x < highway_start.x else 1
+		var merge_y: int = clampi(
+			_snap_int(gateway.y, CONNECTOR_STEP),
+			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
+			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
+		)
+		var run_sign: int = 1 if merge_y < GRID_SIZE / 2 else -1
+		merge = Vector2i(highway_start.x, merge_y)
+		ramp_corner = Vector2i(
+			highway_start.x + side * RAMP_STANDOFF,
+			merge_y
+		)
+		approach = Vector2i(
+			ramp_corner.x,
+			merge_y - run_sign * RAMP_RUN
+		)
 
 	_add_grid_path(
 		gateway,
-		bend_one,
+		approach,
 		RoadClass.CONNECTOR,
 		CONNECTOR_STEP,
 		false
 	)
 	_add_grid_path(
-		bend_one,
-		bend_two,
-		RoadClass.CONNECTOR,
+		approach,
+		ramp_corner,
+		RoadClass.RAMP,
 		CONNECTOR_STEP,
 		false
 	)
 	_add_grid_path(
-		bend_two,
+		ramp_corner,
 		merge,
-		RoadClass.CONNECTOR,
+		RoadClass.RAMP,
 		CONNECTOR_STEP,
 		false
 	)
+
+	return merge
+
+
+func _add_highway_with_merges(
+	start: Vector2i,
+	finish: Vector2i,
+	merges: Array,
+	horizontal: bool
+) -> void:
+	var points: Array = [start]
+	for merge_value in merges:
+		var merge: Vector2i = merge_value
+		if not points.has(merge):
+			points.append(merge)
+	if not points.has(finish):
+		points.append(finish)
+
+	points.sort_custom(func(a, b):
+		var pa: Vector2i = a
+		var pb: Vector2i = b
+		return pa.x < pb.x if horizontal else pa.y < pb.y
+	)
+
+	for point_value in points:
+		_add_node(Vector2i(point_value))
+
+	var start_id := _node_at(start)
+	var finish_id := _node_at(finish)
+	highway_nodes.append(start_id)
+	if finish_id != start_id:
+		highway_nodes.append(finish_id)
+
+	for index in range(points.size() - 1):
+		var a := _node_at(Vector2i(points[index]))
+		var b := _node_at(Vector2i(points[index + 1]))
+		if a != b:
+			_add_edge(a, b, RoadClass.HIGHWAY)
 
 
 func _safe_horizontal_highway_y() -> int:
