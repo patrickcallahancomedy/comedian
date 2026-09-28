@@ -22,6 +22,8 @@ const TOP_MARGIN := 64.0
 const SIDE_MARGIN := 14.0
 const BOTTOM_MARGIN := 92.0
 const VISIBLE_NEIGHBORHOOD_BLOCKS := 2.0
+const ROAD_BLOCK_LENGTH := 20
+const ROAD_BLOCK_WIDTH := 10
 
 @export var world_seed: int = 0
 
@@ -172,46 +174,45 @@ func _update_transform() -> void:
 
 
 func _draw_grid() -> void:
-	for coordinate in range(0, generator.GRID_SIZE + 1, 10):
-		var color := (
-			GRID_MAJOR
-			if coordinate % 50 == 0
-			else GRID_MINOR
-		)
-		var width := 1.0 if coordinate % 50 == 0 else 0.6
+	# The grid is presentation only. Keep logical road coordinates unchanged,
+	# but make each visible road block twice as long as it is wide.
+	var highway_horizontal := _highway_is_horizontal()
+	var x_step := ROAD_BLOCK_LENGTH if highway_horizontal else ROAD_BLOCK_WIDTH
+	var y_step := ROAD_BLOCK_WIDTH if highway_horizontal else ROAD_BLOCK_LENGTH
 
-		var horizontal_start := _world_to_screen(
-			Vector2(0.0, float(coordinate))
-		)
-		var horizontal_end := _world_to_screen(
-			Vector2(
-				float(generator.GRID_SIZE),
-				float(coordinate)
-			)
-		)
-
-		var vertical_start := _world_to_screen(
-			Vector2(float(coordinate), 0.0)
-		)
-		var vertical_end := _world_to_screen(
-			Vector2(
-				float(coordinate),
-				float(generator.GRID_SIZE)
-			)
-		)
-
+	for x in range(0, generator.GRID_SIZE + 1, x_step):
+		var major := x % (x_step * 5) == 0
+		var color := GRID_MAJOR if major else GRID_MINOR
+		var width := 1.0 if major else 0.6
 		draw_line(
-			horizontal_start,
-			horizontal_end,
+			_world_to_screen(Vector2(float(x), 0.0)),
+			_world_to_screen(
+				Vector2(float(x), float(generator.GRID_SIZE))
+			),
 			color,
 			width
 		)
+
+	for y in range(0, generator.GRID_SIZE + 1, y_step):
+		var major := y % (y_step * 5) == 0
+		var color := GRID_MAJOR if major else GRID_MINOR
+		var width := 1.0 if major else 0.6
 		draw_line(
-			vertical_start,
-			vertical_end,
+			_world_to_screen(Vector2(0.0, float(y))),
+			_world_to_screen(
+				Vector2(float(generator.GRID_SIZE), float(y))
+			),
 			color,
 			width
 		)
+
+
+func _highway_is_horizontal() -> bool:
+	if generator.highway_nodes.size() != 2:
+		return true
+	var a: Vector2i = generator.nodes[int(generator.highway_nodes[0])]
+	var b: Vector2i = generator.nodes[int(generator.highway_nodes[1])]
+	return a.y == b.y
 
 
 func _draw_roads() -> void:
