@@ -645,47 +645,74 @@ func _generate_surface_connection() -> void:
 
 
 func _generate_highway_connection() -> void:
-	var start := Vector2i(nodes[neighborhood_gateway])
-	var finish := Vector2i(nodes[city_gateway])
-	var delta := finish - start
-
+	var neighborhood_center := Vector2i(neighborhood_rect.get_center())
+	var city_center := Vector2i(city_rect.get_center())
+	var delta := city_center - neighborhood_center
 	var dominant_horizontal: bool = abs(delta.x) >= abs(delta.y)
-	var entry := start
-	var exit := finish
+
+	var entry := Vector2i.ZERO
+	var exit := Vector2i.ZERO
 
 	if dominant_horizontal:
-		var direction_x := 1 if delta.x >= 0 else -1
-		var highway_y: int = _snap_int(
-			int(round((float(start.y) + float(finish.y)) * 0.5)),
-			20
-		)
+		var highway_y: int = _safe_horizontal_highway_y()
 
-		entry = Vector2i(
-			start.x + direction_x * 30,
-			highway_y
-		)
-		exit = Vector2i(
-			finish.x - direction_x * 30,
-			highway_y
-		)
+		if city_center.x >= neighborhood_center.x:
+			entry = Vector2i(
+				neighborhood_rect.position.x,
+				highway_y
+			)
+			exit = Vector2i(
+				city_rect.end.x,
+				highway_y
+			)
+		else:
+			entry = Vector2i(
+				neighborhood_rect.end.x,
+				highway_y
+			)
+			exit = Vector2i(
+				city_rect.position.x,
+				highway_y
+			)
 	else:
-		var direction_y := 1 if delta.y >= 0 else -1
-		var highway_x: int = _snap_int(
-			int(round((float(start.x) + float(finish.x)) * 0.5)),
-			20
-		)
+		var highway_x: int = _safe_vertical_highway_x()
 
-		entry = Vector2i(
-			highway_x,
-			start.y + direction_y * 30
-		)
-		exit = Vector2i(
-			highway_x,
-			finish.y - direction_y * 30
-		)
+		if city_center.y >= neighborhood_center.y:
+			entry = Vector2i(
+				highway_x,
+				neighborhood_rect.position.y
+			)
+			exit = Vector2i(
+				highway_x,
+				city_rect.end.y
+			)
+		else:
+			entry = Vector2i(
+				highway_x,
+				neighborhood_rect.end.y
+			)
+			exit = Vector2i(
+				highway_x,
+				city_rect.position.y
+			)
 
 	entry = _clamp_to_world(_snap_point(entry, CONNECTOR_STEP))
 	exit = _clamp_to_world(_snap_point(exit, CONNECTOR_STEP))
+
+	# Re-pick the local gateways for this safe external corridor. The long
+	# highway stays outside both generated street grids, while short connector
+	# roads bridge from each district boundary to its highway endpoint.
+	neighborhood_gateway = _closest_boundary_node(
+		neighborhood_grid,
+		entry
+	)
+	city_gateway = _closest_boundary_node(
+		city_grid,
+		exit
+	)
+
+	var start := Vector2i(nodes[neighborhood_gateway])
+	var finish := Vector2i(nodes[city_gateway])
 
 	_add_grid_path(
 		start,
@@ -702,8 +729,7 @@ func _generate_highway_connection() -> void:
 		true
 	)
 
-	# Highway is one uninterrupted straight run. Any turns required to reach
-	# it belong to the connectors, not the highway itself.
+	# Highway remains one uninterrupted straight run.
 	var entry_id: int = _add_node(entry)
 	var exit_id: int = _add_node(exit)
 
@@ -715,6 +741,76 @@ func _generate_highway_connection() -> void:
 			exit_id,
 			RoadClass.HIGHWAY
 		)
+
+
+func _safe_horizontal_highway_y() -> int:
+	var neighborhood_top: int = neighborhood_rect.position.y
+	var neighborhood_bottom: int = neighborhood_rect.end.y
+	var city_top: int = city_rect.position.y
+	var city_bottom: int = city_rect.end.y
+	var raw_y: int = 0
+
+	# If the two districts occupy different rows, use the open space between
+	# them. Otherwise, place the highway on the inward side of both districts.
+	if neighborhood_bottom < city_top:
+		raw_y = int(round(
+			(float(neighborhood_bottom) + float(city_top)) * 0.5
+		))
+	elif city_bottom < neighborhood_top:
+		raw_y = int(round(
+			(float(city_bottom) + float(neighborhood_top)) * 0.5
+		))
+	else:
+		var combined_center: float = (
+			float(mini(neighborhood_top, city_top))
+			+ float(maxi(neighborhood_bottom, city_bottom))
+		) * 0.5
+
+		if combined_center < float(GRID_SIZE) * 0.5:
+			raw_y = maxi(neighborhood_bottom, city_bottom) + 20
+		else:
+			raw_y = mini(neighborhood_top, city_top) - 20
+
+	return clampi(
+		_snap_int(raw_y, CONNECTOR_STEP),
+		WORLD_MARGIN,
+		GRID_SIZE - WORLD_MARGIN
+	)
+
+
+func _safe_vertical_highway_x() -> int:
+	var neighborhood_left: int = neighborhood_rect.position.x
+	var neighborhood_right: int = neighborhood_rect.end.x
+	var city_left: int = city_rect.position.x
+	var city_right: int = city_rect.end.x
+	var raw_x: int = 0
+
+	# If the two districts occupy different columns, use the open space
+	# between them. Otherwise, place the highway on the inward side of both.
+	if neighborhood_right < city_left:
+		raw_x = int(round(
+			(float(neighborhood_right) + float(city_left)) * 0.5
+		))
+	elif city_right < neighborhood_left:
+		raw_x = int(round(
+			(float(city_right) + float(neighborhood_left)) * 0.5
+		))
+	else:
+		var combined_center: float = (
+			float(mini(neighborhood_left, city_left))
+			+ float(maxi(neighborhood_right, city_right))
+		) * 0.5
+
+		if combined_center < float(GRID_SIZE) * 0.5:
+			raw_x = maxi(neighborhood_right, city_right) + 20
+		else:
+			raw_x = mini(neighborhood_left, city_left) - 20
+
+	return clampi(
+		_snap_int(raw_x, CONNECTOR_STEP),
+		WORLD_MARGIN,
+		GRID_SIZE - WORLD_MARGIN
+	)
 
 
 func _add_grid_path(
