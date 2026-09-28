@@ -1,0 +1,184 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/drive/procedural_drive_controller.gd" id="1_controller"]
+[ext_resource type="Texture2D" path="res://assets/car/player_car_top.png" id="2_car"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxGps"]
+bg_color = Color(0.10, 0.14, 0.19, 0.96)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxArrival"]
+bg_color = Color(0.07, 0.08, 0.09, 0.97)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="ProceduralDrivePrototype" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.055, 0.06, 0.065, 1)
+
+[node name="World" type="Control" parent="."]
+z_index = 1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_controller")
+
+[node name="GpsPanel" type="PanelContainer" parent="."]
+z_index = 4
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 18.0
+offset_right = -16.0
+offset_bottom = 102.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxGps")
+
+[node name="GpsTitle" type="Label" parent="GpsPanel"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 11.0
+offset_right = 330.0
+offset_bottom = 43.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "Route ready"
+
+[node name="GpsSubtitle" type="Label" parent="GpsPanel"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 44.0
+offset_right = 330.0
+offset_bottom = 70.0
+theme_override_colors/font_color = Color(0.86, 0.91, 0.94, 1)
+theme_override_font_sizes/font_size = 14
+text = "Drive to the venue"
+
+[node name="SeedLabel" type="Label" parent="."]
+z_index = 5
+layout_mode = 1
+anchors_preset = 2
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -180.0
+offset_top = 110.0
+offset_right = -18.0
+offset_bottom = 132.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.76, 0.79, 0.78, 0.9)
+theme_override_font_sizes/font_size = 10
+text = "SEED"
+horizontal_alignment = 2
+
+[node name="NewMapButton" type="Button" parent="."]
+z_index = 5
+layout_mode = 0
+offset_left = 16.0
+offset_top = 108.0
+offset_right = 112.0
+offset_bottom = 140.0
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "NEW MAP"
+
+[node name="PlayerCar" type="TextureRect" parent="."]
+z_index = 3
+layout_mode = 0
+offset_right = 72.0
+offset_bottom = 88.0
+mouse_filter = 2
+texture = ExtResource("2_car")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TouchControls" type="HBoxContainer" parent="."]
+z_index = 5
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = -112.0
+offset_right = -18.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 12
+
+[node name="LeftButton" type="Button" parent="TouchControls"]
+custom_minimum_size = Vector2(126, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 30
+text = "<"
+
+[node name="StartButton" type="Button" parent="TouchControls"]
+custom_minimum_size = Vector2(118, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 17
+text = "START"
+
+[node name="RightButton" type="Button" parent="TouchControls"]
+custom_minimum_size = Vector2(126, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 30
+text = ">"
+
+[node name="Arrival" type="PanelContainer" parent="."]
+visible = false
+z_index = 7
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -170.0
+offset_top = -100.0
+offset_right = 170.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxArrival")
+
+[node name="Layout" type="VBoxContainer" parent="Arrival"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ArrivalText" type="Label" parent="Arrival/Layout"]
+custom_minimum_size = Vector2(320, 150)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.96, 0.93, 1)
+theme_override_font_sizes/font_size = 18
+text = "ARRIVED AT THE VENUE"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
