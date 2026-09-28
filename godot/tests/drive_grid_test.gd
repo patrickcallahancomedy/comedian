@@ -423,13 +423,18 @@ func _run() -> void:
 	)
 	drive.highway_collision_slow_remaining = 0.0
 
+	_check(
+		drive.highway_lane == MAP.HIGHWAY_ENTRY_LANE
+		and drive.highway_lane == MAP.HIGHWAY_LANES - 1,
+		"On-ramp does not merge directly into the rightmost lane"
+	)
 	var lane_before: int = drive.queued_highway_lane
 	var target_y_before: float = drive.move_to.y
-	drive._turn_right()
-	_check(drive.queued_highway_lane == lane_before + 1, "Highway lane input did not register")
+	drive._turn_left()
+	_check(drive.queued_highway_lane == lane_before - 1, "Highway lane input did not register")
 	_check(not is_equal_approx(drive.move_to.y, target_y_before), "Highway merge still waits for checkpoint")
-	_check(drive.steering_feedback > 0.0, "Highway steering has no visual feedback")
-	_check(drive.camera_nudge.x < 0.0, "Camera does not counter-nudge on a right merge")
+	_check(drive.steering_feedback < 0.0, "Highway steering has no visual feedback")
+	_check(drive.camera_nudge.x > 0.0, "Camera does not counter-nudge on a left merge")
 	_check(
 		drive.player_car.pivot_offset.y < drive.player_car.size.y * 0.5,
 		"Steering pivot is not ahead of the car center"
