@@ -20,10 +20,9 @@ func _run() -> void:
 	_check(city_exit.size() >= 8, "City exit curve is undersampled")
 	_check(wrong_exit.size() >= 8, "Wrong exit curve is undersampled")
 
+	var feeder := LAYOUT.neighborhood_feeder()
 	_check(
-		LAYOUT.NEIGHBORHOOD_FEEDER[
-			LAYOUT.NEIGHBORHOOD_FEEDER.size() - 1
-		].distance_to(ramp[0]) < 0.1,
+		feeder[feeder.size() - 1].distance_to(ramp[0]) < 0.1,
 		"Neighborhood feeder does not physically meet the overpass"
 	)
 
@@ -38,10 +37,9 @@ func _run() -> void:
 		LAYOUT.WESTBOUND_HIGHWAY.has_point(city_exit_start),
 		"Correct city exit does not branch from the highway"
 	)
+	var city_entry := LAYOUT.city_entry_road()
 	_check(
-		city_exit[city_exit.size() - 1].distance_to(
-			LAYOUT.CITY_ENTRY_ROAD[0]
-		) < 0.1,
+		city_exit[city_exit.size() - 1].distance_to(city_entry[0]) < 0.1,
 		"Correct highway exit does not physically reach the city road"
 	)
 
@@ -50,10 +48,9 @@ func _run() -> void:
 		LAYOUT.WESTBOUND_HIGHWAY.has_point(wrong_exit_start),
 		"Wrong exit does not branch from the physical highway"
 	)
+	var wrong_road := LAYOUT.wrong_exit_road()
 	_check(
-		wrong_exit[wrong_exit.size() - 1].distance_to(
-			LAYOUT.WRONG_EXIT_ROAD[0]
-		) < 0.1,
+		wrong_exit[wrong_exit.size() - 1].distance_to(wrong_road[0]) < 0.1,
 		"Wrong exit does not lead to its own physical road"
 	)
 
