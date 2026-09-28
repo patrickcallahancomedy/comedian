@@ -20,7 +20,8 @@ const HIGHWAY_RECT := Rect2(300, 440, 1200, 48)
 const OPPOSITE_HIGHWAY_RECT := Rect2(300, 376, 1200, 48)
 const HIGHWAY_ENTRY_X := 1120.0
 const HIGHWAY_EXIT_X := 560.0
-const HIGHWAY_STEP := 42.0
+const HIGHWAY_REROUTE_EXIT_X := 360.0
+const HIGHWAY_STEP := 40.0
 
 const NEIGHBORHOOD_START := "n22"
 const NEIGHBORHOOD_GATE := "n00"
@@ -168,11 +169,20 @@ static func onramp_points() -> PackedVector2Array:
 	return _sample_cubic(start, control_one, control_two, end, 22)
 
 
-static func offramp_points() -> PackedVector2Array:
-	var start := highway_exit_point()
+static func offramp_points(reroute: bool = false) -> PackedVector2Array:
+	var start_x := HIGHWAY_REROUTE_EXIT_X if reroute else HIGHWAY_EXIT_X
+	var start := highway_lane_center(HIGHWAY_EXIT_LANE, start_x)
 	var end := node_position("city", CITY_ENTRY)
-	var control_one := start + Vector2(-80.0, 0.0)
-	var control_two := end + Vector2(70.0, -90.0)
+	var control_one := (
+		start + Vector2(70.0, 0.0)
+		if reroute
+		else start + Vector2(-80.0, 0.0)
+	)
+	var control_two := (
+		end + Vector2(-100.0, -80.0)
+		if reroute
+		else end + Vector2(70.0, -90.0)
+	)
 	return _sample_cubic(start, control_one, control_two, end, 18)
 
 
