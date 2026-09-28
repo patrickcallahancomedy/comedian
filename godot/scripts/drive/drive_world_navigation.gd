@@ -154,7 +154,7 @@ func _draw_route_line() -> void:
 	for point in world_points:
 		screen_points.append(drive._world_to_screen(point))
 
-	var road_width := MAP.LOCAL_ROAD_WIDTH * drive._current_world_zoom()
+	var road_width: float = MAP.LOCAL_ROAD_WIDTH * drive._current_world_zoom()
 	draw_polyline(
 		screen_points,
 		ROUTE_SHADOW_COLOR,
@@ -267,7 +267,7 @@ func _local_instruction() -> Dictionary:
 
 		if kind == "left" or kind == "right":
 			var blocks := index
-			var at_turn := (
+			var at_turn: bool = (
 				drive.blocked_this_step
 				and index == 1
 			)
