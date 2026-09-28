@@ -8,8 +8,9 @@ const GRID_MINOR := Color(1.0, 1.0, 1.0, 0.035)
 const GRID_MAJOR := Color(1.0, 1.0, 1.0, 0.08)
 
 const ROAD_COLOR := Color(0.115, 0.125, 0.14)
-const CONNECTOR_COLOR := Color(0.13, 0.14, 0.155)
-const HIGHWAY_COLOR := Color(0.105, 0.115, 0.13)
+const CONNECTOR_COLOR := Color(0.10, 0.34, 0.92)
+const RAMP_COLOR := Color(0.90, 0.16, 0.78)
+const HIGHWAY_COLOR := Color(0.84, 0.12, 0.10)
 
 const HOME_COLOR := Color(0.18, 0.52, 0.98)
 const VENUE_COLOR := Color(0.84, 0.39, 0.19)
@@ -216,6 +217,9 @@ func _draw_roads() -> void:
 				generator.RoadClass.CONNECTOR:
 					width = 3.4
 					color = CONNECTOR_COLOR
+				generator.RoadClass.RAMP:
+					width = 4.0
+					color = RAMP_COLOR
 				generator.RoadClass.HIGHWAY:
 					width = 5.2
 					color = HIGHWAY_COLOR
@@ -246,6 +250,9 @@ func _draw_roads() -> void:
 			generator.RoadClass.CONNECTOR:
 				radius = 2.4
 				color = CONNECTOR_COLOR
+			generator.RoadClass.RAMP:
+				radius = 2.6
+				color = RAMP_COLOR
 			generator.RoadClass.HIGHWAY:
 				radius = 3.0
 				color = HIGHWAY_COLOR
