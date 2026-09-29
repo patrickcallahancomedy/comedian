@@ -24,6 +24,7 @@ const BOTTOM_MARGIN := 92.0
 const VISIBLE_NEIGHBORHOOD_BLOCKS := 2.0
 const ROAD_BLOCK_LENGTH := 20
 const ROAD_BLOCK_WIDTH := 10
+const DRIVE_VISIBLE_WORLD_WIDTH := 140.0
 
 @export var world_seed: int = 0
 
@@ -203,14 +204,10 @@ func _update_transform() -> void:
 		return
 
 	if drive_camera_enabled:
-		# Keep the main driving view at the normal whole-world scale.
-		# The fixed car can push some far edges off-screen as the world
-		# translates/rotates, but we never shrink the map dynamically.
-		var available := minf(
-			available_width,
-			available_height
-		)
-		map_scale = available / float(generator.GRID_SIZE)
+		# Immersive old-school driving camera: the car stays fixed/upward
+		# while the world moves and rotates beneath it. Keep enough surrounding
+		# road visible to read upcoming turns without shrinking to an overview.
+		map_scale = available_width / DRIVE_VISIBLE_WORLD_WIDTH
 		return
 
 	# Same generated map, only magnified until roughly two neighborhood
