@@ -1,7 +1,7 @@
 extends Control
 
 const BASE_SPEED := 25.0
-const SPEED_MULTIPLIERS := [1.0, 10.0, 100.0, 5000.0]
+const SPEED_MULTIPLIERS := [1.0, 10.0, 100.0, 10000.0]
 const SPEED_LABELS := ["1×", "10×", "100×", "MAX"]
 const CAR_COLOR := Color(1.0, 0.92, 0.08)
 const CAR_OUTLINE := Color(0.02, 0.02, 0.02)
