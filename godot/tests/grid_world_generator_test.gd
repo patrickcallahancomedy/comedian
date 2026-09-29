@@ -327,6 +327,38 @@ func _run() -> void:
 			"Debug route travels backward on the one-way highway"
 		)
 
+		var wrap_index: int = car_node.wrap_route_index
+		if wrap_index > 0 and wrap_index + 1 < car_node.route.size():
+			car_node.route_index = wrap_index - 1
+			car_node.world_position = Vector2(
+				map_node.generator.nodes[int(car_node.route[wrap_index])]
+			)
+			var before_wrap: Vector2 = car_node._display_world_position()
+
+			car_node.route_index = wrap_index + 1
+			car_node.world_position = Vector2(
+				map_node.generator.nodes[int(car_node.route[wrap_index + 1])]
+			)
+			var after_wrap: Vector2 = car_node._display_world_position()
+
+			var highway_a: Vector2i = map_node.generator.nodes[
+				int(map_node.generator.highway_nodes[0])
+			]
+			var highway_b: Vector2i = map_node.generator.nodes[
+				int(map_node.generator.highway_nodes[1])
+			]
+			var same_lane_across_wrap: bool = (
+				is_equal_approx(before_wrap.y, after_wrap.y)
+				if highway_a.y == highway_b.y
+				else is_equal_approx(before_wrap.x, after_wrap.x)
+			)
+			_check(
+				same_lane_across_wrap,
+				"Highway wrap changed the car lane"
+			)
+
+		car_node._reset()
+
 		map_node._show_zoom_map()
 		car_node._sync_drive_camera()
 		_check(
