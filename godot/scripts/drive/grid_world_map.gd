@@ -25,6 +25,7 @@ const VISIBLE_NEIGHBORHOOD_BLOCKS := 2.0
 const ROAD_BLOCK_LENGTH := 20
 const ROAD_BLOCK_WIDTH := 10
 const DRIVE_VISIBLE_WORLD_WIDTH := 140.0
+const DRIVE_ROTATION_SMOOTH_SPEED := 4.5
 
 @export var world_seed: int = 0
 
@@ -36,6 +37,7 @@ var show_whole_map := false
 var drive_camera_enabled := false
 var drive_camera_world := Vector2.ZERO
 var drive_camera_rotation := 0.0
+var drive_camera_target_rotation := 0.0
 
 @onready var seed_label: Label = $"../SeedLabel"
 @onready var mode_label: Label = $"../ModeLabel"
@@ -89,6 +91,19 @@ func _generate() -> void:
 	map_generated.emit()
 
 
+func _process(delta: float) -> void:
+	if not drive_camera_enabled:
+		return
+
+	var blend := 1.0 - exp(-DRIVE_ROTATION_SMOOTH_SPEED * delta)
+	drive_camera_rotation = lerp_angle(
+		drive_camera_rotation,
+		drive_camera_target_rotation,
+		blend
+	)
+	queue_redraw()
+
+
 func show_whole_world() -> void:
 	drive_camera_enabled = false
 	show_whole_map = true
@@ -99,6 +114,7 @@ func set_drive_camera(
 	world_position: Vector2,
 	forward_direction: Vector2
 ) -> void:
+	var was_enabled := drive_camera_enabled
 	drive_camera_enabled = true
 	show_whole_map = false
 	drive_camera_world = world_position
@@ -107,7 +123,9 @@ func set_drive_camera(
 	if direction.length_squared() <= 0.0001:
 		direction = Vector2.UP
 
-	drive_camera_rotation = direction.angle_to(Vector2.UP)
+	drive_camera_target_rotation = direction.angle_to(Vector2.UP)
+	if not was_enabled:
+		drive_camera_rotation = drive_camera_target_rotation
 	queue_redraw()
 
 
