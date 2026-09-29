@@ -42,13 +42,9 @@ func _process(delta: float) -> void:
 	if not running or route.size() < 2:
 		return
 
-	var remaining: float = (
-		BASE_SPEED
-		* float(SPEED_MULTIPLIERS[speed_index])
-		* delta
-	)
+	var remaining_time := delta
 
-	while remaining > 0.0 and running:
+	while remaining_time > 0.0 and running:
 		if route_index >= route.size() - 1:
 			_finish()
 			break
@@ -64,10 +60,12 @@ func _process(delta: float) -> void:
 			route_index += 1
 			continue
 
+		var road_class: int = map.generator.edge_class(current_id, next_id)
+
 		# Hidden links only connect the logical highway spine to its visual
 		# lanes. They are routing metadata, not roads the car should visibly
 		# drive across.
-		if map.generator.edge_class(current_id, next_id) < 0:
+		if road_class < 0:
 			world_position = target
 			route_index += 1
 			continue
@@ -79,16 +77,33 @@ func _process(delta: float) -> void:
 			route_index += 1
 			continue
 
-		if remaining >= distance:
+		var road_speed_multiplier := 1.0
+		if (
+			road_class == map.generator.RoadClass.HIGHWAY
+			or road_class == map.generator.RoadClass.RAMP
+		):
+			road_speed_multiplier = 2.0
+
+		var speed := (
+			BASE_SPEED
+			* float(SPEED_MULTIPLIERS[speed_index])
+			* road_speed_multiplier
+		)
+		var time_to_target := distance / speed
+
+		if remaining_time >= time_to_target:
 			world_position = target
-			remaining -= distance
+			remaining_time -= time_to_target
 			route_index += 1
 
 			if route_index >= route.size() - 1:
 				_finish()
 		else:
-			world_position = world_position.move_toward(target, remaining)
-			remaining = 0.0
+			world_position = world_position.move_toward(
+				target,
+				speed * remaining_time
+			)
+			remaining_time = 0.0
 
 	_sync_drive_camera()
 	queue_redraw()
