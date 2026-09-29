@@ -245,10 +245,29 @@ func _highway_display_position() -> Vector2:
 		1.0
 	)
 
-	# Stay in the entry-side outer lane, make any needed lane change through
-	# the middle of the one-way highway trip, and be fully in the exit-side
-	# outer lane before reaching pink.
-	var lane_change: float = smoothstep(0.35, 0.65, progress)
+	# Stay in the same lane across the invisible highway wrap. If the exit
+	# comes around on a second pass, begin any needed lane change only after
+	# respawning at the highway start so the wrap itself never changes lanes.
+	var lane_change_progress: float = progress
+	if wrap_route_index >= 0:
+		if route_index <= wrap_route_index:
+			lane_change_progress = 0.0
+		else:
+			var restart_index := wrap_route_index + 1
+			var post_wrap_span: float = maxf(
+				1.0,
+				float(exit_center_index - restart_index)
+			)
+			lane_change_progress = clampf(
+				(
+					float(route_index - restart_index)
+					+ segment_fraction
+				) / post_wrap_span,
+				0.0,
+				1.0
+			)
+
+	var lane_change: float = smoothstep(0.35, 0.65, lane_change_progress)
 	var side: float = lerpf(entry_side, exit_side, lane_change)
 	var offset: float = float(map.generator.HIGHWAY_LANE_SPACING) * side
 
