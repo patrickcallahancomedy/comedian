@@ -26,6 +26,8 @@ const ROAD_BLOCK_LENGTH := 20
 const ROAD_BLOCK_WIDTH := 10
 const DRIVE_VISIBLE_WORLD_WIDTH := 140.0
 const DRIVE_ROTATION_SMOOTH_SPEED := 4.5
+const LEGACY_LOCAL_ROAD_RATIO := 13.0 / 80.0
+const HIGHWAY_LANE_FILL_RATIO := 0.85
 
 @export var world_seed: int = 0
 
@@ -300,17 +302,29 @@ func _draw_roads() -> void:
 			# Graph-only highway/ramp merge links are intentionally invisible.
 			if road_class < 0:
 				continue
-			var width := 1.625
+			var width := (
+				float(generator.NEIGHBORHOOD_SPACING)
+				* LEGACY_LOCAL_ROAD_RATIO
+			)
 			var color := ROAD_COLOR
 
 			match road_class:
 				generator.RoadClass.CITY:
-					width = 3.0
+					width = (
+						float(generator.CITY_SPACING)
+						* LEGACY_LOCAL_ROAD_RATIO
+					)
 				generator.RoadClass.CONNECTOR:
-					width = 3.4
+					width = (
+						float(generator.CONNECTOR_STEP)
+						* LEGACY_LOCAL_ROAD_RATIO
+					)
 					color = CONNECTOR_COLOR
 				generator.RoadClass.RAMP:
-					width = 4.0
+					width = (
+						float(generator.HIGHWAY_LANE_SPACING)
+						* HIGHWAY_LANE_FILL_RATIO
+					)
 					color = RAMP_COLOR
 				generator.RoadClass.HIGHWAY:
 					_draw_three_lane_highway(
@@ -336,20 +350,40 @@ func _draw_roads() -> void:
 			continue
 
 		var road_class := _strongest_node_class(node_id)
-		var radius := 0.8125
+		var radius := (
+			float(generator.NEIGHBORHOOD_SPACING)
+			* LEGACY_LOCAL_ROAD_RATIO
+			* 0.5
+		)
 		var color := ROAD_COLOR
 
 		match road_class:
 			generator.RoadClass.CITY:
-				radius = 2.2
+				radius = (
+					float(generator.CITY_SPACING)
+					* LEGACY_LOCAL_ROAD_RATIO
+					* 0.5
+				)
 			generator.RoadClass.CONNECTOR:
-				radius = 2.4
+				radius = (
+					float(generator.CONNECTOR_STEP)
+					* LEGACY_LOCAL_ROAD_RATIO
+					* 0.5
+				)
 				color = CONNECTOR_COLOR
 			generator.RoadClass.RAMP:
-				radius = 2.6
+				radius = (
+					float(generator.HIGHWAY_LANE_SPACING)
+					* HIGHWAY_LANE_FILL_RATIO
+					* 0.5
+				)
 				color = RAMP_COLOR
 			generator.RoadClass.HIGHWAY:
-				radius = 3.0
+				radius = (
+					float(generator.HIGHWAY_LANE_SPACING)
+					* HIGHWAY_LANE_FILL_RATIO
+					* 0.5
+				)
 				color = HIGHWAY_COLOR
 
 		draw_circle(
@@ -379,7 +413,12 @@ func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
 			_world_to_screen(start + offset),
 			_world_to_screen(finish + offset),
 			HIGHWAY_COLOR,
-			maxf(1.0, 3.0 * map_scale),
+			maxf(
+				1.0,
+				float(generator.HIGHWAY_LANE_SPACING)
+				* HIGHWAY_LANE_FILL_RATIO
+				* map_scale
+			),
 			true
 		)
 
@@ -389,7 +428,13 @@ func _draw_auxiliary_merge_nodes() -> void:
 		var node_id: int = int(node_value)
 		draw_circle(
 			_world_to_screen(Vector2(generator.nodes[node_id])),
-			maxf(1.0, 3.0 * map_scale),
+			maxf(
+				1.0,
+				float(generator.HIGHWAY_LANE_SPACING)
+				* HIGHWAY_LANE_FILL_RATIO
+				* 0.5
+				* map_scale
+			),
 			HIGHWAY_COLOR
 		)
 
