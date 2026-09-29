@@ -20,7 +20,8 @@ var drive_forward := Vector2.UP
 @onready var map = $"../Map"
 @onready var run_button: Button = $"../DriveBox/Layout/RunButton"
 @onready var reset_button: Button = $"../DriveBox/Layout/ResetButton"
-@onready var speed_button: Button = $"../DriveBox/Layout/SpeedButton"
+@onready var speed_button: HSlider = $"../DriveBox/Layout/SpeedButton"
+@onready var speed_value_label: Label = $"../DriveBox/Layout/SpeedValueLabel"
 @onready var status_label: Label = $"../DriveBox/Layout/StatusLabel"
 
 
@@ -28,7 +29,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	run_button.pressed.connect(_run)
 	reset_button.pressed.connect(_reset)
-	speed_button.pressed.connect(_cycle_speed)
+	speed_button.value_changed.connect(_set_speed)
+	_set_speed(speed_button.value)
 	map.map_generated.connect(_reset)
 	call_deferred("_reset")
 
@@ -505,9 +507,9 @@ func _reset() -> void:
 	queue_redraw()
 
 
-func _cycle_speed() -> void:
-	speed_index = (speed_index + 1) % SPEED_MULTIPLIERS.size()
-	speed_button.text = "SPEED  %s" % SPEED_LABELS[speed_index]
+func _set_speed(value: float) -> void:
+	speed_index = clampi(int(round(value)) - 1, 0, SPEED_MULTIPLIERS.size() - 1)
+	speed_value_label.text = "SPEED  %s" % SPEED_LABELS[speed_index]
 
 
 func _finish() -> void:
