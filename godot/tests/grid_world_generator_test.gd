@@ -290,7 +290,8 @@ func _run() -> void:
 		_check(
 			scene.get_node_or_null("DebugCar") != null,
 			"Grid world prototype has no debug car layer"
-		)		_check(
+		)
+		_check(
 			scene.get_node_or_null("DriveBox/Layout/RunButton") != null,
 			"Grid world prototype has no RUN control"
 		)
