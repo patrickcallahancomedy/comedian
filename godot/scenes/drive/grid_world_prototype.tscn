@@ -157,12 +157,20 @@ custom_minimum_size = Vector2(0, 32)
 theme_override_font_sizes/font_size = 12
 text = "RESET"
 
-[node name="SpeedButton" type="Button" parent="DriveBox/Layout"]
+[node name="SpeedValueLabel" type="Label" parent="DriveBox/Layout"]
 layout_mode = 2
-focus_mode = 0
-custom_minimum_size = Vector2(0, 32)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "SPEED  1×"
+horizontal_alignment = 1
+
+[node name="SpeedButton" type="HSlider" parent="DriveBox/Layout"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 32)
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+rounded = true
 
 [node name="StatusLabel" type="Label" parent="DriveBox/Layout"]
 layout_mode = 2
