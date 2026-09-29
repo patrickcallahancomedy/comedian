@@ -15,6 +15,7 @@ var running := false
 var finished := false
 var speed_index := 0
 var wrap_route_index := -1
+var drive_forward := Vector2.UP
 
 @onready var map = $"../Map"
 @onready var run_button: Button = $"../DriveBox/Layout/RunButton"
@@ -87,6 +88,7 @@ func _process(delta: float) -> void:
 			world_position = world_position.move_toward(target, remaining)
 			remaining = 0.0
 
+	_sync_drive_camera()
 	queue_redraw()
 
 
@@ -94,13 +96,30 @@ func _draw() -> void:
 	if route.is_empty():
 		return
 
-	var display_position: Vector2 = _display_world_position()
-	var screen: Vector2 = map.world_to_screen(display_position)
+	var screen: Vector2 = (
+		map.drive_camera_screen_position()
+		if map.drive_camera_enabled
+		else map.world_to_screen(_display_world_position())
+	)
 	var radius: float = CAR_RADIUS
 
-	draw_circle(screen, radius + 3.0, CAR_OUTLINE)
-	draw_circle(screen, radius, CAR_COLOR)
-	draw_circle(screen, 2.2, Color.WHITE)
+	# Fixed upward-facing debug car. The world moves and rotates beneath it.
+	var nose := screen + Vector2(0.0, -radius - 3.0)
+	var left := screen + Vector2(-radius, radius)
+	var right := screen + Vector2(radius, radius)
+	draw_colored_polygon(
+		PackedVector2Array([nose, left, right]),
+		CAR_OUTLINE
+	)
+	draw_colored_polygon(
+		PackedVector2Array([
+			screen + Vector2(0.0, -radius),
+			screen + Vector2(-radius + 2.5, radius - 2.0),
+			screen + Vector2(radius - 2.5, radius - 2.0),
+		]),
+		CAR_COLOR
+	)
+	draw_circle(screen + Vector2(0.0, 2.0), 2.0, Color.WHITE)
 
 	var font := get_theme_default_font()
 	draw_string(
@@ -411,6 +430,42 @@ func _highway_travel_sign() -> int:
 	return 1 if city_center.y >= neighborhood_center.y else -1
 
 
+func _sync_drive_camera() -> void:
+	if route.is_empty():
+		return
+
+	var next_forward := _current_forward_direction()
+	if next_forward.length_squared() > 0.0001:
+		drive_forward = next_forward.normalized()
+
+	map.set_drive_camera(
+		_display_world_position(),
+		drive_forward
+	)
+
+
+func _current_forward_direction() -> Vector2:
+	if route.size() < 2:
+		return drive_forward
+
+	for index in range(route_index, route.size() - 1):
+		if index == wrap_route_index:
+			continue
+
+		var a: int = int(route[index])
+		var b: int = int(route[index + 1])
+		if map.generator.edge_class(a, b) < 0:
+			continue
+
+		var delta := Vector2(
+			map.generator.nodes[b] - map.generator.nodes[a]
+		)
+		if delta.length_squared() > 0.0001:
+			return delta.normalized()
+
+	return drive_forward
+
+
 func _run() -> void:
 	if route.is_empty():
 		_reset()
@@ -418,7 +473,7 @@ func _run() -> void:
 	if route.size() < 2:
 		return
 
-	map.show_whole_world()
+	_sync_drive_camera()
 	running = true
 	finished = false
 	status_label.text = "RUNNING"
@@ -444,6 +499,8 @@ func _reset() -> void:
 		return
 
 	world_position = Vector2(map.generator.nodes[int(route[0])])
+	drive_forward = _current_forward_direction()
+	_sync_drive_camera()
 	status_label.text = "READY AT A"
 	queue_redraw()
 
