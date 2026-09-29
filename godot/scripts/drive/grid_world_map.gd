@@ -311,7 +311,7 @@ func _draw_roads() -> void:
 			match road_class:
 				generator.RoadClass.CITY:
 					width = (
-						float(generator.CITY_SPACING)
+						float(generator.NEIGHBORHOOD_SPACING)
 						* LEGACY_LOCAL_ROAD_RATIO
 					)
 				generator.RoadClass.CONNECTOR:
@@ -360,7 +360,7 @@ func _draw_roads() -> void:
 		match road_class:
 			generator.RoadClass.CITY:
 				radius = (
-					float(generator.CITY_SPACING)
+					float(generator.NEIGHBORHOOD_SPACING)
 					* LEGACY_LOCAL_ROAD_RATIO
 					* 0.5
 				)
