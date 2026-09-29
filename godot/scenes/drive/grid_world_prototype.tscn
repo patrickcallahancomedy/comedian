@@ -95,7 +95,7 @@ layout_mode = 0
 offset_left = 248.0
 offset_top = 68.0
 offset_right = 414.0
-offset_bottom = 180.0
+offset_bottom = 216.0
 theme_override_styles/panel = SubResource("SettingsPanel")
 
 [node name="Layout" type="VBoxContainer" parent="SettingsBox"]
@@ -108,6 +108,13 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 12
 text = "VIEW"
 horizontal_alignment = 1
+
+[node name="DriveViewButton" type="Button" parent="SettingsBox/Layout"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 32)
+theme_override_font_sizes/font_size = 12
+text = "DRIVE VIEW"
 
 [node name="WholeMapButton" type="Button" parent="SettingsBox/Layout"]
 layout_mode = 2
