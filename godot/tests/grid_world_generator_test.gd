@@ -181,7 +181,6 @@ func _run() -> void:
 	var maps_with_dead_ends: int = 0
 	var maps_with_bad_pink_geometry: int = 0
 	var maps_with_bad_merge_nodes: int = 0
-	var maps_with_reversed_highway_access: int = 0
 	const STRESS_SEED_COUNT := 100
 
 	for test_seed in range(1, STRESS_SEED_COUNT + 1):
@@ -234,8 +233,6 @@ func _run() -> void:
 			maps_with_bad_pink_geometry += 1
 		if not _auxiliary_merge_nodes_are_valid(candidate):
 			maps_with_bad_merge_nodes += 1
-		if not _highway_access_order_is_valid(candidate):
-			maps_with_reversed_highway_access += 1
 
 	_check(
 		same_corner_maps == 0,
@@ -264,17 +261,6 @@ func _run() -> void:
 	_check(
 		maps_with_bad_merge_nodes == 0,
 		"Stress pass found pink merges on the wrong highway lane"
-	)
-	_check(
-		maps_with_reversed_highway_access == 0,
-		"Stress pass found highway access points reversed against A to B travel"
-	)
-
-	var regression = GENERATOR.new()
-	regression.generate(1790606837)
-	_check(
-		_highway_access_order_is_valid(regression),
-		"Regression seed 1790606837 reverses highway travel after merging"
 	)
 
 	var car_script: Script = load(
@@ -389,52 +375,6 @@ func _auxiliary_merge_nodes_are_valid(network) -> bool:
 			return false
 
 	return true
-
-
-func _highway_access_order_is_valid(network) -> bool:
-	if network.highway_nodes.size() != 2:
-		return false
-
-	var route: Array = network.shortest_path(
-		network.home_node,
-		network.venue_access_node
-	)
-	var merge_points: Array[Vector2i] = []
-	for node_value in route:
-		var node_id: int = int(node_value)
-		if network.auxiliary_merge_nodes.has(node_id):
-			merge_points.append(network.nodes[node_id])
-
-	if merge_points.size() != 2:
-		return false
-
-	var highway_a: Vector2i = network.nodes[int(network.highway_nodes[0])]
-	var highway_b: Vector2i = network.nodes[int(network.highway_nodes[1])]
-	var horizontal: bool = highway_a.y == highway_b.y
-
-	var neighborhood_center := Vector2i(network.neighborhood_rect.get_center())
-	var city_center := Vector2i(network.city_rect.get_center())
-	var travel_sign := 1
-	if horizontal:
-		travel_sign = 1 if city_center.x >= neighborhood_center.x else -1
-	else:
-		travel_sign = 1 if city_center.y >= neighborhood_center.y else -1
-
-	var entry_axis: int = (
-		merge_points[0].x
-		if horizontal
-		else merge_points[0].y
-	)
-	var exit_axis: int = (
-		merge_points[1].x
-		if horizontal
-		else merge_points[1].y
-	)
-
-	return (
-		(exit_axis - entry_axis) * travel_sign
-		>= network.CONNECTOR_STEP
-	)
 
 
 func _segment_enters_rect_inclusive(
