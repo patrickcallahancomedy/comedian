@@ -120,18 +120,20 @@ func set_drive_camera(
 	world_position: Vector2,
 	forward_direction: Vector2
 ) -> void:
-	if zoom_map_enabled or show_whole_map:
-		return
-
-	var was_enabled := drive_camera_enabled
-	drive_camera_enabled = true
-	show_whole_map = false
 	drive_camera_world = world_position
 
 	var direction := forward_direction.normalized()
 	if direction.length_squared() <= 0.0001:
 		direction = Vector2.UP
 
+	if zoom_map_enabled or show_whole_map:
+		drive_camera_enabled = false
+		queue_redraw()
+		return
+
+	var was_enabled := drive_camera_enabled
+	drive_camera_enabled = true
+	show_whole_map = false
 	drive_camera_target_rotation = direction.angle_to(Vector2.UP)
 	if not was_enabled:
 		drive_camera_rotation = drive_camera_target_rotation
@@ -159,6 +161,18 @@ func world_to_screen(world_point: Vector2) -> Vector2:
 			(world_point - drive_camera_world) * map_scale
 		).rotated(drive_camera_rotation)
 		return drive_camera_screen_position() + local
+
+	if zoom_map_enabled:
+		var viewport_center := Vector2(
+			size.x * 0.5,
+			TOP_MARGIN + maxf(
+				1.0,
+				size.y - TOP_MARGIN - BOTTOM_MARGIN
+			) * 0.5
+		)
+		return viewport_center + (
+			world_point - drive_camera_world
+		) * map_scale
 
 	return map_origin + world_point * map_scale
 
@@ -249,11 +263,13 @@ func _update_transform() -> void:
 		size.x * 0.5,
 		TOP_MARGIN + available_height * 0.5
 	)
-	var home_world := Vector2(
-		generator.nodes[generator.home_node]
-	)
+	var focus_world := drive_camera_world
+	if not zoom_map_enabled:
+		focus_world = Vector2(
+			generator.nodes[generator.home_node]
+		)
 
-	map_origin = viewport_center - home_world * map_scale
+	map_origin = viewport_center - focus_world * map_scale
 
 
 func _draw_grid() -> void:
