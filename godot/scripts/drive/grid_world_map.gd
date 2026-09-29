@@ -32,6 +32,9 @@ var actual_seed := 0
 var map_scale := 1.0
 var map_origin := Vector2.ZERO
 var show_whole_map := false
+var drive_camera_enabled := false
+var drive_camera_world := Vector2.ZERO
+var drive_camera_rotation := 0.0
 
 @onready var seed_label: Label = $"../SeedLabel"
 @onready var mode_label: Label = $"../ModeLabel"
@@ -86,14 +89,49 @@ func _generate() -> void:
 
 
 func show_whole_world() -> void:
+	drive_camera_enabled = false
 	show_whole_map = true
 	queue_redraw()
+
+
+func set_drive_camera(
+	world_position: Vector2,
+	forward_direction: Vector2
+) -> void:
+	drive_camera_enabled = true
+	show_whole_map = false
+	drive_camera_world = world_position
+
+	var direction := forward_direction.normalized()
+	if direction.length_squared() <= 0.0001:
+		direction = Vector2.UP
+
+	drive_camera_rotation = direction.angle_to(Vector2.UP)
+	queue_redraw()
+
+
+func drive_camera_screen_position() -> Vector2:
+	var available_height := maxf(
+		1.0,
+		size.y - TOP_MARGIN - BOTTOM_MARGIN
+	)
+	return Vector2(
+		size.x * 0.5,
+		TOP_MARGIN + available_height * 0.58
+	)
 
 
 func world_to_screen(world_point: Vector2) -> Vector2:
 	# Debug/playback layers may ask for coordinates before this Control has
 	# received its next draw callback after a view change.
 	_update_transform()
+
+	if drive_camera_enabled:
+		var local := (
+			(world_point - drive_camera_world) * map_scale
+		).rotated(drive_camera_rotation)
+		return drive_camera_screen_position() + local
+
 	return map_origin + world_point * map_scale
 
 
@@ -105,11 +143,21 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), PAGE_BG, true)
 	_update_transform()
 
-	var world_screen := Rect2(
-		map_origin,
-		Vector2.ONE * float(generator.GRID_SIZE) * map_scale
-	)
-	draw_rect(world_screen, WORLD_BG, true)
+	if drive_camera_enabled:
+		var world_size := float(generator.GRID_SIZE)
+		var world_polygon := PackedVector2Array([
+			_world_to_screen(Vector2(0.0, 0.0)),
+			_world_to_screen(Vector2(world_size, 0.0)),
+			_world_to_screen(Vector2(world_size, world_size)),
+			_world_to_screen(Vector2(0.0, world_size)),
+		])
+		draw_colored_polygon(world_polygon, WORLD_BG)
+	else:
+		var world_screen := Rect2(
+			map_origin,
+			Vector2.ONE * float(generator.GRID_SIZE) * map_scale
+		)
+		draw_rect(world_screen, WORLD_BG, true)
 
 	_draw_grid()
 	_draw_roads()
@@ -344,17 +392,26 @@ func _strongest_node_class(node_id: int) -> int:
 
 func _draw_venue_block() -> void:
 	var inset := 2.0
-	var rect := Rect2(
-		_world_to_screen(
-			Vector2(generator.venue_block.position)
-			+ Vector2.ONE * inset
-		),
-		(
-			Vector2(generator.venue_block.size)
-			- Vector2.ONE * inset * 2.0
-		) * map_scale
+	var position := Vector2(generator.venue_block.position) + Vector2.ONE * inset
+	var block_size := (
+		Vector2(generator.venue_block.size)
+		- Vector2.ONE * inset * 2.0
 	)
 
+	if drive_camera_enabled:
+		var corners := PackedVector2Array([
+			_world_to_screen(position),
+			_world_to_screen(position + Vector2(block_size.x, 0.0)),
+			_world_to_screen(position + block_size),
+			_world_to_screen(position + Vector2(0.0, block_size.y)),
+		])
+		draw_colored_polygon(corners, VENUE_FILL)
+		return
+
+	var rect := Rect2(
+		_world_to_screen(position),
+		block_size * map_scale
+	)
 	draw_rect(rect, VENUE_FILL, true)
 
 
