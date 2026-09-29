@@ -119,19 +119,28 @@ func _draw() -> void:
 	)
 	var radius: float = CAR_RADIUS
 
-	# Fixed upward-facing debug car. The world moves and rotates beneath it.
-	var nose := screen + Vector2(0.0, -radius - 3.0)
-	var left := screen + Vector2(-radius, radius)
-	var right := screen + Vector2(radius, radius)
+	var car_rotation := 0.0
+	if not map.drive_camera_enabled:
+		var forward := _current_forward_direction()
+		if forward.length_squared() > 0.0001:
+			car_rotation = Vector2.UP.angle_to(forward)
+
+	var nose_offset := Vector2(0.0, -radius - 3.0).rotated(car_rotation)
+	var left_offset := Vector2(-radius, radius).rotated(car_rotation)
+	var right_offset := Vector2(radius, radius).rotated(car_rotation)
 	draw_colored_polygon(
-		PackedVector2Array([nose, left, right]),
+		PackedVector2Array([
+			screen + nose_offset,
+			screen + left_offset,
+			screen + right_offset,
+		]),
 		CAR_OUTLINE
 	)
 	draw_colored_polygon(
 		PackedVector2Array([
-			screen + Vector2(0.0, -radius),
-			screen + Vector2(-radius + 2.5, radius - 2.0),
-			screen + Vector2(radius - 2.5, radius - 2.0),
+			screen + Vector2(0.0, -radius).rotated(car_rotation),
+			screen + Vector2(-radius + 2.5, radius - 2.0).rotated(car_rotation),
+			screen + Vector2(radius - 2.5, radius - 2.0).rotated(car_rotation),
 		]),
 		CAR_COLOR
 	)
