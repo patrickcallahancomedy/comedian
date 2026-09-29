@@ -334,6 +334,21 @@ func _run() -> void:
 			"Drive camera overrode the selected 2x2 zoom"
 		)
 
+		var expected_zoom_center := Vector2(
+			map_node.size.x * 0.5,
+			map_node.TOP_MARGIN + maxf(
+				1.0,
+				map_node.size.y - map_node.TOP_MARGIN - map_node.BOTTOM_MARGIN
+			) * 0.5
+		)
+		var actual_zoom_center: Vector2 = map_node.world_to_screen(
+			car_node._display_world_position()
+		)
+		_check(
+			actual_zoom_center.distance_to(expected_zoom_center) < 0.1,
+			"2x2 zoom is not centered on the moving car"
+		)
+
 		scene.free()
 
 	_finish()
