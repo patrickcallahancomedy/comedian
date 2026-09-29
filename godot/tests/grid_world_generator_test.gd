@@ -651,3 +651,5 @@ func _finish() -> void:
 	for failure in failures:
 		print(" - ", failure)
 	quit(1)
+
+# Traffic intentionally removed; baseline behavior preserved.
