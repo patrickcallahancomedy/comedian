@@ -303,6 +303,10 @@ func _run() -> void:
 			scene.get_node_or_null("DriveBox/Layout/SpeedButton") != null,
 			"Grid world prototype has no SPEED control"
 		)
+		_check(
+			scene.get_node_or_null("SettingsBox/Layout/DriveViewButton") != null,
+			"Grid world prototype has no DRIVE VIEW control"
+		)
 
 		var map_node = scene.get_node("Map")
 		var car_node = scene.get_node("DebugCar")
@@ -326,27 +330,39 @@ func _run() -> void:
 		map_node._show_zoom_map()
 		car_node._sync_drive_camera()
 		_check(
-			map_node.zoom_map_enabled,
-			"2x2 zoom did not stay selected during drive camera sync"
-		)
-		_check(
-			not map_node.drive_camera_enabled,
-			"Drive camera overrode the selected 2x2 zoom"
+			map_node.zoom_map_enabled and map_node.drive_camera_enabled,
+			"2x2 view did not keep the shared rotating camera"
 		)
 
-		var expected_zoom_center := Vector2(
-			map_node.size.x * 0.5,
-			map_node.TOP_MARGIN + maxf(
-				1.0,
-				map_node.size.y - map_node.TOP_MARGIN - map_node.BOTTOM_MARGIN
-			) * 0.5
-		)
-		var actual_zoom_center: Vector2 = map_node.world_to_screen(
+		var expected_car_position: Vector2 = map_node.drive_camera_screen_position()
+		var actual_car_position: Vector2 = map_node.world_to_screen(
 			car_node._display_world_position()
 		)
 		_check(
-			actual_zoom_center.distance_to(expected_zoom_center) < 0.1,
-			"2x2 zoom is not centered on the moving car"
+			actual_car_position.distance_to(expected_car_position) < 0.1,
+			"2x2 view is not centered on the fixed car"
+		)
+
+		map_node._show_whole_map()
+		car_node._sync_drive_camera()
+		_check(
+			map_node.show_whole_map and map_node.drive_camera_enabled,
+			"Whole-map view did not keep the shared rotating camera"
+		)
+		_check(
+			map_node.world_to_screen(
+				car_node._display_world_position()
+			).distance_to(expected_car_position) < 0.1,
+			"Whole-map view is not centered on the fixed car"
+		)
+
+		map_node._show_drive_view()
+		car_node._sync_drive_camera()
+		_check(
+			not map_node.show_whole_map
+			and not map_node.zoom_map_enabled
+			and map_node.drive_camera_enabled,
+			"Drive view did not restore the shared rotating camera"
 		)
 
 		scene.free()
