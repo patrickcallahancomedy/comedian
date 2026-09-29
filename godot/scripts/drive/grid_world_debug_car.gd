@@ -78,11 +78,10 @@ func _process(delta: float) -> void:
 			continue
 
 		var road_speed_multiplier := 1.0
-		if (
-			road_class == map.generator.RoadClass.HIGHWAY
-			or road_class == map.generator.RoadClass.RAMP
-		):
+		if road_class == map.generator.RoadClass.HIGHWAY:
 			road_speed_multiplier = 2.0
+		elif road_class == map.generator.RoadClass.RAMP:
+			road_speed_multiplier = _ramp_speed_multiplier()
 
 		var speed := (
 			BASE_SPEED
@@ -525,6 +524,79 @@ func _reset() -> void:
 func _set_speed(value: float) -> void:
 	speed_index = clampi(int(round(value)) - 1, 0, SPEED_MULTIPLIERS.size() - 1)
 	speed_value_label.text = "SPEED  %s" % SPEED_LABELS[speed_index]
+
+
+func _ramp_speed_multiplier() -> float:
+	var merge_indices: Array = _auxiliary_merge_route_indices()
+	if merge_indices.size() < 2:
+		return 1.0
+
+	var entry_merge_index: int = int(merge_indices[0])
+	var exit_merge_index: int = int(merge_indices[-1])
+
+	# Entry pink lane: accelerate smoothly from local-road speed to highway speed.
+	if route_index < entry_merge_index:
+		var ramp_start_index := route_index
+		while ramp_start_index > 0:
+			var previous_class: int = map.generator.edge_class(
+				int(route[ramp_start_index - 1]),
+				int(route[ramp_start_index])
+			)
+			if previous_class != map.generator.RoadClass.RAMP:
+				break
+			ramp_start_index -= 1
+
+		var ramp_end_index := entry_merge_index - 1
+		var start_position := Vector2(
+			map.generator.nodes[int(route[ramp_start_index])]
+		)
+		var end_position := Vector2(
+			map.generator.nodes[int(route[ramp_end_index])]
+		)
+		var total_distance := start_position.distance_to(end_position)
+		if total_distance <= 0.0001:
+			return 2.0
+
+		var progress := clampf(
+			start_position.distance_to(world_position) / total_distance,
+			0.0,
+			1.0
+		)
+		progress = smoothstep(0.0, 1.0, progress)
+		return lerpf(1.0, 2.0, progress)
+
+	# Exit pink lane: decelerate smoothly from highway speed back to local speed.
+	if route_index > exit_merge_index:
+		var ramp_start_index := exit_merge_index + 1
+		var ramp_end_index := ramp_start_index
+		while ramp_end_index < route.size() - 1:
+			var next_class: int = map.generator.edge_class(
+				int(route[ramp_end_index]),
+				int(route[ramp_end_index + 1])
+			)
+			if next_class != map.generator.RoadClass.RAMP:
+				break
+			ramp_end_index += 1
+
+		var start_position := Vector2(
+			map.generator.nodes[int(route[ramp_start_index])]
+		)
+		var end_position := Vector2(
+			map.generator.nodes[int(route[ramp_end_index])]
+		)
+		var total_distance := start_position.distance_to(end_position)
+		if total_distance <= 0.0001:
+			return 1.0
+
+		var progress := clampf(
+			start_position.distance_to(world_position) / total_distance,
+			0.0,
+			1.0
+		)
+		progress = smoothstep(0.0, 1.0, progress)
+		return lerpf(2.0, 1.0, progress)
+
+	return 1.0
 
 
 func _finish() -> void:
