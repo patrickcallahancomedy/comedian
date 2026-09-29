@@ -14,6 +14,7 @@ var world_position := Vector2.ZERO
 var running := false
 var finished := false
 var speed_index := 0
+var wrap_route_index := -1
 
 @onready var map = $"../Map"
 @onready var run_button: Button = $"../DriveBox/Layout/RunButton"
@@ -52,6 +53,13 @@ func _process(delta: float) -> void:
 		var current_id: int = int(route[route_index])
 		var next_id: int = int(route[route_index + 1])
 		var target: Vector2 = Vector2(map.generator.nodes[next_id])
+
+		# The highway is one-way. When the route reaches the forward end,
+		# wrap to the opposite end as though the highway continues off-map.
+		if route_index == wrap_route_index:
+			world_position = target
+			route_index += 1
+			continue
 
 		# Hidden links only connect the logical highway spine to its visual
 		# lanes. They are routing metadata, not roads the car should visibly
@@ -134,8 +142,10 @@ func _highway_display_position() -> Vector2:
 
 	var entry_lane_id: int = int(route[entry_merge_index])
 	var exit_lane_id: int = int(route[exit_merge_index])
-	var entry_center_id: int = int(route[entry_merge_index + 1])
-	var exit_center_id: int = int(route[exit_merge_index - 1])
+	var entry_center_index: int = entry_merge_index + 1
+	var exit_center_index: int = exit_merge_index - 1
+	var entry_center_id: int = int(route[entry_center_index])
+	var exit_center_id: int = int(route[exit_center_index])
 
 	var entry_lane: Vector2 = Vector2(map.generator.nodes[entry_lane_id])
 	var exit_lane: Vector2 = Vector2(map.generator.nodes[exit_lane_id])
@@ -156,21 +166,44 @@ func _highway_display_position() -> Vector2:
 	if is_zero_approx(entry_side) or is_zero_approx(exit_side):
 		return world_position
 
-	var start_axis: float = entry_center.x if horizontal else entry_center.y
-	var end_axis: float = exit_center.x if horizontal else exit_center.y
-	var current_axis: float = world_position.x if horizontal else world_position.y
-	var denominator: float = end_axis - start_axis
-	var progress := 0.0
-	if not is_zero_approx(denominator):
-		progress = clampf(
-			(current_axis - start_axis) / denominator,
-			0.0,
-			1.0
-		)
+	# Progress follows the actual one-way route indices, so a highway wrap
+	# does not make the lane-change interpolation run backward.
+	var route_span: float = maxf(
+		1.0,
+		float(exit_center_index - entry_center_index)
+	)
+	var segment_fraction := 0.0
+	if route_index >= entry_center_index and route_index < exit_center_index:
+		var current_id: int = int(route[route_index])
+		var next_id: int = int(route[route_index + 1])
+		if route_index != wrap_route_index:
+			var current_point: Vector2 = Vector2(
+				map.generator.nodes[current_id]
+			)
+			var next_point: Vector2 = Vector2(
+				map.generator.nodes[next_id]
+			)
+			var segment_length: float = current_point.distance_to(next_point)
+			if segment_length > 0.0001:
+				segment_fraction = clampf(
+					current_point.distance_to(world_position)
+					/ segment_length,
+					0.0,
+					1.0
+				)
+
+	var progress: float = clampf(
+		(
+			float(route_index - entry_center_index)
+			+ segment_fraction
+		) / route_span,
+		0.0,
+		1.0
+	)
 
 	# Stay in the entry-side outer lane, make any needed lane change through
-	# the middle of the highway, and be fully in the exit-side outer lane
-	# well before the pink exit.
+	# the middle of the one-way highway trip, and be fully in the exit-side
+	# outer lane before reaching pink.
 	var lane_change: float = smoothstep(0.35, 0.65, progress)
 	var side: float = lerpf(entry_side, exit_side, lane_change)
 	var offset: float = float(map.generator.HIGHWAY_LANE_SPACING) * side
@@ -258,12 +291,7 @@ func _ramp_display_position() -> Vector2:
 
 
 func _auxiliary_merge_route_indices() -> Array:
-	var indices: Array = []
-	for index in range(route.size()):
-		var node_id: int = int(route[index])
-		if map.generator.auxiliary_merge_nodes.has(node_id):
-			indices.append(index)
-	return indices
+	return _auxiliary_merge_indices_for(route)
 
 
 func _highway_is_horizontal() -> bool:
@@ -276,6 +304,111 @@ func _highway_is_horizontal() -> bool:
 		int(map.generator.highway_nodes[1])
 	]
 	return a.y == b.y
+
+
+func _auxiliary_merge_indices_for(candidate_route: Array) -> Array:
+	var indices: Array = []
+	for index in range(candidate_route.size()):
+		var node_id: int = int(candidate_route[index])
+		if map.generator.auxiliary_merge_nodes.has(node_id):
+			indices.append(index)
+	return indices
+
+
+func _build_one_way_route() -> Array:
+	wrap_route_index = -1
+
+	var base_route: Array = map.generator.shortest_path(
+		map.generator.home_node,
+		map.generator.venue_access_node
+	)
+	if base_route.is_empty() or not map.generator.uses_highway:
+		return base_route
+
+	var merge_indices: Array = _auxiliary_merge_indices_for(base_route)
+	if merge_indices.size() != 2:
+		return base_route
+
+	var entry_merge_index: int = int(merge_indices[0])
+	var exit_merge_index: int = int(merge_indices[1])
+	if (
+		entry_merge_index + 1 >= base_route.size()
+		or exit_merge_index <= 0
+	):
+		return base_route
+
+	var entry_center_id: int = int(base_route[entry_merge_index + 1])
+	var exit_center_id: int = int(base_route[exit_merge_index - 1])
+	var spine: Array = _directed_highway_spine_nodes()
+	var entry_spine_index: int = spine.find(entry_center_id)
+	var exit_spine_index: int = spine.find(exit_center_id)
+
+	if entry_spine_index < 0 or exit_spine_index < 0:
+		return base_route
+
+	# Exit already lies ahead in the legal highway direction.
+	if exit_spine_index >= entry_spine_index:
+		return base_route
+
+	# Exit lies behind us. Continue forward to the end, wrap to the highway
+	# start, then keep moving forward until the exit comes around again.
+	var result: Array = []
+	for index in range(entry_merge_index + 2):
+		result.append(base_route[index])
+
+	for index in range(entry_spine_index + 1, spine.size()):
+		result.append(spine[index])
+
+	wrap_route_index = result.size() - 1
+
+	for index in range(0, exit_spine_index + 1):
+		result.append(spine[index])
+
+	for index in range(exit_merge_index, base_route.size()):
+		result.append(base_route[index])
+
+	return result
+
+
+func _directed_highway_spine_nodes() -> Array:
+	var spine: Array = []
+	for key in map.generator.edge_classes.keys():
+		if (
+			int(map.generator.edge_classes[key])
+			!= map.generator.RoadClass.HIGHWAY
+		):
+			continue
+		var ids: Array = str(key).split(":")
+		if ids.size() != 2:
+			continue
+		for id_value in ids:
+			var node_id := int(id_value)
+			if not spine.has(node_id):
+				spine.append(node_id)
+
+	var horizontal: bool = _highway_is_horizontal()
+	spine.sort_custom(func(a, b):
+		var pa: Vector2i = map.generator.nodes[int(a)]
+		var pb: Vector2i = map.generator.nodes[int(b)]
+		return pa.x < pb.x if horizontal else pa.y < pb.y
+	)
+
+	if _highway_travel_sign() < 0:
+		spine.reverse()
+
+	return spine
+
+
+func _highway_travel_sign() -> int:
+	var neighborhood_center := Vector2i(
+		map.generator.neighborhood_rect.get_center()
+	)
+	var city_center := Vector2i(
+		map.generator.city_rect.get_center()
+	)
+	if _highway_is_horizontal():
+		return 1 if city_center.x >= neighborhood_center.x else -1
+	return 1 if city_center.y >= neighborhood_center.y else -1
 
 
 func _run() -> void:
@@ -303,10 +436,7 @@ func _reset() -> void:
 		queue_redraw()
 		return
 
-	route = map.generator.shortest_path(
-		map.generator.home_node,
-		map.generator.venue_access_node
-	)
+	route = _build_one_way_route()
 
 	if route.is_empty():
 		status_label.text = "NO ROUTE"
