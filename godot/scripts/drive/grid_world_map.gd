@@ -117,7 +117,7 @@ func drive_camera_screen_position() -> Vector2:
 	)
 	return Vector2(
 		size.x * 0.5,
-		TOP_MARGIN + available_height * 0.5
+		TOP_MARGIN + available_height * 0.58
 	)
 
 
@@ -199,31 +199,6 @@ func _update_transform() -> void:
 			TOP_MARGIN + (
 				available_height - map_size.y
 			) * 0.5
-		)
-		return
-
-	if drive_camera_enabled:
-		var world_size := float(generator.GRID_SIZE)
-		var corners := [
-			Vector2(0.0, 0.0),
-			Vector2(world_size, 0.0),
-			Vector2(world_size, world_size),
-			Vector2(0.0, world_size),
-		]
-
-		var max_abs_x := 1.0
-		var max_abs_y := 1.0
-		for corner_value in corners:
-			var corner: Vector2 = corner_value
-			var local := (
-				corner - drive_camera_world
-			).rotated(drive_camera_rotation)
-			max_abs_x = maxf(max_abs_x, absf(local.x))
-			max_abs_y = maxf(max_abs_y, absf(local.y))
-
-		map_scale = minf(
-			(available_width * 0.48) / max_abs_x,
-			(available_height * 0.48) / max_abs_y
 		)
 		return
 
