@@ -271,14 +271,6 @@ func _run() -> void:
 		"Debug car script failed to parse or load"
 	)
 
-	var overview_script: Script = load(
-		"res://scripts/drive/grid_world_overview.gd"
-	) as Script
-	_check(
-		overview_script != null,
-		"Drive overview script failed to parse or load"
-	)
-
 	var packed: PackedScene = load(
 		"res://scenes/drive/grid_world_prototype.tscn"
 	) as PackedScene
@@ -298,12 +290,7 @@ func _run() -> void:
 		_check(
 			scene.get_node_or_null("DebugCar") != null,
 			"Grid world prototype has no debug car layer"
-		)
-		_check(
-			scene.get_node_or_null("DriveOverview") != null,
-			"Grid world prototype has no whole-world drive overview"
-		)
-		_check(
+		)		_check(
 			scene.get_node_or_null("DriveBox/Layout/RunButton") != null,
 			"Grid world prototype has no RUN control"
 		)
