@@ -304,9 +304,82 @@ func _run() -> void:
 			"Grid world prototype has no SPEED control"
 		)
 
+		var map_node = scene.get_node("Map")
+		var car_node = scene.get_node("DebugCar")
+		map_node.world_seed = 1790606837
+		map_node._generate()
+		car_node._reset()
+
+		_check(
+			car_node.wrap_route_index >= 0,
+			"Regression seed 1790606837 did not loop the one-way highway"
+		)
+		_check(
+			_debug_route_respects_one_way_highway(
+				map_node.generator,
+				car_node.route,
+				car_node.wrap_route_index
+			),
+			"Debug route travels backward on the one-way highway"
+		)
+
 		scene.free()
 
 	_finish()
+
+
+func _debug_route_respects_one_way_highway(
+	network,
+	candidate_route: Array,
+	wrap_index: int
+) -> bool:
+	if network.highway_nodes.size() != 2:
+		return false
+
+	var highway_a: Vector2i = network.nodes[int(network.highway_nodes[0])]
+	var highway_b: Vector2i = network.nodes[int(network.highway_nodes[1])]
+	var horizontal: bool = highway_a.y == highway_b.y
+	var neighborhood_center := Vector2i(network.neighborhood_rect.get_center())
+	var city_center := Vector2i(network.city_rect.get_center())
+	var travel_sign := 1
+	if horizontal:
+		travel_sign = 1 if city_center.x >= neighborhood_center.x else -1
+	else:
+		travel_sign = 1 if city_center.y >= neighborhood_center.y else -1
+
+	for index in range(candidate_route.size() - 1):
+		var a: int = int(candidate_route[index])
+		var b: int = int(candidate_route[index + 1])
+
+		if index == wrap_index:
+			var forward_end: int = (
+				int(network.highway_nodes[1])
+				if travel_sign > 0
+				else int(network.highway_nodes[0])
+			)
+			var restart_end: int = (
+				int(network.highway_nodes[0])
+				if travel_sign > 0
+				else int(network.highway_nodes[1])
+			)
+			if a != forward_end or b != restart_end:
+				return false
+			continue
+
+		if network.edge_class(a, b) != network.RoadClass.HIGHWAY:
+			continue
+
+		var pa: Vector2i = network.nodes[a]
+		var pb: Vector2i = network.nodes[b]
+		var forward_delta: int = (
+			(pb.x - pa.x)
+			if horizontal
+			else (pb.y - pa.y)
+		) * travel_sign
+		if forward_delta < 0:
+			return false
+
+	return true
 
 
 func _count_non_highway_dead_ends(network) -> int:
