@@ -300,7 +300,7 @@ func _draw_roads() -> void:
 			# Graph-only highway/ramp merge links are intentionally invisible.
 			if road_class < 0:
 				continue
-			var width := 6.5
+			var width := 1.625
 			var color := ROAD_COLOR
 
 			match road_class:
@@ -336,7 +336,7 @@ func _draw_roads() -> void:
 			continue
 
 		var road_class := _strongest_node_class(node_id)
-		var radius := 3.25
+		var radius := 0.8125
 		var color := ROAD_COLOR
 
 		match road_class:
