@@ -36,6 +36,7 @@ var actual_seed := 0
 var map_scale := 1.0
 var map_origin := Vector2.ZERO
 var show_whole_map := false
+var zoom_map_enabled := false
 var drive_camera_enabled := false
 var drive_camera_world := Vector2.ZERO
 var drive_camera_rotation := 0.0
@@ -67,7 +68,9 @@ func _show_whole_map() -> void:
 
 
 func _show_zoom_map() -> void:
+	drive_camera_enabled = false
 	show_whole_map = false
+	zoom_map_enabled = true
 	queue_redraw()
 
 
@@ -108,6 +111,7 @@ func _process(delta: float) -> void:
 
 func show_whole_world() -> void:
 	drive_camera_enabled = false
+	zoom_map_enabled = false
 	show_whole_map = true
 	queue_redraw()
 
@@ -116,6 +120,9 @@ func set_drive_camera(
 	world_position: Vector2,
 	forward_direction: Vector2
 ) -> void:
+	if zoom_map_enabled or show_whole_map:
+		return
+
 	var was_enabled := drive_camera_enabled
 	drive_camera_enabled = true
 	show_whole_map = false
