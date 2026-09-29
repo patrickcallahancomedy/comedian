@@ -202,6 +202,17 @@ func _update_transform() -> void:
 		)
 		return
 
+	if drive_camera_enabled:
+		# Keep the main driving view at the normal whole-world scale.
+		# The fixed car can push some far edges off-screen as the world
+		# translates/rotates, but we never shrink the map dynamically.
+		var available := minf(
+			available_width,
+			available_height
+		)
+		map_scale = available / float(generator.GRID_SIZE)
+		return
+
 	# Same generated map, only magnified until roughly two neighborhood
 	# blocks span the playable width. No regeneration happens on view change.
 	var visible_world_width := (
