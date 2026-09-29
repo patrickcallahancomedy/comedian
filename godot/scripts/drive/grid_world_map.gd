@@ -45,12 +45,14 @@ var drive_camera_target_rotation := 0.0
 @onready var seed_label: Label = $"../SeedLabel"
 @onready var mode_label: Label = $"../ModeLabel"
 @onready var new_map_button: Button = $"../NewMapButton"
+@onready var drive_view_button: Button = $"../SettingsBox/Layout/DriveViewButton"
 @onready var whole_map_button: Button = $"../SettingsBox/Layout/WholeMapButton"
 @onready var zoom_map_button: Button = $"../SettingsBox/Layout/ZoomMapButton"
 
 
 func _ready() -> void:
 	new_map_button.pressed.connect(_new_map)
+	drive_view_button.pressed.connect(_show_drive_view)
 	whole_map_button.pressed.connect(_show_whole_map)
 	zoom_map_button.pressed.connect(_show_zoom_map)
 	resized.connect(_refresh_layout)
@@ -63,14 +65,21 @@ func _new_map() -> void:
 	_generate()
 
 
+func _show_drive_view() -> void:
+	show_whole_map = false
+	zoom_map_enabled = false
+	drive_camera_enabled = true
+	queue_redraw()
+
+
 func _show_whole_map() -> void:
 	show_whole_world()
 
 
 func _show_zoom_map() -> void:
-	drive_camera_enabled = false
 	show_whole_map = false
 	zoom_map_enabled = true
+	drive_camera_enabled = true
 	queue_redraw()
 
 
@@ -110,9 +119,9 @@ func _process(delta: float) -> void:
 
 
 func show_whole_world() -> void:
-	drive_camera_enabled = false
 	zoom_map_enabled = false
 	show_whole_map = true
+	drive_camera_enabled = true
 	queue_redraw()
 
 
@@ -120,20 +129,14 @@ func set_drive_camera(
 	world_position: Vector2,
 	forward_direction: Vector2
 ) -> void:
+	var was_enabled := drive_camera_enabled
+	drive_camera_enabled = true
 	drive_camera_world = world_position
 
 	var direction := forward_direction.normalized()
 	if direction.length_squared() <= 0.0001:
 		direction = Vector2.UP
 
-	if zoom_map_enabled or show_whole_map:
-		drive_camera_enabled = false
-		queue_redraw()
-		return
-
-	var was_enabled := drive_camera_enabled
-	drive_camera_enabled = true
-	show_whole_map = false
 	drive_camera_target_rotation = direction.angle_to(Vector2.UP)
 	if not was_enabled:
 		drive_camera_rotation = drive_camera_target_rotation
@@ -161,18 +164,6 @@ func world_to_screen(world_point: Vector2) -> Vector2:
 			(world_point - drive_camera_world) * map_scale
 		).rotated(drive_camera_rotation)
 		return drive_camera_screen_position() + local
-
-	if zoom_map_enabled:
-		var viewport_center := Vector2(
-			size.x * 0.5,
-			TOP_MARGIN + maxf(
-				1.0,
-				size.y - TOP_MARGIN - BOTTOM_MARGIN
-			) * 0.5
-		)
-		return viewport_center + (
-			world_point - drive_camera_world
-		) * map_scale
 
 	return map_origin + world_point * map_scale
 
@@ -226,50 +217,35 @@ func _update_transform() -> void:
 		size.y - TOP_MARGIN - BOTTOM_MARGIN
 	)
 
-	if show_whole_map:
-		var available := minf(
-			available_width,
-			available_height
-		)
-		map_scale = available / float(generator.GRID_SIZE)
-
-		var map_size := Vector2.ONE * (
-			float(generator.GRID_SIZE) * map_scale
-		)
-		map_origin = Vector2(
-			(size.x - map_size.x) * 0.5,
-			TOP_MARGIN + (
-				available_height - map_size.y
-			) * 0.5
-		)
-		return
-
 	if drive_camera_enabled:
-		# Immersive old-school driving camera: the car stays fixed/upward
-		# while the world moves and rotates beneath it. Keep enough surrounding
-		# road visible to read upcoming turns without shrinking to an overview.
-		map_scale = available_width / DRIVE_VISIBLE_WORLD_WIDTH
+		# All play views share the same fixed-car rotating camera.
+		# Only the visible world width changes between view buttons.
+		if show_whole_map:
+			map_scale = minf(
+				available_width,
+				available_height
+			) / float(generator.GRID_SIZE)
+		elif zoom_map_enabled:
+			var visible_world_width := (
+				float(generator.NEIGHBORHOOD_SPACING)
+				* VISIBLE_NEIGHBORHOOD_BLOCKS
+			)
+			map_scale = available_width / visible_world_width
+		else:
+			map_scale = available_width / DRIVE_VISIBLE_WORLD_WIDTH
 		return
 
-	# Same generated map, only magnified until roughly two neighborhood
-	# blocks span the playable width. No regeneration happens on view change.
-	var visible_world_width := (
-		float(generator.NEIGHBORHOOD_SPACING)
-		* VISIBLE_NEIGHBORHOOD_BLOCKS
-	)
+	# Static fallback before the debug car initializes.
+	var visible_world_width := DRIVE_VISIBLE_WORLD_WIDTH
 	map_scale = available_width / visible_world_width
-
 	var viewport_center := Vector2(
 		size.x * 0.5,
 		TOP_MARGIN + available_height * 0.5
 	)
-	var focus_world := drive_camera_world
-	if not zoom_map_enabled:
-		focus_world = Vector2(
-			generator.nodes[generator.home_node]
-		)
-
-	map_origin = viewport_center - focus_world * map_scale
+	var home_world := Vector2(
+		generator.nodes[generator.home_node]
+	)
+	map_origin = viewport_center - home_world * map_scale
 
 
 func _draw_grid() -> void:
