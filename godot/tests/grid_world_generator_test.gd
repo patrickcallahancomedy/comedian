@@ -323,6 +323,17 @@ func _run() -> void:
 			"Debug route travels backward on the one-way highway"
 		)
 
+		map_node._show_zoom_map()
+		car_node._sync_drive_camera()
+		_check(
+			map_node.zoom_map_enabled,
+			"2x2 zoom did not stay selected during drive camera sync"
+		)
+		_check(
+			not map_node.drive_camera_enabled,
+			"Drive camera overrode the selected 2x2 zoom"
+		)
+
 		scene.free()
 
 	_finish()
