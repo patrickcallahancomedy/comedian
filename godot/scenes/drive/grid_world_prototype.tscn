@@ -89,115 +89,150 @@ text = "CONNECTION"
 horizontal_alignment = 2
 
 
-[node name="DebugTabs" type="PanelContainer" parent="."]
+[node name="DebugBar" type="PanelContainer" parent="."]
 z_index = 10
 layout_mode = 0
-offset_left = 188.0
+offset_left = 238.0
 offset_top = 68.0
 offset_right = 414.0
-offset_bottom = 254.0
+offset_bottom = 106.0
 theme_override_styles/panel = SubResource("SettingsPanel")
 
-[node name="Tabs" type="TabContainer" parent="DebugTabs"]
+[node name="Tabs" type="HBoxContainer" parent="DebugBar"]
 layout_mode = 2
-current_tab = 0
-tab_alignment = 1
-theme_override_font_sizes/font_size = 11
+theme_override_constants/separation = 2
 
-[node name="DRIVE" type="VBoxContainer" parent="DebugTabs/Tabs"]
+[node name="DriveTabButton" type="Button" parent="DebugBar/Tabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "DRIVE"
+
+[node name="ViewTabButton" type="Button" parent="DebugBar/Tabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "VIEW"
+
+[node name="MapTabButton" type="Button" parent="DebugBar/Tabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "MAP"
+
+[node name="DebugPanel" type="PanelContainer" parent="."]
+visible = false
+z_index = 10
+layout_mode = 0
+offset_left = 238.0
+offset_top = 110.0
+offset_right = 414.0
+offset_bottom = 258.0
+theme_override_styles/panel = SubResource("SettingsPanel")
+
+[node name="Content" type="VBoxContainer" parent="DebugPanel"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="RunButton" type="Button" parent="DebugTabs/Tabs/DRIVE"]
+[node name="DRIVE" type="VBoxContainer" parent="DebugPanel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="RunButton" type="Button" parent="DebugPanel/Content/DRIVE"]
 layout_mode = 2
 focus_mode = 0
-custom_minimum_size = Vector2(0, 32)
-theme_override_font_sizes/font_size = 12
+custom_minimum_size = Vector2(0, 28)
+theme_override_font_sizes/font_size = 11
 text = "RUN"
 
-[node name="ResetButton" type="Button" parent="DebugTabs/Tabs/DRIVE"]
+[node name="ResetButton" type="Button" parent="DebugPanel/Content/DRIVE"]
 layout_mode = 2
 focus_mode = 0
-custom_minimum_size = Vector2(0, 32)
-theme_override_font_sizes/font_size = 12
+custom_minimum_size = Vector2(0, 28)
+theme_override_font_sizes/font_size = 11
 text = "RESET"
 
-[node name="SpeedValueLabel" type="Label" parent="DebugTabs/Tabs/DRIVE"]
+[node name="SpeedValueLabel" type="Label" parent="DebugPanel/Content/DRIVE"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 10
 text = "SPEED  1×"
 horizontal_alignment = 1
 
-[node name="SpeedButton" type="HSlider" parent="DebugTabs/Tabs/DRIVE"]
+[node name="SpeedButton" type="HSlider" parent="DebugPanel/Content/DRIVE"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 32)
+custom_minimum_size = Vector2(0, 24)
 min_value = 1.0
 max_value = 10.0
 step = 1.0
 value = 1.0
 rounded = true
 
-[node name="StatusLabel" type="Label" parent="DebugTabs/Tabs/DRIVE"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.75, 0.72, 1)
-theme_override_font_sizes/font_size = 10
-text = "READY"
-horizontal_alignment = 1
-
-[node name="VIEW" type="VBoxContainer" parent="DebugTabs/Tabs"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="DriveViewButton" type="Button" parent="DebugTabs/Tabs/VIEW"]
-layout_mode = 2
-focus_mode = 0
-custom_minimum_size = Vector2(0, 32)
-theme_override_font_sizes/font_size = 12
-text = "DRIVE VIEW"
-
-[node name="WholeMapButton" type="Button" parent="DebugTabs/Tabs/VIEW"]
-layout_mode = 2
-focus_mode = 0
-custom_minimum_size = Vector2(0, 32)
-theme_override_font_sizes/font_size = 12
-text = "WHOLE MAP"
-
-[node name="ZoomMapButton" type="Button" parent="DebugTabs/Tabs/VIEW"]
-layout_mode = 2
-focus_mode = 0
-custom_minimum_size = Vector2(0, 32)
-theme_override_font_sizes/font_size = 12
-text = "2 × 2 ZOOM"
-
-[node name="MAP" type="VBoxContainer" parent="DebugTabs/Tabs"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="SeedInput" type="LineEdit" parent="DebugTabs/Tabs/MAP"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 32)
-placeholder_text = "SEED NUMBER"
-virtual_keyboard_type = 2
-clear_button_enabled = true
-theme_override_font_sizes/font_size = 12
-
-[node name="LoadSeedButton" type="Button" parent="DebugTabs/Tabs/MAP"]
-layout_mode = 2
-focus_mode = 0
-custom_minimum_size = Vector2(0, 32)
-theme_override_font_sizes/font_size = 12
-text = "LOAD SEED"
-
-[node name="NewMapButton" type="Button" parent="DebugTabs/Tabs/MAP"]
-layout_mode = 2
-focus_mode = 0
-custom_minimum_size = Vector2(0, 32)
-theme_override_font_sizes/font_size = 12
-text = "GENERATE NEW MAP"
-
-[node name="Legend" type="Label" parent="DebugTabs/Tabs/MAP"]
+[node name="StatusLabel" type="Label" parent="DebugPanel/Content/DRIVE"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.75, 0.72, 1)
 theme_override_font_sizes/font_size = 9
+text = "READY"
+horizontal_alignment = 1
+
+[node name="VIEW" type="VBoxContainer" parent="DebugPanel/Content"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DriveViewButton" type="Button" parent="DebugPanel/Content/VIEW"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 30)
+theme_override_font_sizes/font_size = 11
+text = "DRIVE VIEW"
+
+[node name="WholeMapButton" type="Button" parent="DebugPanel/Content/VIEW"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 30)
+theme_override_font_sizes/font_size = 11
+text = "WHOLE MAP"
+
+[node name="ZoomMapButton" type="Button" parent="DebugPanel/Content/VIEW"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 30)
+theme_override_font_sizes/font_size = 11
+text = "2 × 2 ZOOM"
+
+[node name="MAP" type="VBoxContainer" parent="DebugPanel/Content"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SeedInput" type="LineEdit" parent="DebugPanel/Content/MAP"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 30)
+placeholder_text = "SEED NUMBER"
+virtual_keyboard_type = 2
+clear_button_enabled = true
+theme_override_font_sizes/font_size = 11
+
+[node name="LoadSeedButton" type="Button" parent="DebugPanel/Content/MAP"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 28)
+theme_override_font_sizes/font_size = 11
+text = "LOAD SEED"
+
+[node name="NewMapButton" type="Button" parent="DebugPanel/Content/MAP"]
+layout_mode = 2
+focus_mode = 0
+custom_minimum_size = Vector2(0, 28)
+theme_override_font_sizes/font_size = 11
+text = "NEW MAP"
+
+[node name="Legend" type="Label" parent="DebugPanel/Content/MAP"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.75, 0.72, 1)
+theme_override_font_sizes/font_size = 8
 text = "A = HOME   •   B = VENUE"
 horizontal_alignment = 1
