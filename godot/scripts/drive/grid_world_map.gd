@@ -399,7 +399,7 @@ func _draw_roads() -> void:
 func _draw_two_lane_highway(start: Vector2, finish: Vector2) -> void:
 	# Keep the approved outer lane positions and remove only the center lane.
 	# This preserves the existing car and pink-ramp merge alignment.
-	var lane_spacing := float(generator.HIGHWAY_LANE_SPACING)
+	var lane_spacing := float(generator.HIGHWAY_LANE_CENTER_OFFSET)
 	var perpendicular := Vector2.ZERO
 	if is_equal_approx(start.y, finish.y):
 		perpendicular = Vector2(0.0, 1.0)
