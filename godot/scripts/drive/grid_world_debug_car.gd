@@ -269,7 +269,7 @@ func _highway_display_position() -> Vector2:
 
 	var lane_change: float = smoothstep(0.35, 0.65, lane_change_progress)
 	var side: float = lerpf(entry_side, exit_side, lane_change)
-	var offset: float = float(map.generator.HIGHWAY_LANE_SPACING) * side
+	var offset: float = float(map.generator.HIGHWAY_LANE_CENTER_OFFSET) * side
 
 	if horizontal:
 		return Vector2(world_position.x, entry_center.y + offset)
