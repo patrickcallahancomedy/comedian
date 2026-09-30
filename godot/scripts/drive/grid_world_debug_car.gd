@@ -6,7 +6,6 @@ const SPEED_LABELS := ["1×", "2×", "3×", "4×", "5×", "6×", "7×", "8×", "
 const CAR_COLOR := Color(1.0, 0.92, 0.08)
 const CAR_OUTLINE := Color(0.02, 0.02, 0.02)
 const CAR_RADIUS := 8.0
-const DRIVE_VIEW_CAR_RADIUS := 24.0
 const LANE_MERGE_DISTANCE := 40.0
 
 var route: Array = []
@@ -118,13 +117,7 @@ func _draw() -> void:
 		if map.drive_camera_enabled
 		else map.world_to_screen(_display_world_position())
 	)
-	var radius: float = (
-		DRIVE_VIEW_CAR_RADIUS
-		if map.drive_camera_enabled
-		and not map.zoom_map_enabled
-		and not map.show_whole_map
-		else CAR_RADIUS
-	)
+	var radius: float = CAR_RADIUS
 
 	var car_rotation := 0.0
 	if not map.drive_camera_enabled:
