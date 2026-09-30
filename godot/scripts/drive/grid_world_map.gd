@@ -45,7 +45,8 @@ var drive_camera_target_rotation := 0.0
 
 @onready var seed_label: Label = $"../SeedLabel"
 @onready var mode_label: Label = $"../ModeLabel"
-@onready var replay_seed_button: Button = $"../ReplaySeedButton"
+@onready var seed_input: LineEdit = $"../SeedInput"
+@onready var load_seed_button: Button = $"../LoadSeedButton"
 @onready var new_map_button: Button = $"../NewMapButton"
 @onready var drive_view_button: Button = $"../SettingsBox/Layout/DriveViewButton"
 @onready var whole_map_button: Button = $"../SettingsBox/Layout/WholeMapButton"
@@ -53,7 +54,8 @@ var drive_camera_target_rotation := 0.0
 
 
 func _ready() -> void:
-	replay_seed_button.pressed.connect(_replay_seed)
+	load_seed_button.pressed.connect(_load_seed)
+	seed_input.text_submitted.connect(_load_seed_from_text)
 	new_map_button.pressed.connect(_new_map)
 	drive_view_button.pressed.connect(_show_drive_view)
 	whole_map_button.pressed.connect(_show_whole_map)
@@ -63,8 +65,17 @@ func _ready() -> void:
 	call_deferred("_refresh_layout")
 
 
-func _replay_seed() -> void:
-	world_seed = actual_seed
+func _load_seed() -> void:
+	_load_seed_from_text(seed_input.text)
+
+
+func _load_seed_from_text(value: String) -> void:
+	var cleaned := value.strip_edges()
+	if not cleaned.is_valid_int():
+		seed_input.text = str(actual_seed)
+		seed_input.select_all()
+		return
+	world_seed = int(cleaned)
 	_generate()
 
 
@@ -103,6 +114,7 @@ func _generate() -> void:
 	generator.generate(actual_seed)
 
 	seed_label.text = "SEED %d" % actual_seed
+	seed_input.text = str(actual_seed)
 	mode_label.text = (
 		"HIGHWAY CORRIDOR"
 		if generator.uses_highway
