@@ -519,7 +519,7 @@ func _auxiliary_merge_nodes_are_valid(network) -> bool:
 			if horizontal
 			else absi(point.x - highway_a.x)
 		)
-		if offset != network.HIGHWAY_LANE_SPACING:
+		if offset != network.HIGHWAY_LANE_CENTER_OFFSET:
 			return false
 
 	return true
