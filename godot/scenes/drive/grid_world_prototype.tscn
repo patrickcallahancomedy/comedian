@@ -202,24 +202,40 @@ theme_override_font_sizes/font_size = 10
 text = "A = HOME   •   B = ONE FULL VENUE BLOCK"
 horizontal_alignment = 1
 
-[node name="ReplaySeedButton" type="Button" parent="."]
+[node name="SeedInput" type="LineEdit" parent="."]
 layout_mode = 1
 anchors_preset = 12
-anchor_right = 0.5
+anchor_right = 0.38
 anchor_bottom = 1.0
 offset_left = 16.0
 offset_top = -48.0
 offset_right = -4.0
 offset_bottom = -12.0
 grow_vertical = 0
+placeholder_text = "SEED NUMBER"
+virtual_keyboard_type = 2
+clear_button_enabled = true
+theme_override_font_sizes/font_size = 12
+
+[node name="LoadSeedButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_left = 0.38
+anchor_right = 0.62
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = -48.0
+offset_right = -4.0
+offset_bottom = -12.0
+grow_vertical = 0
 focus_mode = 0
 theme_override_font_sizes/font_size = 12
-text = "REPLAY SEED"
+text = "LOAD SEED"
 
 [node name="NewMapButton" type="Button" parent="."]
 layout_mode = 1
 anchors_preset = 12
-anchor_left = 0.5
+anchor_left = 0.62
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 4.0
@@ -230,4 +246,4 @@ grow_horizontal = 2
 grow_vertical = 0
 focus_mode = 0
 theme_override_font_sizes/font_size = 12
-text = "GENERATE NEW MAP"
+text = "NEW MAP"
