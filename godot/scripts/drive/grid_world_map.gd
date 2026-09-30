@@ -45,12 +45,12 @@ var drive_camera_target_rotation := 0.0
 
 @onready var seed_label: Label = $"../SeedLabel"
 @onready var mode_label: Label = $"../ModeLabel"
-@onready var seed_input: LineEdit = $"../SeedInput"
-@onready var load_seed_button: Button = $"../LoadSeedButton"
-@onready var new_map_button: Button = $"../NewMapButton"
-@onready var drive_view_button: Button = $"../SettingsBox/Layout/DriveViewButton"
-@onready var whole_map_button: Button = $"../SettingsBox/Layout/WholeMapButton"
-@onready var zoom_map_button: Button = $"../SettingsBox/Layout/ZoomMapButton"
+@onready var seed_input: LineEdit = $"../DebugTabs/Tabs/MAP/SeedInput"
+@onready var load_seed_button: Button = $"../DebugTabs/Tabs/MAP/LoadSeedButton"
+@onready var new_map_button: Button = $"../DebugTabs/Tabs/MAP/NewMapButton"
+@onready var drive_view_button: Button = $"../DebugTabs/Tabs/VIEW/DriveViewButton"
+@onready var whole_map_button: Button = $"../DebugTabs/Tabs/VIEW/WholeMapButton"
+@onready var zoom_map_button: Button = $"../DebugTabs/Tabs/VIEW/ZoomMapButton"
 
 
 func _ready() -> void:
