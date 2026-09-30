@@ -12,6 +12,7 @@ const GRID_MAJOR := Color(1.0, 1.0, 1.0, 0.08)
 const ROAD_COLOR := Color(0.115, 0.125, 0.14)
 const CONNECTOR_COLOR := Color(0.10, 0.34, 0.92)
 const RAMP_COLOR := Color(0.90, 0.16, 0.78)
+const ON_RAMP_COLOR := Color(0.15, 0.78, 0.24)
 const HIGHWAY_COLOR := Color(0.84, 0.12, 0.10)
 
 const HOME_COLOR := Color(0.18, 0.52, 0.98)
@@ -324,7 +325,11 @@ func _draw_roads() -> void:
 						float(generator.HIGHWAY_LANE_SPACING)
 						* HIGHWAY_LANE_FILL_RATIO
 					)
-					color = RAMP_COLOR
+					color = (
+						ON_RAMP_COLOR
+						if generator.is_on_ramp_edge(a, b)
+						else RAMP_COLOR
+					)
 				generator.RoadClass.HIGHWAY:
 					_draw_two_lane_highway(
 						Vector2(generator.nodes[a]),
