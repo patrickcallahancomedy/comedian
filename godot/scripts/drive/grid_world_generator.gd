@@ -43,6 +43,7 @@ const CONNECTOR_STEP := 10
 const HIGHWAY_EDGE_MARGIN := 10
 const HIGHWAY_CLEARANCE := 30
 const HIGHWAY_LANE_SPACING := 10
+const HIGHWAY_LANE_CENTER_OFFSET := 5
 const RAMP_STANDOFF := 20
 const RAMP_RUN := 100
 
@@ -803,11 +804,11 @@ func _build_parallel_highway_access(
 	if horizontal_highway:
 		lane_merge = merge + Vector2i(
 			0,
-			lane_side * HIGHWAY_LANE_SPACING
+			lane_side * HIGHWAY_LANE_CENTER_OFFSET
 		)
 	else:
 		lane_merge = merge + Vector2i(
-			lane_side * HIGHWAY_LANE_SPACING,
+			lane_side * HIGHWAY_LANE_CENTER_OFFSET,
 			0
 		)
 
