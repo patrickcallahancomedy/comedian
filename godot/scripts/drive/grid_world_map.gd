@@ -45,6 +45,7 @@ var drive_camera_target_rotation := 0.0
 
 @onready var seed_label: Label = $"../SeedLabel"
 @onready var mode_label: Label = $"../ModeLabel"
+@onready var replay_seed_button: Button = $"../ReplaySeedButton"
 @onready var new_map_button: Button = $"../NewMapButton"
 @onready var drive_view_button: Button = $"../SettingsBox/Layout/DriveViewButton"
 @onready var whole_map_button: Button = $"../SettingsBox/Layout/WholeMapButton"
@@ -52,6 +53,7 @@ var drive_camera_target_rotation := 0.0
 
 
 func _ready() -> void:
+	replay_seed_button.pressed.connect(_replay_seed)
 	new_map_button.pressed.connect(_new_map)
 	drive_view_button.pressed.connect(_show_drive_view)
 	whole_map_button.pressed.connect(_show_whole_map)
@@ -59,6 +61,11 @@ func _ready() -> void:
 	resized.connect(_refresh_layout)
 	_generate()
 	call_deferred("_refresh_layout")
+
+
+func _replay_seed() -> void:
+	world_seed = actual_seed
+	_generate()
 
 
 func _new_map() -> void:
