@@ -42,18 +42,29 @@ var drive_camera_enabled := false
 var drive_camera_world := Vector2.ZERO
 var drive_camera_rotation := 0.0
 var drive_camera_target_rotation := 0.0
+var open_debug_tab := -1
 
 @onready var seed_label: Label = $"../SeedLabel"
 @onready var mode_label: Label = $"../ModeLabel"
-@onready var seed_input: LineEdit = $"../DebugTabs/Tabs/MAP/SeedInput"
-@onready var load_seed_button: Button = $"../DebugTabs/Tabs/MAP/LoadSeedButton"
-@onready var new_map_button: Button = $"../DebugTabs/Tabs/MAP/NewMapButton"
-@onready var drive_view_button: Button = $"../DebugTabs/Tabs/VIEW/DriveViewButton"
-@onready var whole_map_button: Button = $"../DebugTabs/Tabs/VIEW/WholeMapButton"
-@onready var zoom_map_button: Button = $"../DebugTabs/Tabs/VIEW/ZoomMapButton"
+@onready var debug_panel: PanelContainer = $"../DebugPanel"
+@onready var drive_group: VBoxContainer = $"../DebugPanel/Content/DRIVE"
+@onready var view_group: VBoxContainer = $"../DebugPanel/Content/VIEW"
+@onready var map_group: VBoxContainer = $"../DebugPanel/Content/MAP"
+@onready var drive_tab_button: Button = $"../DebugBar/Tabs/DriveTabButton"
+@onready var view_tab_button: Button = $"../DebugBar/Tabs/ViewTabButton"
+@onready var map_tab_button: Button = $"../DebugBar/Tabs/MapTabButton"
+@onready var seed_input: LineEdit = $"../DebugPanel/Content/MAP/SeedInput"
+@onready var load_seed_button: Button = $"../DebugPanel/Content/MAP/LoadSeedButton"
+@onready var new_map_button: Button = $"../DebugPanel/Content/MAP/NewMapButton"
+@onready var drive_view_button: Button = $"../DebugPanel/Content/VIEW/DriveViewButton"
+@onready var whole_map_button: Button = $"../DebugPanel/Content/VIEW/WholeMapButton"
+@onready var zoom_map_button: Button = $"../DebugPanel/Content/VIEW/ZoomMapButton"
 
 
 func _ready() -> void:
+	drive_tab_button.pressed.connect(_toggle_drive_tab)
+	view_tab_button.pressed.connect(_toggle_view_tab)
+	map_tab_button.pressed.connect(_toggle_map_tab)
 	load_seed_button.pressed.connect(_load_seed)
 	seed_input.text_submitted.connect(_load_seed_from_text)
 	new_map_button.pressed.connect(_new_map)
@@ -63,6 +74,32 @@ func _ready() -> void:
 	resized.connect(_refresh_layout)
 	_generate()
 	call_deferred("_refresh_layout")
+
+
+
+func _toggle_drive_tab() -> void:
+	_toggle_debug_tab(0)
+
+
+func _toggle_view_tab() -> void:
+	_toggle_debug_tab(1)
+
+
+func _toggle_map_tab() -> void:
+	_toggle_debug_tab(2)
+
+
+func _toggle_debug_tab(tab_index: int) -> void:
+	if open_debug_tab == tab_index and debug_panel.visible:
+		debug_panel.visible = false
+		open_debug_tab = -1
+		return
+
+	open_debug_tab = tab_index
+	debug_panel.visible = true
+	drive_group.visible = tab_index == 0
+	view_group.visible = tab_index == 1
+	map_group.visible = tab_index == 2
 
 
 func _load_seed() -> void:
