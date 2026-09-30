@@ -326,7 +326,7 @@ func _draw_roads() -> void:
 					)
 					color = RAMP_COLOR
 				generator.RoadClass.HIGHWAY:
-					_draw_three_lane_highway(
+					_draw_two_lane_highway(
 						Vector2(generator.nodes[a]),
 						Vector2(generator.nodes[b])
 					)
@@ -396,9 +396,9 @@ func _draw_roads() -> void:
 	_draw_auxiliary_merge_nodes()
 
 
-func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
-	# The logical highway stays one graph corridor for now, but the prototype
-	# displays three drivable lanes. Pink sits one more lane-width outside.
+func _draw_two_lane_highway(start: Vector2, finish: Vector2) -> void:
+	# Keep the approved outer lane positions and remove only the center lane.
+	# This preserves the existing car and pink-ramp merge alignment.
 	var lane_spacing := float(generator.HIGHWAY_LANE_SPACING)
 	var perpendicular := Vector2.ZERO
 	if is_equal_approx(start.y, finish.y):
@@ -406,7 +406,7 @@ func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
 	else:
 		perpendicular = Vector2(1.0, 0.0)
 
-	for lane_offset in [-lane_spacing, 0.0, lane_spacing]:
+	for lane_offset in [-lane_spacing, lane_spacing]:
 		var offset: Vector2 = perpendicular * float(lane_offset)
 		draw_line(
 			_world_to_screen(start + offset),
