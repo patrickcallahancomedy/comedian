@@ -293,19 +293,27 @@ func _run() -> void:
 			"Grid world prototype has no debug car layer"
 		)
 		_check(
-			scene.get_node_or_null("DebugTabs/Tabs/DRIVE/RunButton") != null,
+			scene.get_node_or_null("DebugBar/Tabs/DriveTabButton") != null,
+			"Grid world prototype has no compact debug tab bar"
+		)
+		_check(
+			not scene.get_node("DebugPanel").visible,
+			"Grid world debug panel should start collapsed"
+		)
+		_check(
+			scene.get_node_or_null("DebugPanel/Content/DRIVE/RunButton") != null,
 			"Grid world prototype has no RUN control"
 		)
 		_check(
-			scene.get_node_or_null("DebugTabs/Tabs/DRIVE/ResetButton") != null,
+			scene.get_node_or_null("DebugPanel/Content/DRIVE/ResetButton") != null,
 			"Grid world prototype has no RESET control"
 		)
 		_check(
-			scene.get_node_or_null("DebugTabs/Tabs/DRIVE/SpeedButton") != null,
+			scene.get_node_or_null("DebugPanel/Content/DRIVE/SpeedButton") != null,
 			"Grid world prototype has no SPEED control"
 		)
 		_check(
-			scene.get_node_or_null("DebugTabs/Tabs/VIEW/DriveViewButton") != null,
+			scene.get_node_or_null("DebugPanel/Content/VIEW/DriveViewButton") != null,
 			"Grid world prototype has no DRIVE VIEW control"
 		)
 
