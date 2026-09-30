@@ -44,7 +44,7 @@ const HIGHWAY_EDGE_MARGIN := 10
 const HIGHWAY_CLEARANCE := 30
 const HIGHWAY_LANE_SPACING := 10
 const HIGHWAY_LANE_CENTER_OFFSET := 5
-const RAMP_STANDOFF := 20
+const RAMP_STANDOFF := 15
 const RAMP_RUN := 100
 
 const WORLD_MARGIN := 20
@@ -62,6 +62,7 @@ var city_grid: Array = []
 var connector_nodes: Array = []
 var highway_nodes: Array = []
 var auxiliary_merge_nodes: Array = []
+var on_ramp_edges: Dictionary = {}
 
 var neighborhood_rect := Rect2i()
 var city_rect := Rect2i()
@@ -94,6 +95,7 @@ func generate(seed_value: int) -> void:
 	connector_nodes.clear()
 	highway_nodes.clear()
 	auxiliary_merge_nodes.clear()
+	on_ramp_edges.clear()
 
 	home_node = -1
 	venue_access_node = -1
@@ -779,12 +781,10 @@ func _build_parallel_highway_access(
 		merge = Vector2i(highway_x, lane_highway_end.y)
 
 	merge = _clamp_to_world(_snap_point(merge, CONNECTOR_STEP))
-	lane_highway_end = _clamp_to_world(
-		_snap_point(lane_highway_end, CONNECTOR_STEP)
-	)
-	lane_connector_end = _clamp_to_world(
-		_snap_point(lane_connector_end, CONNECTOR_STEP)
-	)
+	# Keep the 15-unit ramp centerline exact so its 10-unit width touches the
+	# outer 10-unit highway lane instead of snapping back out to 20.
+	lane_highway_end = _clamp_to_world(lane_highway_end)
+	lane_connector_end = _clamp_to_world(lane_connector_end)
 
 	# Pink may never occupy either local-road footprint. If the first
 	# placement conflicts, slide the whole auxiliary lane along the highway
@@ -817,6 +817,7 @@ func _build_parallel_highway_access(
 		"lane_merge": lane_merge,
 		"lane_highway_end": lane_highway_end,
 		"connector_target": lane_connector_end,
+		"is_on_ramp": is_on_ramp,
 	}
 
 
@@ -922,6 +923,8 @@ func _add_parallel_highway_access(access: Dictionary) -> void:
 		CONNECTOR_STEP,
 		false
 	)
+	if bool(access["is_on_ramp"]):
+		_mark_on_ramp_edges(connector_end, highway_end)
 	# Pink first enters the adjacent outer red lane. The second hidden link
 	# preserves the existing single-spine highway routing graph.
 	_add_logical_link(highway_end, lane_merge)
@@ -930,6 +933,31 @@ func _add_parallel_highway_access(access: Dictionary) -> void:
 	var lane_merge_id := _node_at(lane_merge)
 	if lane_merge_id >= 0 and not auxiliary_merge_nodes.has(lane_merge_id):
 		auxiliary_merge_nodes.append(lane_merge_id)
+
+
+
+func _mark_on_ramp_edges(start: Vector2i, finish: Vector2i) -> void:
+	var current := start
+	while current != finish:
+		var next := current
+		if current.x != finish.x:
+			var remaining_x := finish.x - current.x
+			var move_x := mini(CONNECTOR_STEP, abs(remaining_x))
+			next.x += move_x if remaining_x > 0 else -move_x
+		else:
+			var remaining_y := finish.y - current.y
+			var move_y := mini(CONNECTOR_STEP, abs(remaining_y))
+			next.y += move_y if remaining_y > 0 else -move_y
+
+		var a := _node_at(current)
+		var b := _node_at(next)
+		if a >= 0 and b >= 0:
+			on_ramp_edges[_edge_key(a, b)] = true
+		current = next
+
+
+func is_on_ramp_edge(a: int, b: int) -> bool:
+	return on_ramp_edges.has(_edge_key(a, b))
 
 
 func _add_logical_link(start: Vector2i, finish: Vector2i) -> void:
