@@ -18,11 +18,11 @@ var wrap_route_index := -1
 var drive_forward := Vector2.UP
 
 @onready var map = $"../Map"
-@onready var run_button: Button = $"../DebugTabs/Tabs/DRIVE/RunButton"
-@onready var reset_button: Button = $"../DebugTabs/Tabs/DRIVE/ResetButton"
-@onready var speed_button: HSlider = $"../DebugTabs/Tabs/DRIVE/SpeedButton"
-@onready var speed_value_label: Label = $"../DebugTabs/Tabs/DRIVE/SpeedValueLabel"
-@onready var status_label: Label = $"../DebugTabs/Tabs/DRIVE/StatusLabel"
+@onready var run_button: Button = $"../DebugPanel/Content/DRIVE/RunButton"
+@onready var reset_button: Button = $"../DebugPanel/Content/DRIVE/ResetButton"
+@onready var speed_button: HSlider = $"../DebugPanel/Content/DRIVE/SpeedButton"
+@onready var speed_value_label: Label = $"../DebugPanel/Content/DRIVE/SpeedValueLabel"
+@onready var status_label: Label = $"../DebugPanel/Content/DRIVE/StatusLabel"
 
 
 func _ready() -> void:
