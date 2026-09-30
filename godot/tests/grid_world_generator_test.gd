@@ -1,4 +1,5 @@
 extends SceneTree
+# Locked single-highway baseline republish; gameplay code unchanged.
 
 const GENERATOR = preload("res://scripts/drive/grid_world_generator.gd")
 
