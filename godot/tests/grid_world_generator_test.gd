@@ -293,19 +293,19 @@ func _run() -> void:
 			"Grid world prototype has no debug car layer"
 		)
 		_check(
-			scene.get_node_or_null("DriveBox/Layout/RunButton") != null,
+			scene.get_node_or_null("DebugTabs/Tabs/DRIVE/RunButton") != null,
 			"Grid world prototype has no RUN control"
 		)
 		_check(
-			scene.get_node_or_null("DriveBox/Layout/ResetButton") != null,
+			scene.get_node_or_null("DebugTabs/Tabs/DRIVE/ResetButton") != null,
 			"Grid world prototype has no RESET control"
 		)
 		_check(
-			scene.get_node_or_null("DriveBox/Layout/SpeedButton") != null,
+			scene.get_node_or_null("DebugTabs/Tabs/DRIVE/SpeedButton") != null,
 			"Grid world prototype has no SPEED control"
 		)
 		_check(
-			scene.get_node_or_null("SettingsBox/Layout/DriveViewButton") != null,
+			scene.get_node_or_null("DebugTabs/Tabs/VIEW/DriveViewButton") != null,
 			"Grid world prototype has no DRIVE VIEW control"
 		)
 
