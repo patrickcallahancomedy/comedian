@@ -29,6 +29,10 @@ const DRIVE_VISIBLE_WORLD_WIDTH := 10.0
 const DRIVE_ROTATION_SMOOTH_SPEED := 4.5
 const LEGACY_LOCAL_ROAD_RATIO := 13.0 / 80.0
 const HIGHWAY_LANE_FILL_RATIO := 1.0
+const SHOW_CONNECTORS := false
+const DUAL_HIGHWAY_INNER_LANE_OFFSET := 15.0
+const DUAL_HIGHWAY_OUTER_LANE_OFFSET := 25.0
+const DUAL_HIGHWAY_RAMP_OFFSET := 35.0
 
 @export var world_seed: int = 0
 
@@ -364,6 +368,9 @@ func _draw_roads() -> void:
 			)
 			var color := ROAD_COLOR
 
+			if road_class == generator.RoadClass.CONNECTOR and not SHOW_CONNECTORS:
+				continue
+
 			match road_class:
 				generator.RoadClass.CITY:
 					width = (
@@ -377,17 +384,19 @@ func _draw_roads() -> void:
 					)
 					color = CONNECTOR_COLOR
 				generator.RoadClass.RAMP:
-					width = (
-						float(generator.HIGHWAY_LANE_SPACING)
-						* HIGHWAY_LANE_FILL_RATIO
-					)
 					color = (
 						ON_RAMP_COLOR
 						if generator.is_on_ramp_edge(a, b)
 						else RAMP_COLOR
 					)
+					_draw_dual_ramp(
+						Vector2(generator.nodes[a]),
+						Vector2(generator.nodes[b]),
+						color
+					)
+					continue
 				generator.RoadClass.HIGHWAY:
-					_draw_two_lane_highway(
+					_draw_dual_highway(
 						Vector2(generator.nodes[a]),
 						Vector2(generator.nodes[b])
 					)
@@ -410,6 +419,13 @@ func _draw_roads() -> void:
 			continue
 
 		var road_class := _strongest_node_class(node_id)
+		if (
+			road_class == generator.RoadClass.CONNECTOR
+			or road_class == generator.RoadClass.RAMP
+			or road_class == generator.RoadClass.HIGHWAY
+		):
+			continue
+
 		var radius := (
 			float(generator.NEIGHBORHOOD_SPACING)
 			* LEGACY_LOCAL_ROAD_RATIO
@@ -454,20 +470,22 @@ func _draw_roads() -> void:
 			color
 		)
 
-	_draw_auxiliary_merge_nodes()
-
-
-func _draw_two_lane_highway(start: Vector2, finish: Vector2) -> void:
-	# Keep the approved outer lane positions and remove only the center lane.
-	# This preserves the existing car and pink-ramp merge alignment.
-	var lane_spacing := float(generator.HIGHWAY_LANE_CENTER_OFFSET)
+func _draw_dual_highway(start: Vector2, finish: Vector2) -> void:
+	# Two touching red lanes in each direction, mirrored across a two-lane
+	# empty median. With 10-unit lane widths this occupies 80 world units:
+	# ramp + 2 red + 2 empty + 2 red + ramp.
 	var perpendicular := Vector2.ZERO
 	if is_equal_approx(start.y, finish.y):
 		perpendicular = Vector2(0.0, 1.0)
 	else:
 		perpendicular = Vector2(1.0, 0.0)
 
-	for lane_offset in [-lane_spacing, lane_spacing]:
+	for lane_offset in [
+		-DUAL_HIGHWAY_OUTER_LANE_OFFSET,
+		-DUAL_HIGHWAY_INNER_LANE_OFFSET,
+		DUAL_HIGHWAY_INNER_LANE_OFFSET,
+		DUAL_HIGHWAY_OUTER_LANE_OFFSET,
+	]:
 		var offset: Vector2 = perpendicular * float(lane_offset)
 		draw_line(
 			_world_to_screen(start + offset),
@@ -483,20 +501,55 @@ func _draw_two_lane_highway(start: Vector2, finish: Vector2) -> void:
 		)
 
 
-func _draw_auxiliary_merge_nodes() -> void:
-	for node_value in generator.auxiliary_merge_nodes:
-		var node_id: int = int(node_value)
-		draw_circle(
-			_world_to_screen(Vector2(generator.nodes[node_id])),
-			maxf(
-				1.0,
-				float(generator.HIGHWAY_LANE_SPACING)
-				* HIGHWAY_LANE_FILL_RATIO
-				* 0.5
-				* map_scale
-			),
-			HIGHWAY_COLOR
-		)
+func _draw_dual_ramp(
+	start: Vector2,
+	finish: Vector2,
+	color: Color
+) -> void:
+	if generator.highway_nodes.size() != 2:
+		return
+
+	var highway_a := Vector2(
+		generator.nodes[int(generator.highway_nodes[0])]
+	)
+	var highway_b := Vector2(
+		generator.nodes[int(generator.highway_nodes[1])]
+	)
+	var lane_width := maxf(
+		1.0,
+		float(generator.HIGHWAY_LANE_SPACING)
+		* HIGHWAY_LANE_FILL_RATIO
+		* map_scale
+	)
+
+	if is_equal_approx(highway_a.y, highway_b.y):
+		var center := highway_a.y
+		var source_side := signf(((start.y + finish.y) * 0.5) - center)
+		if is_zero_approx(source_side):
+			source_side = 1.0
+		for side in [source_side, -source_side]:
+			var lane_y := center + float(side) * DUAL_HIGHWAY_RAMP_OFFSET
+			draw_line(
+				_world_to_screen(Vector2(start.x, lane_y)),
+				_world_to_screen(Vector2(finish.x, lane_y)),
+				color,
+				lane_width,
+				true
+			)
+	else:
+		var center := highway_a.x
+		var source_side := signf(((start.x + finish.x) * 0.5) - center)
+		if is_zero_approx(source_side):
+			source_side = 1.0
+		for side in [source_side, -source_side]:
+			var lane_x := center + float(side) * DUAL_HIGHWAY_RAMP_OFFSET
+			draw_line(
+				_world_to_screen(Vector2(lane_x, start.y)),
+				_world_to_screen(Vector2(lane_x, finish.y)),
+				color,
+				lane_width,
+				true
+			)
 
 
 func _visible_degree(node_id: int) -> int:

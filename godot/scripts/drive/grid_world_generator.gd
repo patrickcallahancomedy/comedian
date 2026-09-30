@@ -41,7 +41,8 @@ const CITY_PRUNE_ATTEMPTS := 14
 
 const CONNECTOR_STEP := 10
 const HIGHWAY_EDGE_MARGIN := 10
-const HIGHWAY_CLEARANCE := 30
+const HIGHWAY_CLEARANCE := 40
+const HIGHWAY_CORRIDOR_HALF_WIDTH := 40
 const HIGHWAY_LANE_SPACING := 10
 const HIGHWAY_LANE_CENTER_OFFSET := 5
 const RAMP_STANDOFF := 15
@@ -972,8 +973,16 @@ func _add_logical_link(start: Vector2i, finish: Vector2i) -> void:
 
 
 func _choose_longest_highway_corridor() -> Dictionary:
+	var first_coordinate := maxi(
+		HIGHWAY_EDGE_MARGIN,
+		HIGHWAY_CORRIDOR_HALF_WIDTH
+	)
+	var last_coordinate := mini(
+		GRID_SIZE - HIGHWAY_EDGE_MARGIN,
+		GRID_SIZE - HIGHWAY_CORRIDOR_HALF_WIDTH
+	)
 	var best_horizontal := true
-	var best_coordinate := HIGHWAY_EDGE_MARGIN
+	var best_coordinate := first_coordinate
 	var best_length := -1
 	var best_connector_cost := INF
 	var start_axis := HIGHWAY_EDGE_MARGIN
@@ -981,8 +990,8 @@ func _choose_longest_highway_corridor() -> Dictionary:
 	var corridor_length := end_axis - start_axis
 
 	for coordinate in range(
-		HIGHWAY_EDGE_MARGIN,
-		GRID_SIZE - HIGHWAY_EDGE_MARGIN + 1,
+		first_coordinate,
+		last_coordinate + 1,
 		CONNECTOR_STEP
 	):
 		if _horizontal_corridor_is_clear(coordinate):
@@ -1009,8 +1018,8 @@ func _choose_longest_highway_corridor() -> Dictionary:
 				best_connector_cost = connector_cost
 
 	for coordinate in range(
-		HIGHWAY_EDGE_MARGIN,
-		GRID_SIZE - HIGHWAY_EDGE_MARGIN + 1,
+		first_coordinate,
+		last_coordinate + 1,
 		CONNECTOR_STEP
 	):
 		if _vertical_corridor_is_clear(coordinate):
