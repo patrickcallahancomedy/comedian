@@ -531,7 +531,7 @@ func _draw_dual_ramp(
 	if is_equal_approx(highway_a.y, highway_b.y):
 		var center := highway_a.y
 		for side in [-1.0, 1.0]:
-			var lane_y := center + side * lane_offset
+			var lane_y: float = center + side * lane_offset
 			draw_line(
 				_world_to_screen(Vector2(start.x, lane_y)),
 				_world_to_screen(Vector2(finish.x, lane_y)),
@@ -542,7 +542,7 @@ func _draw_dual_ramp(
 	else:
 		var center := highway_a.x
 		for side in [-1.0, 1.0]:
-			var lane_x := center + side * lane_offset
+			var lane_x: float = center + side * lane_offset
 			draw_line(
 				_world_to_screen(Vector2(lane_x, start.y)),
 				_world_to_screen(Vector2(lane_x, finish.y)),
