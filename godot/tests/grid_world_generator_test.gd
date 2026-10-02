@@ -49,7 +49,7 @@ func _run() -> void:
 
 	_check(
 		_reserved_corridor_is_centered(first),
-		"Nine-lane highway corridor was not reserved at world center"
+		"Highway corridor was not reserved at world center"
 	)
 	_check(
 		_regions_clear_reserved_corridor(first),
@@ -81,8 +81,8 @@ func _run() -> void:
 			"Highway passes through the neighborhood or city street grid"
 		)
 		_check(
-			_highway_spans_local_extents(first),
-			"Highway no longer spans the far extents of the local regions"
+			_highway_matches_compact_corridor(first),
+			"Highway no longer matches the compact reserved corridor"
 		)
 
 	var route: Array = first.shortest_path(
@@ -147,7 +147,7 @@ func _run() -> void:
 
 	_check(
 		outside_world == 0,
-		"Generated road node escaped the 500x500 world"
+		"Generated road node escaped the world bounds"
 	)
 
 	_check(
@@ -171,8 +171,8 @@ func _run() -> void:
 				int(Vector2(first_highway_a).distance_to(
 					Vector2(first_highway_b)
 				))
-				== first.GRID_SIZE - first.HIGHWAY_EDGE_MARGIN * 2,
-				"Highway is not stretching across the full usable world"
+				== first.HIGHWAY_LENGTH,
+				"Highway is not using the compact target length"
 			)
 
 		var ramp_edges := 0
@@ -720,47 +720,21 @@ func _segment_enters_rect(
 	return true
 
 
-func _highway_spans_local_extents(network) -> bool:
+func _highway_matches_compact_corridor(network) -> bool:
 	if network.highway_nodes.size() != 2:
+		return false
+	if network.planned_highway_corridor.is_empty():
 		return false
 
 	var a: Vector2i = network.nodes[int(network.highway_nodes[0])]
 	var b: Vector2i = network.nodes[int(network.highway_nodes[1])]
+	var planned_start: Vector2i = network.planned_highway_corridor["start"]
+	var planned_end: Vector2i = network.planned_highway_corridor["end"]
 
-	if a.y == b.y:
-		var highway_left: int = mini(a.x, b.x)
-		var highway_right: int = maxi(a.x, b.x)
-		var region_left: int = mini(
-			network.neighborhood_rect.position.x,
-			network.city_rect.position.x
-		)
-		var region_right: int = maxi(
-			network.neighborhood_rect.end.x,
-			network.city_rect.end.x
-		)
-		return (
-			highway_left <= region_left
-			and highway_right >= region_right
-		)
-
-	if a.x == b.x:
-		var highway_top: int = mini(a.y, b.y)
-		var highway_bottom: int = maxi(a.y, b.y)
-		var region_top: int = mini(
-			network.neighborhood_rect.position.y,
-			network.city_rect.position.y
-		)
-		var region_bottom: int = maxi(
-			network.neighborhood_rect.end.y,
-			network.city_rect.end.y
-		)
-		return (
-			highway_top <= region_top
-			and highway_bottom >= region_bottom
-		)
-
-	return false
-
+	return (
+		(a == planned_start and b == planned_end)
+		or (a == planned_end and b == planned_start)
+	)
 
 func _venue_block_has_four_road_sides(network) -> bool:
 	var top_left: Vector2i = network.venue_block.position

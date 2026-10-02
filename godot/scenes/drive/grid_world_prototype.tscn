@@ -65,7 +65,7 @@ offset_right = 330.0
 offset_bottom = 40.0
 theme_override_colors/font_color = Color(0.95, 0.95, 0.92, 1)
 theme_override_font_sizes/font_size = 18
-text = "1000 × 1000 WORLD GENERATOR"
+text = "800 × 800 WORLD GENERATOR"
 
 [node name="SeedLabel" type="Label" parent="."]
 layout_mode = 0

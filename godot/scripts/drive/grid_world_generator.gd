@@ -3,7 +3,7 @@ extends RefCounted
 
 ## COMEDIAN road-authoring prototype.
 ##
-## One 1000 x 1000 logical grid contains every road system.
+## One compact 800 x 800 logical grid contains every road system.
 ## Generation order:
 ## 1. Reserve the centered single-highway corridor.
 ## 2. Place Point A / home neighborhood and Point B / city in two different
@@ -23,7 +23,7 @@ enum RoadClass {
 	HIGHWAY,
 }
 
-const GRID_SIZE := 1000
+const GRID_SIZE := 800
 const WORLD_RECT := Rect2i(0, 0, GRID_SIZE, GRID_SIZE)
 
 const NEIGHBORHOOD_COLUMNS := 10
@@ -42,14 +42,15 @@ const CITY_PRUNE_ATTEMPTS := 14
 
 const CONNECTOR_STEP := 10
 const HIGHWAY_EDGE_MARGIN := 10
-const HIGHWAY_CLEARANCE := 50
-const HIGHWAY_CORRIDOR_HALF_WIDTH := 50
+const HIGHWAY_CLEARANCE := 30
+const HIGHWAY_CORRIDOR_HALF_WIDTH := 30
 const HIGHWAY_LANE_SPACING := 10
 const HIGHWAY_LANE_CENTER_OFFSET := 10
 const RAMP_STANDOFF := 20
 const RAMP_RUN := 100
+const HIGHWAY_LENGTH := 440
 
-const WORLD_MARGIN := 20
+const WORLD_MARGIN := 10
 
 var seed := 0
 var nodes: Array = []
@@ -607,6 +608,7 @@ func _generate_highway_connection() -> void:
 		neighborhood_rect,
 		horizontal,
 		highway_start,
+		highway_end,
 		travel_sign,
 		true
 	)
@@ -614,6 +616,7 @@ func _generate_highway_connection() -> void:
 		city_rect,
 		horizontal,
 		highway_start,
+		highway_end,
 		travel_sign,
 		false
 	)
@@ -724,6 +727,7 @@ func _build_parallel_highway_access(
 	rect: Rect2i,
 	horizontal_highway: bool,
 	highway_start: Vector2i,
+	highway_end: Vector2i,
 	travel_sign: int,
 	is_on_ramp: bool
 ) -> Dictionary:
@@ -742,10 +746,12 @@ func _build_parallel_highway_access(
 		var side: int = -1 if center.y < highway_y else 1
 		lane_side = side
 		var lane_y: int = highway_y + side * RAMP_STANDOFF
+		var highway_left := mini(highway_start.x, highway_end.x)
+		var highway_right := maxi(highway_start.x, highway_end.x)
 		var anchor_x: int = clampi(
 			_snap_int(center.x, CONNECTOR_STEP),
-			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
-			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
+			highway_left + RAMP_RUN,
+			highway_right - RAMP_RUN
 		)
 
 		if is_on_ramp:
@@ -767,10 +773,12 @@ func _build_parallel_highway_access(
 		var side: int = -1 if center.x < highway_x else 1
 		lane_side = side
 		var lane_x: int = highway_x + side * RAMP_STANDOFF
+		var highway_top := mini(highway_start.y, highway_end.y)
+		var highway_bottom := maxi(highway_start.y, highway_end.y)
 		var anchor_y: int = clampi(
 			_snap_int(center.y, CONNECTOR_STEP),
-			HIGHWAY_EDGE_MARGIN + RAMP_RUN,
-			GRID_SIZE - HIGHWAY_EDGE_MARGIN - RAMP_RUN
+			highway_top + RAMP_RUN,
+			highway_bottom - RAMP_RUN
 		)
 
 		if is_on_ramp:
@@ -801,7 +809,9 @@ func _build_parallel_highway_access(
 		lane_highway_end,
 		lane_connector_end,
 		merge,
-		horizontal_highway
+		horizontal_highway,
+		highway_start,
+		highway_end
 	)
 	lane_highway_end = adjusted["highway_end"]
 	lane_connector_end = adjusted["connector_end"]
@@ -833,7 +843,9 @@ func _move_auxiliary_lane_clear_of_local_grids(
 	highway_end: Vector2i,
 	connector_end: Vector2i,
 	merge: Vector2i,
-	horizontal: bool
+	horizontal: bool,
+	corridor_start: Vector2i,
+	corridor_end: Vector2i
 ) -> Dictionary:
 	if not _auxiliary_lane_overlaps_local_grid(highway_end, connector_end):
 		return {
@@ -864,10 +876,17 @@ func _move_auxiliary_lane_clear_of_local_grids(
 			if not WORLD_RECT.has_point(candidate_merge):
 				continue
 			var merge_axis: int = candidate_merge.x if horizontal else candidate_merge.y
-			if (
-				merge_axis < HIGHWAY_EDGE_MARGIN
-				or merge_axis > GRID_SIZE - HIGHWAY_EDGE_MARGIN
-			):
+			var corridor_min: int = (
+				mini(corridor_start.x, corridor_end.x)
+				if horizontal
+				else mini(corridor_start.y, corridor_end.y)
+			)
+			var corridor_max: int = (
+				maxi(corridor_start.x, corridor_end.x)
+				if horizontal
+				else maxi(corridor_start.y, corridor_end.y)
+			)
+			if merge_axis < corridor_min or merge_axis > corridor_max:
 				continue
 			if _auxiliary_lane_overlaps_local_grid(
 				candidate_highway,
@@ -980,12 +999,14 @@ func _add_logical_link(start: Vector2i, finish: Vector2i) -> void:
 
 
 func _choose_primary_highway_corridor() -> Dictionary:
-	# Reserve the full 9-lane corridor before any local district exists.
-	# Keeping it centered prevents either local area from crowding the highway.
+	# The highway is a compact central travel corridor, not an edge-to-edge
+	# world divider. Local districts remain close on the whole-map view while
+	# Drive View only reveals the road immediately around the player.
 	var horizontal := _rng.randi_range(0, 1) == 0
 	var center := _snap_int(GRID_SIZE / 2, CONNECTOR_STEP)
-	var start_axis := HIGHWAY_EDGE_MARGIN
-	var end_axis := GRID_SIZE - HIGHWAY_EDGE_MARGIN
+	var half_length := int(HIGHWAY_LENGTH / 2)
+	var start_axis := _snap_int(center - half_length, CONNECTOR_STEP)
+	var end_axis := _snap_int(center + half_length, CONNECTOR_STEP)
 
 	if horizontal:
 		return {
