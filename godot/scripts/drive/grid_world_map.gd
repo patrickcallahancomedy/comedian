@@ -28,6 +28,7 @@ const ROAD_BLOCK_WIDTH := 10
 const DRIVE_VISIBLE_WORLD_WIDTH := 13.333333
 const DRIVE_ROTATION_SMOOTH_SPEED := 4.5
 const LEGACY_LOCAL_ROAD_RATIO := 13.0 / 80.0
+const LOCAL_ROAD_WIDTH_WORLD := 10.0 * LEGACY_LOCAL_ROAD_RATIO
 const HIGHWAY_LANE_FILL_RATIO := 1.0
 
 @export var world_seed: int = 0
@@ -359,8 +360,7 @@ func _draw_roads() -> void:
 			if road_class < 0:
 				continue
 			var width := (
-				float(generator.NEIGHBORHOOD_SPACING)
-				* LEGACY_LOCAL_ROAD_RATIO
+				LOCAL_ROAD_WIDTH_WORLD
 			)
 			var color := ROAD_COLOR
 
@@ -420,8 +420,7 @@ func _draw_roads() -> void:
 		match road_class:
 			generator.RoadClass.CITY:
 				radius = (
-					float(generator.NEIGHBORHOOD_SPACING)
-					* LEGACY_LOCAL_ROAD_RATIO
+					LOCAL_ROAD_WIDTH_WORLD
 					* 0.5
 				)
 			generator.RoadClass.CONNECTOR:

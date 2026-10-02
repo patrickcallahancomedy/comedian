@@ -3,7 +3,7 @@ extends RefCounted
 
 ## COMEDIAN road-authoring prototype.
 ##
-## One 500 x 500 logical grid contains every road system.
+## One 1000 x 1000 logical grid contains every road system.
 ## Generation order:
 ## 1. Reserve the centered single-highway corridor.
 ## 2. Place Point A / home neighborhood and Point B / city in two different
@@ -23,12 +23,12 @@ enum RoadClass {
 	HIGHWAY,
 }
 
-const GRID_SIZE := 500
+const GRID_SIZE := 1000
 const WORLD_RECT := Rect2i(0, 0, GRID_SIZE, GRID_SIZE)
 
 const NEIGHBORHOOD_COLUMNS := 10
 const NEIGHBORHOOD_ROWS := 10
-const NEIGHBORHOOD_SPACING := 10
+const NEIGHBORHOOD_SPACING := 30
 const NEIGHBORHOOD_INTERSECTIONS := (
 	NEIGHBORHOOD_COLUMNS * NEIGHBORHOOD_ROWS
 )
@@ -36,7 +36,7 @@ const NEIGHBORHOOD_PRUNE_ATTEMPTS := 26
 
 const CITY_COLUMNS := 7
 const CITY_ROWS := 7
-const CITY_SPACING := 30
+const CITY_SPACING := 60
 const CITY_INTERSECTIONS := CITY_COLUMNS * CITY_ROWS
 const CITY_PRUNE_ATTEMPTS := 14
 
