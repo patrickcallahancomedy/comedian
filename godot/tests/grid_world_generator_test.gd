@@ -1,5 +1,5 @@
 extends SceneTree
-# Locked single-highway baseline republish; gameplay code unchanged.
+# Grid-world generator regression coverage.
 
 const GENERATOR = preload("res://scripts/drive/grid_world_generator.gd")
 
@@ -45,6 +45,15 @@ func _run() -> void:
 		first.city_rect.size.x > first.neighborhood_rect.size.x
 		and first.city_rect.size.y > first.neighborhood_rect.size.y,
 		"City does not occupy a larger physical footprint"
+	)
+
+	_check(
+		_reserved_corridor_is_centered(first),
+		"Nine-lane highway corridor was not reserved at world center"
+	)
+	_check(
+		_regions_flank_reserved_corridor(first),
+		"City and neighborhood are not on opposite outer sides of the corridor"
 	)
 
 	_check(
@@ -323,10 +332,8 @@ func _run() -> void:
 		map_node._generate()
 		car_node._reset()
 
-		_check(
-			car_node.wrap_route_index >= 0,
-			"Regression seed 1790606837 did not loop the one-way highway"
-		)
+		# Highway-first placement can make this regression seed reach the exit
+		# without wrapping. The invariant is directionality, not forcing a wrap.
 		_check(
 			_debug_route_respects_one_way_highway(
 				map_node.generator,
@@ -409,6 +416,42 @@ func _run() -> void:
 		scene.free()
 
 	_finish()
+
+
+func _reserved_corridor_is_centered(network) -> bool:
+	if network.planned_highway_corridor.is_empty():
+		return false
+
+	var corridor: Dictionary = network.planned_highway_corridor
+	var start: Vector2i = corridor["start"]
+	var finish: Vector2i = corridor["end"]
+	var center := int(network.GRID_SIZE / 2)
+
+	if bool(corridor["horizontal"]):
+		return start.y == center and finish.y == center
+	return start.x == center and finish.x == center
+
+
+func _regions_flank_reserved_corridor(network) -> bool:
+	if network.planned_highway_corridor.is_empty():
+		return false
+
+	var corridor: Dictionary = network.planned_highway_corridor
+	var start: Vector2i = corridor["start"]
+	var half_width: int = int(network.HIGHWAY_CORRIDOR_HALF_WIDTH)
+
+	if bool(corridor["horizontal"]):
+		return (
+			network.city_rect.end.y <= start.y - half_width
+			and network.neighborhood_rect.position.y
+			>= start.y + half_width
+		)
+
+	return (
+		network.city_rect.end.x <= start.x - half_width
+		and network.neighborhood_rect.position.x
+		>= start.x + half_width
+	)
 
 
 func _debug_route_respects_one_way_highway(
