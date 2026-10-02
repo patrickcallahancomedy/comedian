@@ -45,8 +45,8 @@ const HIGHWAY_EDGE_MARGIN := 10
 const HIGHWAY_CLEARANCE := 50
 const HIGHWAY_CORRIDOR_HALF_WIDTH := 50
 const HIGHWAY_LANE_SPACING := 10
-const HIGHWAY_LANE_CENTER_OFFSET := 5
-const RAMP_STANDOFF := 15
+const HIGHWAY_LANE_CENTER_OFFSET := 10
+const RAMP_STANDOFF := 20
 const RAMP_RUN := 100
 
 const WORLD_MARGIN := 20
@@ -795,8 +795,8 @@ func _build_parallel_highway_access(
 		merge = Vector2i(highway_x, lane_highway_end.y)
 
 	merge = _clamp_to_world(_snap_point(merge, CONNECTOR_STEP))
-	# Keep the 15-unit ramp centerline exact so its 10-unit width touches the
-	# outer 10-unit highway lane instead of snapping back out to 20.
+	# Keep the 20-unit ramp centerline exact so its 10-unit width touches the
+	# outer 10-unit highway lane centered 10 units from the routing spine.
 	lane_highway_end = _clamp_to_world(lane_highway_end)
 	lane_connector_end = _clamp_to_world(lane_connector_end)
 
