@@ -5,12 +5,12 @@ extends RefCounted
 ##
 ## One 500 x 500 logical grid contains every road system.
 ## Generation order:
-## 1. Reserve the centered 9-lane highway corridor.
-## 2. Place Point A / home neighborhood and Point B / city in outer corners
-##    on opposite sides of that reserved corridor.
+## 1. Reserve the centered single-highway corridor.
+## 2. Place Point A / home neighborhood and Point B / city in two different
+##    outer corners. They may be on the same side of the highway.
 ## 3. Generate the local street grids inside those corner footprints.
-## 4. Keep the existing auxiliary/connector graph available underneath for
-##    later reintegration while its blue rendering remains disabled.
+## 4. Generate each auxiliary lane on the same side of the highway as the
+##    local region it serves, then connect that lane to the local grid.
 ##
 ## The road classes are different generation rules inside one graph, not
 ## separate gameplay scenes or scale changes.
@@ -277,21 +277,14 @@ func _choose_region_origins() -> Dictionary:
 		(CITY_ROWS - 1) * CITY_SPACING
 	)
 
-	# The corridor is reserved first. Local regions are then pushed all the
-	# way out to corners on OPPOSITE sides of it:
-	# CITY | corridor | NEIGHBORHOOD.
-	var horizontal: bool = bool(planned_highway_corridor["horizontal"])
-	var city_corner := 0
-	var neighborhood_corner := 3
-
-	if horizontal:
-		# City in a top corner; neighborhood in a bottom corner.
-		city_corner = _rng.randi_range(0, 1)
-		neighborhood_corner = _rng.randi_range(2, 3)
-	else:
-		# City in a left corner; neighborhood in a right corner.
-		city_corner = 0 if _rng.randi_range(0, 1) == 0 else 2
-		neighborhood_corner = 1 if _rng.randi_range(0, 1) == 0 else 3
+	# The highway is reserved first, then each local region chooses an outer
+	# corner independently. Only the exact same corner is disallowed because
+	# the two local grids would overlap. Adjacent corners are valid, so both
+	# regions can naturally appear on the same side of the highway.
+	var neighborhood_corner: int = _rng.randi_range(0, 3)
+	var city_corner: int = _rng.randi_range(0, 2)
+	if city_corner >= neighborhood_corner:
+		city_corner += 1
 
 	var neighborhood_origin := _corner_origin_for_span(
 		neighborhood_span,
@@ -741,8 +734,9 @@ func _build_parallel_highway_access(
 	var lane_connector_end := Vector2i.ZERO
 	var lane_side := 1
 
-	# Pink is one auxiliary highway lane following A -> B travel.
-	# Neighborhood is the on-ramp; city is the off-ramp.
+	# Each auxiliary lane follows A -> B travel and always sits on the side
+	# of the highway nearest the local region it serves. This means the city
+	# off-ramp automatically changes sides whenever the city changes sides.
 	if horizontal_highway:
 		var highway_y: int = highway_start.y
 		var side: int = -1 if center.y < highway_y else 1

@@ -52,8 +52,8 @@ func _run() -> void:
 		"Nine-lane highway corridor was not reserved at world center"
 	)
 	_check(
-		_regions_flank_reserved_corridor(first),
-		"City and neighborhood are not on opposite outer sides of the corridor"
+		_regions_clear_reserved_corridor(first),
+		"City or neighborhood overlaps the reserved highway corridor"
 	)
 
 	_check(
@@ -187,6 +187,8 @@ func _run() -> void:
 	var highway_maps: int = 0
 	var highways_with_turns: int = 0
 	var same_corner_maps: int = 0
+	var same_highway_side_maps: int = 0
+	var off_ramps_on_wrong_side: int = 0
 	var disconnected_maps: int = 0
 	var maps_with_dead_ends: int = 0
 	var maps_with_bad_pink_geometry: int = 0
@@ -232,6 +234,23 @@ func _run() -> void:
 		if same_horizontal_half and same_vertical_half:
 			same_corner_maps += 1
 
+		var highway_a: Vector2i = candidate.nodes[
+			int(candidate.highway_nodes[0])
+		]
+		var highway_b: Vector2i = candidate.nodes[
+			int(candidate.highway_nodes[1])
+		]
+		var highway_horizontal: bool = highway_a.y == highway_b.y
+		if (
+			same_vertical_half
+			if highway_horizontal
+			else same_horizontal_half
+		):
+			same_highway_side_maps += 1
+
+		if not _off_ramp_follows_city_side(candidate):
+			off_ramps_on_wrong_side += 1
+
 		if (
 			candidate.all_nodes_reachable_from(candidate.home_node).size()
 			!= candidate.nodes.size()
@@ -247,6 +266,14 @@ func _run() -> void:
 	_check(
 		same_corner_maps == 0,
 		"Neighborhood and city were generated in the same corner"
+	)
+	_check(
+		same_highway_side_maps > 0,
+		"Generator never produced a same-side city/neighborhood layout"
+	)
+	_check(
+		off_ramps_on_wrong_side == 0,
+		"City off-ramp appeared on the opposite side of the highway"
 	)
 	_check(
 		highway_maps == STRESS_SEED_COUNT,
@@ -432,7 +459,7 @@ func _reserved_corridor_is_centered(network) -> bool:
 	return start.x == center and finish.x == center
 
 
-func _regions_flank_reserved_corridor(network) -> bool:
+func _regions_clear_reserved_corridor(network) -> bool:
 	if network.planned_highway_corridor.is_empty():
 		return false
 
@@ -441,18 +468,72 @@ func _regions_flank_reserved_corridor(network) -> bool:
 	var half_width: int = int(network.HIGHWAY_CORRIDOR_HALF_WIDTH)
 
 	if bool(corridor["horizontal"]):
+		var band_top := start.y - half_width
+		var band_bottom := start.y + half_width
 		return (
-			network.city_rect.end.y <= start.y - half_width
-			and network.neighborhood_rect.position.y
-			>= start.y + half_width
+			network.city_rect.end.y <= band_top
+			or network.city_rect.position.y >= band_bottom
+		) and (
+			network.neighborhood_rect.end.y <= band_top
+			or network.neighborhood_rect.position.y >= band_bottom
 		)
 
+	var band_left := start.x - half_width
+	var band_right := start.x + half_width
 	return (
-		network.city_rect.end.x <= start.x - half_width
-		and network.neighborhood_rect.position.x
-		>= start.x + half_width
+		network.city_rect.end.x <= band_left
+		or network.city_rect.position.x >= band_right
+	) and (
+		network.neighborhood_rect.end.x <= band_left
+		or network.neighborhood_rect.position.x >= band_right
 	)
 
+
+func _off_ramp_follows_city_side(network) -> bool:
+	if network.highway_nodes.size() != 2:
+		return false
+
+	var highway_a: Vector2i = network.nodes[int(network.highway_nodes[0])]
+	var highway_b: Vector2i = network.nodes[int(network.highway_nodes[1])]
+	var horizontal: bool = highway_a.y == highway_b.y
+	var city_center := Vector2i(network.city_rect.get_center())
+	var city_side: int = (
+		signi(city_center.y - highway_a.y)
+		if horizontal
+		else signi(city_center.x - highway_a.x)
+	)
+	if city_side == 0:
+		return false
+
+	var found_off_ramp := false
+	for key in network.edge_classes.keys():
+		if int(network.edge_classes[key]) != network.RoadClass.RAMP:
+			continue
+		var ids: Array = str(key).split(":")
+		if ids.size() != 2:
+			return false
+		var a := int(ids[0])
+		var b := int(ids[1])
+		if network.is_on_ramp_edge(a, b):
+			continue
+
+		found_off_ramp = true
+		var pa: Vector2i = network.nodes[a]
+		var pb: Vector2i = network.nodes[b]
+		var lane_coordinate: float = (
+			(float(pa.y) + float(pb.y)) * 0.5
+			if horizontal
+			else (float(pa.x) + float(pb.x)) * 0.5
+		)
+		var highway_coordinate: float = (
+			float(highway_a.y)
+			if horizontal
+			else float(highway_a.x)
+		)
+		if signf(lane_coordinate - highway_coordinate) != float(city_side):
+			return false
+
+	return found_off_ramp
 
 func _debug_route_respects_one_way_highway(
 	network,
