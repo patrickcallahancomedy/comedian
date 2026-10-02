@@ -5,11 +5,12 @@ extends RefCounted
 ##
 ## One 500 x 500 logical grid contains every road system.
 ## Generation order:
-## 1. Place Point A / home neighborhood.
-## 2. Place Point B / city and reserve one full city block as the venue.
-## 3. Generate the longest clean straight highway corridor independently.
-## 4. Build straight pink auxiliary lanes parallel to the highway.
-## 5. Connect local streets to the pink endpoints with blue roads.
+## 1. Reserve the centered 9-lane highway corridor.
+## 2. Place Point A / home neighborhood and Point B / city in outer corners
+##    on opposite sides of that reserved corridor.
+## 3. Generate the local street grids inside those corner footprints.
+## 4. Keep the existing auxiliary/connector graph available underneath for
+##    later reintegration while its blue rendering remains disabled.
 ##
 ## The road classes are different generation rules inside one graph, not
 ## separate gameplay scenes or scale changes.
@@ -76,6 +77,7 @@ var city_gateway := -1
 
 var uses_highway := false
 var gateway_distance := 0.0
+var planned_highway_corridor: Dictionary = {}
 
 var _rng := RandomNumberGenerator.new()
 
@@ -104,6 +106,9 @@ func generate(seed_value: int) -> void:
 	city_gateway = -1
 	uses_highway = false
 	gateway_distance = 0.0
+	neighborhood_rect = Rect2i()
+	city_rect = Rect2i()
+	planned_highway_corridor = _choose_primary_highway_corridor()
 
 	var placements := _choose_region_origins()
 	var neighborhood_origin: Vector2i = placements["neighborhood"]
@@ -272,25 +277,33 @@ func _choose_region_origins() -> Dictionary:
 		(CITY_ROWS - 1) * CITY_SPACING
 	)
 
-	# Put each generated region in a corner of the 500x500 world, but never
-	# the same corner. This keeps them distinct while allowing adjacent-corner
-	# and opposite-corner trips.
-	var neighborhood_corner: int = _rng.randi_range(0, 3)
-	var city_corner: int = _rng.randi_range(0, 2)
-	if city_corner >= neighborhood_corner:
-		city_corner += 1
+	# The corridor is reserved first. Local regions are then pushed all the
+	# way out to corners on OPPOSITE sides of it:
+	# CITY | corridor | NEIGHBORHOOD.
+	var horizontal: bool = bool(planned_highway_corridor["horizontal"])
+	var city_corner := 0
+	var neighborhood_corner := 3
+
+	if horizontal:
+		# City in a top corner; neighborhood in a bottom corner.
+		city_corner = _rng.randi_range(0, 1)
+		neighborhood_corner = _rng.randi_range(2, 3)
+	else:
+		# City in a left corner; neighborhood in a right corner.
+		city_corner = 0 if _rng.randi_range(0, 1) == 0 else 2
+		neighborhood_corner = 1 if _rng.randi_range(0, 1) == 0 else 3
 
 	var neighborhood_origin := _corner_origin_for_span(
 		neighborhood_span,
 		neighborhood_corner,
 		NEIGHBORHOOD_SPACING,
-		30
+		0
 	)
 	var city_origin := _corner_origin_for_span(
 		city_span,
 		city_corner,
 		CONNECTOR_STEP,
-		30
+		0
 	)
 
 	return {
@@ -584,7 +597,7 @@ func _closest_boundary_node(
 
 
 func _generate_highway_connection() -> void:
-	var corridor: Dictionary = _choose_longest_highway_corridor()
+	var corridor: Dictionary = planned_highway_corridor
 	var horizontal: bool = bool(corridor["horizontal"])
 	var highway_start: Vector2i = corridor["start"]
 	var highway_end: Vector2i = corridor["end"]
@@ -970,6 +983,28 @@ func _add_logical_link(start: Vector2i, finish: Vector2i) -> void:
 		adjacency[a].append(b)
 	if not adjacency[b].has(a):
 		adjacency[b].append(a)
+
+
+func _choose_primary_highway_corridor() -> Dictionary:
+	# Reserve the full 9-lane corridor before any local district exists.
+	# Keeping it centered prevents either local area from crowding the highway.
+	var horizontal := _rng.randi_range(0, 1) == 0
+	var center := _snap_int(GRID_SIZE / 2, CONNECTOR_STEP)
+	var start_axis := HIGHWAY_EDGE_MARGIN
+	var end_axis := GRID_SIZE - HIGHWAY_EDGE_MARGIN
+
+	if horizontal:
+		return {
+			"horizontal": true,
+			"start": Vector2i(start_axis, center),
+			"end": Vector2i(end_axis, center),
+		}
+
+	return {
+		"horizontal": false,
+		"start": Vector2i(center, start_axis),
+		"end": Vector2i(center, end_axis),
+	}
 
 
 func _choose_longest_highway_corridor() -> Dictionary:
