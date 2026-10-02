@@ -384,15 +384,10 @@ func _draw_roads() -> void:
 					)
 					color = CONNECTOR_COLOR
 				generator.RoadClass.RAMP:
-					color = (
-						ON_RAMP_COLOR
-						if generator.is_on_ramp_edge(a, b)
-						else RAMP_COLOR
-					)
 					_draw_dual_ramp(
 						Vector2(generator.nodes[a]),
 						Vector2(generator.nodes[b]),
-						color
+						generator.is_on_ramp_edge(a, b)
 					)
 					continue
 				generator.RoadClass.HIGHWAY:
@@ -504,11 +499,17 @@ func _draw_dual_highway(start: Vector2, finish: Vector2) -> void:
 func _draw_dual_ramp(
 	start: Vector2,
 	finish: Vector2,
-	color: Color
+	is_on_ramp: bool
 ) -> void:
 	if generator.highway_nodes.size() != 2:
 		return
 
+	# Treat the first carriageway as the original A -> B highway, then make
+	# the opposite carriageway a true directional flip. A green entrance on
+	# one side therefore becomes a pink exit at the same longitudinal point
+	# on the mirrored side, and vice versa.
+	var primary_color := ON_RAMP_COLOR if is_on_ramp else RAMP_COLOR
+	var mirrored_color := RAMP_COLOR if is_on_ramp else ON_RAMP_COLOR
 	var highway_a := Vector2(
 		generator.nodes[int(generator.highway_nodes[0])]
 	)
@@ -524,32 +525,60 @@ func _draw_dual_ramp(
 
 	if is_equal_approx(highway_a.y, highway_b.y):
 		var center := highway_a.y
-		var source_side := signf(((start.y + finish.y) * 0.5) - center)
-		if is_zero_approx(source_side):
-			source_side = 1.0
-		for side in [source_side, -source_side]:
-			var lane_y := center + float(side) * DUAL_HIGHWAY_RAMP_OFFSET
-			draw_line(
-				_world_to_screen(Vector2(start.x, lane_y)),
-				_world_to_screen(Vector2(finish.x, lane_y)),
-				color,
-				lane_width,
-				true
-			)
+		draw_line(
+			_world_to_screen(Vector2(
+				start.x,
+				center - DUAL_HIGHWAY_RAMP_OFFSET
+			)),
+			_world_to_screen(Vector2(
+				finish.x,
+				center - DUAL_HIGHWAY_RAMP_OFFSET
+			)),
+			primary_color,
+			lane_width,
+			true
+		)
+		draw_line(
+			_world_to_screen(Vector2(
+				start.x,
+				center + DUAL_HIGHWAY_RAMP_OFFSET
+			)),
+			_world_to_screen(Vector2(
+				finish.x,
+				center + DUAL_HIGHWAY_RAMP_OFFSET
+			)),
+			mirrored_color,
+			lane_width,
+			true
+		)
 	else:
 		var center := highway_a.x
-		var source_side := signf(((start.x + finish.x) * 0.5) - center)
-		if is_zero_approx(source_side):
-			source_side = 1.0
-		for side in [source_side, -source_side]:
-			var lane_x := center + float(side) * DUAL_HIGHWAY_RAMP_OFFSET
-			draw_line(
-				_world_to_screen(Vector2(lane_x, start.y)),
-				_world_to_screen(Vector2(lane_x, finish.y)),
-				color,
-				lane_width,
-				true
-			)
+		draw_line(
+			_world_to_screen(Vector2(
+				center - DUAL_HIGHWAY_RAMP_OFFSET,
+				start.y
+			)),
+			_world_to_screen(Vector2(
+				center - DUAL_HIGHWAY_RAMP_OFFSET,
+				finish.y
+			)),
+			primary_color,
+			lane_width,
+			true
+		)
+		draw_line(
+			_world_to_screen(Vector2(
+				center + DUAL_HIGHWAY_RAMP_OFFSET,
+				start.y
+			)),
+			_world_to_screen(Vector2(
+				center + DUAL_HIGHWAY_RAMP_OFFSET,
+				finish.y
+			)),
+			mirrored_color,
+			lane_width,
+			true
+		)
 
 
 func _visible_degree(node_id: int) -> int:
