@@ -7,7 +7,6 @@ const CAR_COLOR := Color(1.0, 0.92, 0.08)
 const CAR_OUTLINE := Color(0.02, 0.02, 0.02)
 const CAR_RADIUS := 8.0
 const DRIVE_VIEW_CAR_RADIUS := 24.0
-const DRIVE_VIEW_SPEED_SCALE := 0.5
 const LANE_MERGE_DISTANCE := 40.0
 
 var route: Array = []
@@ -80,24 +79,22 @@ func _process(delta: float) -> void:
 			continue
 
 		var road_speed_multiplier := 1.0
-		if road_class == map.generator.RoadClass.HIGHWAY:
+		if road_class == map.generator.RoadClass.NEIGHBORHOOD:
+			# A 10-unit neighborhood block should take as long to drive as
+			# the old 30-unit city block did.
+			road_speed_multiplier = 1.0 / 3.0
+		elif road_class == map.generator.RoadClass.CITY:
+			# City blocks should feel roughly twice as long again.
+			road_speed_multiplier = 0.5
+		elif road_class == map.generator.RoadClass.HIGHWAY:
 			road_speed_multiplier = 2.0
 		elif road_class == map.generator.RoadClass.RAMP:
 			road_speed_multiplier = _ramp_speed_multiplier()
-
-		var drive_view_speed_scale := 1.0
-		if (
-			map.drive_camera_enabled
-			and not map.show_whole_map
-			and not map.zoom_map_enabled
-		):
-			drive_view_speed_scale = DRIVE_VIEW_SPEED_SCALE
 
 		var speed := (
 			BASE_SPEED
 			* float(SPEED_MULTIPLIERS[speed_index])
 			* road_speed_multiplier
-			* drive_view_speed_scale
 		)
 		var time_to_target := distance / speed
 

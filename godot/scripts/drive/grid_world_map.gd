@@ -26,9 +26,6 @@ const VISIBLE_NEIGHBORHOOD_BLOCKS := 2.0
 const ROAD_BLOCK_LENGTH := 20
 const ROAD_BLOCK_WIDTH := 10
 const DRIVE_VISIBLE_WORLD_WIDTH := 13.333333
-const DRIVE_FORWARD_STRETCH := 2.0
-const DRIVE_LATERAL_SQUEEZE := 0.5
-const DRIVE_ROAD_WIDTH_SCALE := 0.5
 const DRIVE_ROTATION_SMOOTH_SPEED := 4.5
 const LEGACY_LOCAL_ROAD_RATIO := 13.0 / 80.0
 const HIGHWAY_LANE_FILL_RATIO := 1.0
@@ -223,11 +220,6 @@ func world_to_screen(world_point: Vector2) -> Vector2:
 		var local := (
 			(world_point - drive_camera_world) * map_scale
 		).rotated(drive_camera_rotation)
-		if not show_whole_map and not zoom_map_enabled:
-			# Drive View uses a tall/narrow road proportion: blocks are twice
-			# as long in the direction of travel and half as wide laterally.
-			local.x *= DRIVE_LATERAL_SQUEEZE
-			local.y *= DRIVE_FORWARD_STRETCH
 		return drive_camera_screen_position() + local
 
 	return map_origin + world_point * map_scale
@@ -409,7 +401,7 @@ func _draw_roads() -> void:
 					Vector2(generator.nodes[b])
 				),
 				color,
-				maxf(1.0, width * map_scale * _drive_road_width_scale()),
+				maxf(1.0, width * map_scale),
 				true
 			)
 
@@ -458,7 +450,7 @@ func _draw_roads() -> void:
 			_world_to_screen(
 				Vector2(generator.nodes[node_id])
 			),
-			maxf(1.0, radius * map_scale * _drive_road_width_scale()),
+			maxf(1.0, radius * map_scale),
 			color
 		)
 
@@ -486,7 +478,6 @@ func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
 				float(generator.HIGHWAY_LANE_SPACING)
 				* HIGHWAY_LANE_FILL_RATIO
 				* map_scale
-				* _drive_road_width_scale()
 			),
 			true
 		)
@@ -503,16 +494,9 @@ func _draw_auxiliary_merge_nodes() -> void:
 				* HIGHWAY_LANE_FILL_RATIO
 				* 0.5
 				* map_scale
-				* _drive_road_width_scale()
 			),
 			HIGHWAY_COLOR
 		)
-
-
-func _drive_road_width_scale() -> float:
-	if drive_camera_enabled and not show_whole_map and not zoom_map_enabled:
-		return DRIVE_ROAD_WIDTH_SCALE
-	return 1.0
 
 
 func _visible_degree(node_id: int) -> int:
