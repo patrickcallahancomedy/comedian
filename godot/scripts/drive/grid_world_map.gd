@@ -30,9 +30,10 @@ const DRIVE_ROTATION_SMOOTH_SPEED := 4.5
 const LEGACY_LOCAL_ROAD_RATIO := 13.0 / 80.0
 const HIGHWAY_LANE_FILL_RATIO := 1.0
 const SHOW_CONNECTORS := false
-const DUAL_HIGHWAY_INNER_LANE_OFFSET := 15.0
-const DUAL_HIGHWAY_OUTER_LANE_OFFSET := 25.0
-const DUAL_HIGHWAY_RAMP_OFFSET := 35.0
+const DUAL_HIGHWAY_PINK_OFFSET := 15.0
+const DUAL_HIGHWAY_RED_INNER_OFFSET := 25.0
+const DUAL_HIGHWAY_RED_OUTER_OFFSET := 35.0
+const DUAL_HIGHWAY_GREEN_OFFSET := 45.0
 
 @export var world_seed: int = 0
 
@@ -466,9 +467,9 @@ func _draw_roads() -> void:
 		)
 
 func _draw_dual_highway(start: Vector2, finish: Vector2) -> void:
-	# Two touching red lanes in each direction, mirrored across a two-lane
-	# empty median. With 10-unit lane widths this occupies 80 world units:
-	# ramp + 2 red + 2 empty + 2 red + ramp.
+	# Cross-section:
+	# CITY | GREEN | RED | RED | PINK | 2 empty lanes |
+	# PINK | RED | RED | GREEN | NEIGHBORHOOD
 	var perpendicular := Vector2.ZERO
 	if is_equal_approx(start.y, finish.y):
 		perpendicular = Vector2(0.0, 1.0)
@@ -476,10 +477,10 @@ func _draw_dual_highway(start: Vector2, finish: Vector2) -> void:
 		perpendicular = Vector2(1.0, 0.0)
 
 	for lane_offset in [
-		-DUAL_HIGHWAY_OUTER_LANE_OFFSET,
-		-DUAL_HIGHWAY_INNER_LANE_OFFSET,
-		DUAL_HIGHWAY_INNER_LANE_OFFSET,
-		DUAL_HIGHWAY_OUTER_LANE_OFFSET,
+		-DUAL_HIGHWAY_RED_OUTER_OFFSET,
+		-DUAL_HIGHWAY_RED_INNER_OFFSET,
+		DUAL_HIGHWAY_RED_INNER_OFFSET,
+		DUAL_HIGHWAY_RED_OUTER_OFFSET,
 	]:
 		var offset: Vector2 = perpendicular * float(lane_offset)
 		draw_line(
@@ -504,12 +505,16 @@ func _draw_dual_ramp(
 	if generator.highway_nodes.size() != 2:
 		return
 
-	# Treat the first carriageway as the original A -> B highway, then make
-	# the opposite carriageway a true directional flip. A green entrance on
-	# one side therefore becomes a pink exit at the same longitudinal point
-	# on the mirrored side, and vice versa.
-	var primary_color := ON_RAMP_COLOR if is_on_ramp else RAMP_COLOR
-	var mirrored_color := RAMP_COLOR if is_on_ramp else ON_RAMP_COLOR
+	# Green is always the OUTER auxiliary lane, nearest the local areas.
+	# Pink is always the INNER auxiliary lane, nearest the empty median.
+	# The same generated ramp segment is mirrored across the corridor so the
+	# lane ordering stays symmetrical while blue connectors remain hidden.
+	var color := ON_RAMP_COLOR if is_on_ramp else RAMP_COLOR
+	var lane_offset := (
+		DUAL_HIGHWAY_GREEN_OFFSET
+		if is_on_ramp
+		else DUAL_HIGHWAY_PINK_OFFSET
+	)
 	var highway_a := Vector2(
 		generator.nodes[int(generator.highway_nodes[0])]
 	)
@@ -525,61 +530,26 @@ func _draw_dual_ramp(
 
 	if is_equal_approx(highway_a.y, highway_b.y):
 		var center := highway_a.y
-		draw_line(
-			_world_to_screen(Vector2(
-				start.x,
-				center - DUAL_HIGHWAY_RAMP_OFFSET
-			)),
-			_world_to_screen(Vector2(
-				finish.x,
-				center - DUAL_HIGHWAY_RAMP_OFFSET
-			)),
-			primary_color,
-			lane_width,
-			true
-		)
-		draw_line(
-			_world_to_screen(Vector2(
-				start.x,
-				center + DUAL_HIGHWAY_RAMP_OFFSET
-			)),
-			_world_to_screen(Vector2(
-				finish.x,
-				center + DUAL_HIGHWAY_RAMP_OFFSET
-			)),
-			mirrored_color,
-			lane_width,
-			true
-		)
+		for side in [-1.0, 1.0]:
+			var lane_y := center + side * lane_offset
+			draw_line(
+				_world_to_screen(Vector2(start.x, lane_y)),
+				_world_to_screen(Vector2(finish.x, lane_y)),
+				color,
+				lane_width,
+				true
+			)
 	else:
 		var center := highway_a.x
-		draw_line(
-			_world_to_screen(Vector2(
-				center - DUAL_HIGHWAY_RAMP_OFFSET,
-				start.y
-			)),
-			_world_to_screen(Vector2(
-				center - DUAL_HIGHWAY_RAMP_OFFSET,
-				finish.y
-			)),
-			primary_color,
-			lane_width,
-			true
-		)
-		draw_line(
-			_world_to_screen(Vector2(
-				center + DUAL_HIGHWAY_RAMP_OFFSET,
-				start.y
-			)),
-			_world_to_screen(Vector2(
-				center + DUAL_HIGHWAY_RAMP_OFFSET,
-				finish.y
-			)),
-			mirrored_color,
-			lane_width,
-			true
-		)
-
+		for side in [-1.0, 1.0]:
+			var lane_x := center + side * lane_offset
+			draw_line(
+				_world_to_screen(Vector2(lane_x, start.y)),
+				_world_to_screen(Vector2(lane_x, finish.y)),
+				color,
+				lane_width,
+				true
+			)
 
 func _visible_degree(node_id: int) -> int:
 	var degree := 0
