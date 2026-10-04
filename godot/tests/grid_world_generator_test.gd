@@ -255,8 +255,23 @@ func _run() -> void:
 			!= candidate.nodes.size()
 		):
 			disconnected_maps += 1
-		if _count_non_highway_dead_ends(candidate) > 0:
+		var candidate_dead_ends := _count_non_highway_dead_ends(candidate)
+		if candidate_dead_ends > 0:
 			maps_with_dead_ends += 1
+			print("DEAD END SEED ", test_seed)
+			for debug_node in range(candidate.nodes.size()):
+				if (
+					candidate.adjacency[debug_node].size() < 2
+					and not candidate.highway_nodes.has(debug_node)
+				):
+					print(
+						"  node ",
+						debug_node,
+						" pos=",
+						candidate.nodes[debug_node],
+						" degree=",
+						candidate.adjacency[debug_node].size()
+					)
 		if not _pink_geometry_is_valid(candidate):
 			maps_with_bad_pink_geometry += 1
 		if not _auxiliary_merge_nodes_are_valid(candidate):
