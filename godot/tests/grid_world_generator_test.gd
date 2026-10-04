@@ -270,8 +270,24 @@ func _run() -> void:
 						" pos=",
 						candidate.nodes[debug_node],
 						" degree=",
-						candidate.adjacency[debug_node].size()
+						candidate.adjacency[debug_node].size(),
+						" connector=",
+						candidate.connector_nodes.has(debug_node),
+						" aux_merge=",
+						candidate.auxiliary_merge_nodes.has(debug_node),
+						" neighbors=",
+						candidate.adjacency[debug_node]
 					)
+					for debug_neighbor_value in candidate.adjacency[debug_node]:
+						var debug_neighbor: int = int(debug_neighbor_value)
+						print(
+							"    -> ",
+							debug_neighbor,
+							" pos=",
+							candidate.nodes[debug_neighbor],
+							" class=",
+							candidate.edge_class(debug_node, debug_neighbor)
+						)
 		if not _pink_geometry_is_valid(candidate):
 			maps_with_bad_pink_geometry += 1
 		if not _auxiliary_merge_nodes_are_valid(candidate):
