@@ -49,6 +49,7 @@ const HIGHWAY_LANE_CENTER_OFFSET := 10
 const RAMP_STANDOFF := 20
 const RAMP_RUN := 100
 const HIGHWAY_LENGTH := 440
+const HIGHWAY_CONTINUATION_BUFFER := 20
 
 const WORLD_MARGIN := 10
 
@@ -750,8 +751,8 @@ func _build_parallel_highway_access(
 		var highway_right := maxi(highway_start.x, highway_end.x)
 		var anchor_x: int = clampi(
 			_snap_int(center.x, CONNECTOR_STEP),
-			highway_left + RAMP_RUN,
-			highway_right - RAMP_RUN
+			highway_left + RAMP_RUN + HIGHWAY_CONTINUATION_BUFFER,
+			highway_right - RAMP_RUN - HIGHWAY_CONTINUATION_BUFFER
 		)
 
 		if is_on_ramp:
@@ -777,8 +778,8 @@ func _build_parallel_highway_access(
 		var highway_bottom := maxi(highway_start.y, highway_end.y)
 		var anchor_y: int = clampi(
 			_snap_int(center.y, CONNECTOR_STEP),
-			highway_top + RAMP_RUN,
-			highway_bottom - RAMP_RUN
+			highway_top + RAMP_RUN + HIGHWAY_CONTINUATION_BUFFER,
+			highway_bottom - RAMP_RUN - HIGHWAY_CONTINUATION_BUFFER
 		)
 
 		if is_on_ramp:
@@ -886,7 +887,10 @@ func _move_auxiliary_lane_clear_of_local_grids(
 				if horizontal
 				else maxi(corridor_start.y, corridor_end.y)
 			)
-			if merge_axis < corridor_min or merge_axis > corridor_max:
+			if (
+				merge_axis < corridor_min + HIGHWAY_CONTINUATION_BUFFER
+				or merge_axis > corridor_max - HIGHWAY_CONTINUATION_BUFFER
+			):
 				continue
 			if _auxiliary_lane_overlaps_local_grid(
 				candidate_highway,
