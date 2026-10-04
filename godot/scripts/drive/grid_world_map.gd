@@ -9,11 +9,12 @@ const WORLD_BG := Color(0.29, 0.39, 0.22)
 const GRID_MINOR := Color(1.0, 1.0, 1.0, 0.035)
 const GRID_MAJOR := Color(1.0, 1.0, 1.0, 0.08)
 
+# One asphalt palette shared by every road class and junction.
 const ROAD_COLOR := Color(0.115, 0.125, 0.14)
-const CONNECTOR_COLOR := Color(0.10, 0.34, 0.92)
-const RAMP_COLOR := Color(0.90, 0.16, 0.78)
-const ON_RAMP_COLOR := Color(0.15, 0.78, 0.24)
-const HIGHWAY_COLOR := Color(0.84, 0.12, 0.10)
+const CONNECTOR_COLOR := ROAD_COLOR
+const RAMP_COLOR := ROAD_COLOR
+const ON_RAMP_COLOR := ROAD_COLOR
+const HIGHWAY_COLOR := ROAD_COLOR
 
 const HOME_COLOR := Color(0.18, 0.52, 0.98)
 const VENUE_COLOR := Color(0.84, 0.39, 0.19)
@@ -445,8 +446,7 @@ func _draw_square_road_patch(
 
 
 func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
-	# Restore the approved pre-2-lane highway: three touching red lanes.
-	# Pink/green auxiliary lanes sit one more lane-width outside.
+	# Three touching asphalt lanes; auxiliary lanes sit one lane-width outside.
 	var lane_spacing := float(generator.HIGHWAY_LANE_SPACING)
 	var perpendicular := Vector2.ZERO
 	if is_equal_approx(start.y, finish.y):
