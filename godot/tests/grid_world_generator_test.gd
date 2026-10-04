@@ -35,16 +35,15 @@ func _run() -> void:
 	_check(
 		first.neighborhood_nodes.size()
 		== first.NEIGHBORHOOD_INTERSECTIONS,
-		"Neighborhood is not the 10x10 / ~100 intersection tier"
+		"Neighborhood is not the 13x13 / 169 intersection tier"
 	)
 	_check(
 		first.city_nodes.size() == first.CITY_INTERSECTIONS,
 		"City is not the ~50 intersection tier"
 	)
 	_check(
-		first.city_rect.size.x > first.neighborhood_rect.size.x
-		and first.city_rect.size.y > first.neighborhood_rect.size.y,
-		"City does not occupy a larger physical footprint"
+		first.city_rect.size == first.neighborhood_rect.size,
+		"City and neighborhood no longer share the same physical footprint"
 	)
 
 	_check(
