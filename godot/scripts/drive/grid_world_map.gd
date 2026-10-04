@@ -410,50 +410,47 @@ func _draw_roads() -> void:
 			continue
 
 		var road_class := _strongest_node_class(node_id)
-		var radius := (
-			float(generator.NEIGHBORHOOD_SPACING)
-			* LEGACY_LOCAL_ROAD_RATIO
-			* 0.5
-		)
+		var patch_width := LOCAL_ROAD_WIDTH_WORLD
 		var color := ROAD_COLOR
 
 		match road_class:
 			generator.RoadClass.CITY:
-				radius = (
-					LOCAL_ROAD_WIDTH_WORLD
-					* 0.5
-				)
+				patch_width = LOCAL_ROAD_WIDTH_WORLD
 			generator.RoadClass.CONNECTOR:
-				radius = (
+				patch_width = (
 					float(generator.CONNECTOR_STEP)
 					* LEGACY_LOCAL_ROAD_RATIO
-					* 0.5
 				)
 				color = CONNECTOR_COLOR
 			generator.RoadClass.RAMP:
-				radius = (
-					float(generator.HIGHWAY_LANE_SPACING)
-					* HIGHWAY_LANE_FILL_RATIO
-					* 0.5
-				)
-				color = RAMP_COLOR
+				# Ramp/highway geometry already overlaps cleanly; a circular
+				# node patch becomes a giant blob in close Drive View.
+				continue
 			generator.RoadClass.HIGHWAY:
-				radius = (
-					float(generator.HIGHWAY_LANE_SPACING)
-					* HIGHWAY_LANE_FILL_RATIO
-					* 0.5
-				)
-				color = HIGHWAY_COLOR
+				continue
 
-		draw_circle(
-			_world_to_screen(
-				Vector2(generator.nodes[node_id])
-			),
-			maxf(1.0, radius * map_scale),
+		_draw_square_road_patch(
+			Vector2(generator.nodes[node_id]),
+			patch_width,
 			color
 		)
 
 	_draw_auxiliary_merge_nodes()
+
+
+func _draw_square_road_patch(
+	world_center: Vector2,
+	world_width: float,
+	color: Color
+) -> void:
+	var half := world_width * 0.5
+	var corners := PackedVector2Array([
+		_world_to_screen(world_center + Vector2(-half, -half)),
+		_world_to_screen(world_center + Vector2(half, -half)),
+		_world_to_screen(world_center + Vector2(half, half)),
+		_world_to_screen(world_center + Vector2(-half, half)),
+	])
+	draw_colored_polygon(corners, color)
 
 
 func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
