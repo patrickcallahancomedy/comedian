@@ -205,6 +205,13 @@ func _choose_next_node() -> void:
 			if automatic >= 0:
 				_set_next_node(automatic, false)
 				return
+		elif incoming_class == map.generator.RoadClass.RAMP:
+			# At the highway end of a ramp, enter the short hidden merge chain
+			# instead of treating the visually finished ramp as a dead end.
+			var hidden_merge := _first_hidden_candidate()
+			if hidden_merge >= 0:
+				_set_next_node(hidden_merge, false)
+				return
 
 	# The highway is one-way. LEFT/RIGHT can queue the off-ramp; otherwise the
 	# car keeps going forward and wraps to the beginning if the exit is missed.
@@ -322,6 +329,16 @@ func _wrap_highway() -> void:
 	next_node = -1
 	status_label.text = "HIGHWAY"
 	_choose_highway_next()
+
+
+func _first_hidden_candidate() -> int:
+	for neighbor_value in map.generator.adjacency[current_node]:
+		var neighbor: int = int(neighbor_value)
+		if neighbor == previous_node:
+			continue
+		if map.generator.edge_class(current_node, neighbor) < 0:
+			return neighbor
+	return -1
 
 
 func _automatic_hidden_continuation() -> int:
