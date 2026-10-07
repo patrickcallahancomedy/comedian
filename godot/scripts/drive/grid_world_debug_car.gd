@@ -1,12 +1,12 @@
 extends Control
 
+const PLAYER_CAR_TEXTURE = preload("res://assets/car/player_car_top.png")
+
 const BASE_SPEED := 25.0
 const SPEED_MULTIPLIERS := [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
 const SPEED_LABELS := ["1×", "2×", "3×", "4×", "5×", "6×", "7×", "8×", "9×", "10×"]
-const CAR_COLOR := Color(1.0, 0.92, 0.08)
-const CAR_OUTLINE := Color(0.02, 0.02, 0.02)
-const CAR_RADIUS := 8.0
-const DRIVE_VIEW_CAR_RADIUS := 24.0
+const CAR_HEIGHT := 18.0
+const DRIVE_VIEW_CAR_HEIGHT := 64.0
 const LANE_MERGE_DISTANCE := 40.0
 
 var route: Array = []
@@ -118,14 +118,14 @@ func _draw() -> void:
 		if map.drive_camera_enabled
 		else map.world_to_screen(_display_world_position())
 	)
-	var radius: float = (
-		DRIVE_VIEW_CAR_RADIUS
+	var car_height := (
+		DRIVE_VIEW_CAR_HEIGHT
 		if (
 			map.drive_camera_enabled
 			and not map.show_whole_map
 			and not map.zoom_map_enabled
 		)
-		else CAR_RADIUS
+		else CAR_HEIGHT
 	)
 
 	var car_rotation := 0.0
@@ -134,37 +134,17 @@ func _draw() -> void:
 		if forward.length_squared() > 0.0001:
 			car_rotation = Vector2.UP.angle_to(forward)
 
-	var nose_offset := Vector2(0.0, -radius - 3.0).rotated(car_rotation)
-	var left_offset := Vector2(-radius, radius).rotated(car_rotation)
-	var right_offset := Vector2(radius, radius).rotated(car_rotation)
-	draw_colored_polygon(
-		PackedVector2Array([
-			screen + nose_offset,
-			screen + left_offset,
-			screen + right_offset,
-		]),
-		CAR_OUTLINE
-	)
-	draw_colored_polygon(
-		PackedVector2Array([
-			screen + Vector2(0.0, -radius).rotated(car_rotation),
-			screen + Vector2(-radius + 2.5, radius - 2.0).rotated(car_rotation),
-			screen + Vector2(radius - 2.5, radius - 2.0).rotated(car_rotation),
-		]),
-		CAR_COLOR
-	)
-	draw_circle(screen + Vector2(0.0, 2.0), 2.0, Color.WHITE)
+	var texture_size := PLAYER_CAR_TEXTURE.get_size()
+	var aspect := texture_size.x / maxf(texture_size.y, 1.0)
+	var car_size := Vector2(car_height * aspect, car_height)
 
-	var font := get_theme_default_font()
-	draw_string(
-		font,
-		screen + Vector2(11.0, 4.0),
-		"CAR",
-		HORIZONTAL_ALIGNMENT_LEFT,
-		30.0,
-		11,
-		Color.WHITE
+	draw_set_transform(screen, car_rotation, Vector2.ONE)
+	draw_texture_rect(
+		PLAYER_CAR_TEXTURE,
+		Rect2(-car_size * 0.5, car_size),
+		false
 	)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _display_world_position() -> Vector2:

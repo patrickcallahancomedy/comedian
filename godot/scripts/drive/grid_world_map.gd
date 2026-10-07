@@ -15,6 +15,9 @@ const CONNECTOR_COLOR := ROAD_COLOR
 const RAMP_COLOR := ROAD_COLOR
 const ON_RAMP_COLOR := ROAD_COLOR
 const HIGHWAY_COLOR := ROAD_COLOR
+const HIGHWAY_LANE_MARKER := Color(0.92, 0.92, 0.90, 0.96)
+const HIGHWAY_EDGE_WHITE := Color(0.96, 0.96, 0.94, 0.98)
+const HIGHWAY_EDGE_YELLOW := Color(0.96, 0.72, 0.18, 0.98)
 
 const HOME_COLOR := Color(0.18, 0.52, 0.98)
 const VENUE_COLOR := Color(0.84, 0.39, 0.19)
@@ -31,6 +34,9 @@ const DRIVE_ROTATION_SMOOTH_SPEED := 4.5
 const LEGACY_LOCAL_ROAD_RATIO := 13.0 / 80.0
 const LOCAL_ROAD_WIDTH_WORLD := 5.0
 const HIGHWAY_LANE_FILL_RATIO := 1.0
+const HIGHWAY_MARKING_WIDTH_WORLD := 0.18
+const HIGHWAY_DASH_WORLD := 2.0
+const HIGHWAY_GAP_WORLD := 3.0
 
 @export var world_seed: int = 0
 
@@ -446,28 +452,97 @@ func _draw_square_road_patch(
 
 
 func _draw_three_lane_highway(start: Vector2, finish: Vector2) -> void:
-	# Three touching asphalt lanes; auxiliary lanes sit one lane-width outside.
-	var lane_spacing := float(generator.HIGHWAY_LANE_SPACING)
-	var perpendicular := Vector2.ZERO
-	if is_equal_approx(start.y, finish.y):
-		perpendicular = Vector2(0.0, 1.0)
-	else:
-		perpendicular = Vector2(1.0, 0.0)
+	# Keep the approved 3 x 10-unit highway footprint, but render it like an
+	# actual three-lane one-way road: solid shoulders plus dashed lane lines.
+	var lane_width := float(generator.HIGHWAY_LANE_SPACING)
+	var corridor_width := lane_width * 3.0
+	var center_line_width := maxf(
+		1.0,
+		HIGHWAY_MARKING_WIDTH_WORLD * map_scale
+	)
 
-	for lane_offset in [-lane_spacing, 0.0, lane_spacing]:
-		var offset: Vector2 = perpendicular * float(lane_offset)
+	draw_line(
+		_world_to_screen(start),
+		_world_to_screen(finish),
+		HIGHWAY_COLOR,
+		maxf(1.0, corridor_width * map_scale),
+		true
+	)
+
+	var travel_direction := (finish - start).normalized()
+	if _highway_travel_sign() < 0:
+		travel_direction *= -1.0
+
+	# Screen/world coordinates use +Y downward, so this is the visual left
+	# side of the road relative to legal travel direction.
+	var left_normal := Vector2(
+		travel_direction.y,
+		-travel_direction.x
+	)
+	var right_normal := -left_normal
+	var shoulder_offset := corridor_width * 0.5
+
+	draw_line(
+		_world_to_screen(start + left_normal * shoulder_offset),
+		_world_to_screen(finish + left_normal * shoulder_offset),
+		HIGHWAY_EDGE_YELLOW,
+		center_line_width,
+		true
+	)
+	draw_line(
+		_world_to_screen(start + right_normal * shoulder_offset),
+		_world_to_screen(finish + right_normal * shoulder_offset),
+		HIGHWAY_EDGE_WHITE,
+		center_line_width,
+		true
+	)
+
+	# Lane boundaries sit halfway between the three lane centers.
+	for boundary_offset in [-lane_width * 0.5, lane_width * 0.5]:
+		_draw_dashed_highway_line(
+			start + left_normal * boundary_offset,
+			finish + left_normal * boundary_offset,
+			HIGHWAY_LANE_MARKER,
+			center_line_width
+		)
+
+
+func _draw_dashed_highway_line(
+	start: Vector2,
+	finish: Vector2,
+	color: Color,
+	screen_width: float
+) -> void:
+	var delta := finish - start
+	var length := delta.length()
+	if length <= 0.001:
+		return
+
+	var direction := delta / length
+	var stride := HIGHWAY_DASH_WORLD + HIGHWAY_GAP_WORLD
+	var cursor := 0.0
+
+	while cursor < length:
+		var dash_end := minf(cursor + HIGHWAY_DASH_WORLD, length)
 		draw_line(
-			_world_to_screen(start + offset),
-			_world_to_screen(finish + offset),
-			HIGHWAY_COLOR,
-			maxf(
-				1.0,
-				float(generator.HIGHWAY_LANE_SPACING)
-				* HIGHWAY_LANE_FILL_RATIO
-				* map_scale
-			),
+			_world_to_screen(start + direction * cursor),
+			_world_to_screen(start + direction * dash_end),
+			color,
+			screen_width,
 			true
 		)
+		cursor += stride
+
+
+func _highway_travel_sign() -> int:
+	var neighborhood_center := Vector2(
+		generator.neighborhood_rect.get_center()
+	)
+	var city_center := Vector2(generator.city_rect.get_center())
+
+	if _highway_is_horizontal():
+		return 1 if city_center.x >= neighborhood_center.x else -1
+	return 1 if city_center.y >= neighborhood_center.y else -1
 
 
 func _draw_auxiliary_merge_nodes() -> void:
