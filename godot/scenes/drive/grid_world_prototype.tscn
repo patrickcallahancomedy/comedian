@@ -238,35 +238,40 @@ text = "A = HOME   •   B = VENUE"
 horizontal_alignment = 1
 
 
-[node name="SteerLeftButton" type="Button" parent="."]
+[node name="TouchControls" type="HBoxContainer" parent="."]
 z_index = 10
 layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 18.0
-offset_top = -86.0
-offset_right = 126.0
-offset_bottom = -18.0
-grow_vertical = 0
-focus_mode = 0
-theme_override_font_sizes/font_size = 13
-text = "◀  LEFT"
-
-[node name="SteerRightButton" type="Button" parent="."]
-z_index = 10
-layout_mode = 1
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
+anchors_preset = 12
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -126.0
-offset_top = -86.0
+offset_left = 18.0
+offset_top = -112.0
 offset_right = -18.0
-offset_bottom = -18.0
-grow_horizontal = 0
+offset_bottom = -32.0
+grow_horizontal = 2
 grow_vertical = 0
+theme_override_constants/separation = 12
+
+[node name="LeftButton" type="Button" parent="TouchControls"]
+custom_minimum_size = Vector2(126, 72)
+layout_mode = 2
+size_flags_horizontal = 3
 focus_mode = 0
-theme_override_font_sizes/font_size = 13
-text = "RIGHT  ▶"
+theme_override_font_sizes/font_size = 30
+text = "<"
+
+[node name="ForwardButton" type="Button" parent="TouchControls"]
+custom_minimum_size = Vector2(118, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 17
+text = "START"
+
+[node name="RightButton" type="Button" parent="TouchControls"]
+custom_minimum_size = Vector2(126, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 30
+text = ">"

@@ -359,9 +359,10 @@ func _run() -> void:
 		car_node._reset()
 
 		_check(
-			scene.get_node_or_null("SteerLeftButton") != null
-			and scene.get_node_or_null("SteerRightButton") != null,
-			"Grid world prototype has no player steering controls"
+			scene.get_node_or_null("TouchControls/LeftButton") != null
+			and scene.get_node_or_null("TouchControls/ForwardButton") != null
+			and scene.get_node_or_null("TouchControls/RightButton") != null,
+			"Grid world prototype has no original player control bar"
 		)
 		_check(
 			car_node.current_node == map_node.generator.home_node
@@ -370,10 +371,15 @@ func _run() -> void:
 			"Player car did not reset ready at home"
 		)
 
-		car_node._run()
+		var start_button: Button = scene.get_node("TouchControls/ForwardButton")
 		_check(
-			car_node.running,
-			"RUN did not start player-controlled driving"
+			start_button.visible,
+			"START button should be visible before driving"
+		)
+		start_button.emit_signal("pressed")
+		_check(
+			car_node.running and not start_button.visible,
+			"START button did not begin player-controlled driving"
 		)
 		car_node._turn_left()
 		_check(
@@ -381,6 +387,10 @@ func _run() -> void:
 			"LEFT input was not queued for the next intersection"
 		)
 		car_node._reset()
+		_check(
+			start_button.visible and not car_node.running,
+			"RESET did not restore the START button"
+		)
 
 		# Manual highway driving must still obey the generated one-way travel
 		# direction. Put the car at the legal start and make sure the driver

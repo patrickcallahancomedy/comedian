@@ -28,8 +28,9 @@ var drive_forward := Vector2.UP
 @onready var speed_button: HSlider = $"../DebugPanel/Content/DRIVE/SpeedButton"
 @onready var speed_value_label: Label = $"../DebugPanel/Content/DRIVE/SpeedValueLabel"
 @onready var status_label: Label = $"../DebugPanel/Content/DRIVE/StatusLabel"
-@onready var left_button: Button = $"../SteerLeftButton"
-@onready var right_button: Button = $"../SteerRightButton"
+@onready var left_button: Button = $"../TouchControls/LeftButton"
+@onready var forward_button: Button = $"../TouchControls/ForwardButton"
+@onready var right_button: Button = $"../TouchControls/RightButton"
 
 
 func _ready() -> void:
@@ -38,6 +39,7 @@ func _ready() -> void:
 	reset_button.pressed.connect(_reset)
 	speed_button.value_changed.connect(_set_speed)
 	left_button.pressed.connect(_turn_left)
+	forward_button.pressed.connect(_run)
 	right_button.pressed.connect(_turn_right)
 	_set_speed(speed_button.value)
 	map.map_generated.connect(_reset)
@@ -135,6 +137,7 @@ func _run() -> void:
 
 	waiting_for_turn = false
 	running = true
+	forward_button.hide()
 	status_label.text = "DRIVING"
 	_sync_drive_camera()
 
@@ -171,7 +174,8 @@ func _reset() -> void:
 	else:
 		drive_forward = Vector2.UP
 
-	status_label.text = "READY - STEER LEFT / RIGHT"
+	forward_button.show()
+	status_label.text = "TAP START"
 	_sync_drive_camera()
 	queue_redraw()
 
@@ -429,6 +433,10 @@ func _turn_right() -> void:
 
 func _queue_turn(turn: int) -> void:
 	if finished:
+		return
+	# Match the earlier playable build: steering does nothing until START has
+	# been pressed, but remains available when the car is stopped at a turn.
+	if not running and not waiting_for_turn:
 		return
 	queued_turn = turn
 	status_label.text = "LEFT QUEUED" if turn == TURN_LEFT else "RIGHT QUEUED"
