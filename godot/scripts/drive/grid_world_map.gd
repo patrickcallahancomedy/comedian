@@ -356,6 +356,14 @@ func _highway_is_horizontal() -> bool:
 
 
 func _draw_roads() -> void:
+	# Draw the highway once from end to end so shoulders and dashed lane lines
+	# stay continuous across the internal routing merge nodes.
+	if generator.highway_nodes.size() == 2:
+		_draw_three_lane_highway(
+			Vector2(generator.nodes[int(generator.highway_nodes[0])]),
+			Vector2(generator.nodes[int(generator.highway_nodes[1])])
+		)
+
 	for a in range(generator.nodes.size()):
 		for b_value in generator.adjacency[a]:
 			var b: int = int(b_value)
@@ -363,8 +371,9 @@ func _draw_roads() -> void:
 				continue
 
 			var road_class := generator.edge_class(a, b)
-			# Graph-only highway/ramp merge links are intentionally invisible.
-			if road_class < 0:
+			# Graph-only merge links are intentionally invisible. The highway is
+			# already rendered as one continuous surface above.
+			if road_class < 0 or road_class == generator.RoadClass.HIGHWAY:
 				continue
 			var width := (
 				LOCAL_ROAD_WIDTH_WORLD
@@ -388,10 +397,6 @@ func _draw_roads() -> void:
 						else RAMP_COLOR
 					)
 				generator.RoadClass.HIGHWAY:
-					_draw_three_lane_highway(
-						Vector2(generator.nodes[a]),
-						Vector2(generator.nodes[b])
-					)
 					continue
 
 			draw_line(
@@ -433,7 +438,50 @@ func _draw_roads() -> void:
 			color
 		)
 
+	_draw_turn_join_patches()
 	_draw_auxiliary_merge_nodes()
+
+
+func _draw_turn_join_patches() -> void:
+	# Wide line segments can leave triangular terrain gaps at 90-degree bends.
+	# Fill only real two-road bends; straight segments and the highway are left
+	# untouched so the approved road widths do not change.
+	for node_id in range(generator.nodes.size()):
+		var center := Vector2(generator.nodes[node_id])
+		var directions: Array[Vector2] = []
+		var join_width := 0.0
+
+		for neighbor_value in generator.adjacency[node_id]:
+			var neighbor: int = int(neighbor_value)
+			var road_class := generator.edge_class(node_id, neighbor)
+			if road_class < 0 or road_class == generator.RoadClass.HIGHWAY:
+				continue
+
+			var delta := Vector2(generator.nodes[neighbor]) - center
+			if delta.length_squared() <= 0.0001:
+				continue
+			directions.append(delta.normalized())
+			join_width = maxf(
+				join_width,
+				_road_world_width_for_class(road_class)
+			)
+
+		if directions.size() != 2:
+			continue
+		if directions[0].dot(directions[1]) < -0.99:
+			continue
+
+		draw_circle(
+			_world_to_screen(center),
+			maxf(1.0, join_width * 0.5 * map_scale),
+			ROAD_COLOR
+		)
+
+
+func _road_world_width_for_class(road_class: int) -> float:
+	if road_class == generator.RoadClass.RAMP:
+		return float(generator.HIGHWAY_LANE_SPACING) * HIGHWAY_LANE_FILL_RATIO
+	return LOCAL_ROAD_WIDTH_WORLD
 
 
 func _draw_square_road_patch(
