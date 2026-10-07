@@ -358,46 +358,67 @@ func _run() -> void:
 		map_node._generate()
 		car_node._reset()
 
-		# Highway-first placement can make this regression seed reach the exit
-		# without wrapping. The invariant is directionality, not forcing a wrap.
 		_check(
-			_debug_route_respects_one_way_highway(
-				map_node.generator,
-				car_node.route,
-				car_node.wrap_route_index
-			),
-			"Debug route travels backward on the one-way highway"
+			scene.get_node_or_null("SteerLeftButton") != null
+			and scene.get_node_or_null("SteerRightButton") != null,
+			"Grid world prototype has no player steering controls"
+		)
+		_check(
+			car_node.current_node == map_node.generator.home_node
+			and car_node.next_node >= 0
+			and not car_node.running,
+			"Player car did not reset ready at home"
 		)
 
-		var wrap_index: int = car_node.wrap_route_index
-		if wrap_index > 0 and wrap_index + 1 < car_node.route.size():
-			car_node.route_index = wrap_index - 1
-			car_node.world_position = Vector2(
-				map_node.generator.nodes[int(car_node.route[wrap_index])]
-			)
-			var before_wrap: Vector2 = car_node._display_world_position()
+		car_node._run()
+		_check(
+			car_node.running,
+			"RUN did not start player-controlled driving"
+		)
+		car_node._turn_left()
+		_check(
+			car_node.queued_turn == -1,
+			"LEFT input was not queued for the next intersection"
+		)
+		car_node._reset()
 
-			car_node.route_index = wrap_index + 1
-			car_node.world_position = Vector2(
-				map_node.generator.nodes[int(car_node.route[wrap_index + 1])]
-			)
-			var after_wrap: Vector2 = car_node._display_world_position()
+		# Manual highway driving must still obey the generated one-way travel
+		# direction. Put the car at the legal start and make sure the driver
+		# selects a forward highway edge rather than driving backward.
+		var highway_a_id: int = int(map_node.generator.highway_nodes[0])
+		var highway_b_id: int = int(map_node.generator.highway_nodes[1])
+		var highway_a: Vector2i = map_node.generator.nodes[highway_a_id]
+		var highway_b: Vector2i = map_node.generator.nodes[highway_b_id]
+		var horizontal: bool = highway_a.y == highway_b.y
+		var travel_sign: int = car_node._highway_travel_sign()
+		var highway_start_id := highway_a_id
+		if horizontal:
+			if signf(float(highway_b.x - highway_a.x)) != float(travel_sign):
+				highway_start_id = highway_b_id
+		else:
+			if signf(float(highway_b.y - highway_a.y)) != float(travel_sign):
+				highway_start_id = highway_b_id
 
-			var highway_a: Vector2i = map_node.generator.nodes[
-				int(map_node.generator.highway_nodes[0])
-			]
-			var highway_b: Vector2i = map_node.generator.nodes[
-				int(map_node.generator.highway_nodes[1])
-			]
-			var same_lane_across_wrap: bool = (
-				is_equal_approx(before_wrap.y, after_wrap.y)
-				if highway_a.y == highway_b.y
-				else is_equal_approx(before_wrap.x, after_wrap.x)
-			)
-			_check(
-				same_lane_across_wrap,
-				"Highway wrap changed the car lane"
-			)
+		car_node.current_node = highway_start_id
+		car_node.previous_node = -1
+		car_node.next_node = -1
+		car_node.world_position = Vector2(
+			map_node.generator.nodes[highway_start_id]
+		)
+		car_node.drive_forward = (
+			Vector2(float(travel_sign), 0.0)
+			if horizontal
+			else Vector2(0.0, float(travel_sign))
+		)
+		car_node._choose_highway_next()
+		_check(
+			car_node.next_node >= 0
+			and map_node.generator.edge_class(
+				highway_start_id,
+				car_node.next_node
+			) == map_node.generator.RoadClass.HIGHWAY,
+			"Player driver did not enter the highway in the legal direction"
+		)
 
 		car_node._reset()
 
@@ -410,7 +431,7 @@ func _run() -> void:
 
 		var expected_car_position: Vector2 = map_node.drive_camera_screen_position()
 		var actual_car_position: Vector2 = map_node.world_to_screen(
-			car_node._display_world_position()
+			car_node.world_position
 		)
 		_check(
 			actual_car_position.distance_to(expected_car_position) < 0.1,
@@ -425,7 +446,7 @@ func _run() -> void:
 		)
 		_check(
 			map_node.world_to_screen(
-				car_node._display_world_position()
+				car_node.world_position
 			).distance_to(expected_car_position) < 0.1,
 			"Whole-map view is not centered on the fixed car"
 		)
