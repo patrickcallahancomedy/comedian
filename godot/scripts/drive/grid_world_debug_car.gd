@@ -65,7 +65,7 @@ func _process(delta: float) -> void:
 			_arrive_at_next_node()
 			continue
 
-		var road_class := map.generator.edge_class(current_node, next_node)
+		var road_class: int = map.generator.edge_class(current_node, next_node)
 		var speed := (
 			BASE_SPEED
 			* float(SPEED_MULTIPLIERS[speed_index])
@@ -91,7 +91,7 @@ func _draw() -> void:
 	if current_node < 0:
 		return
 
-	var screen := (
+	var screen: Vector2 = (
 		map.drive_camera_screen_position()
 		if map.drive_camera_enabled
 		else map.world_to_screen(world_position)
@@ -157,7 +157,7 @@ func _reset() -> void:
 
 	# The route is used only to point the parked car down a sensible first
 	# street. Once RUN is pressed, every later turn is controlled by the player.
-	var starter_route := map.generator.shortest_path(
+	var starter_route: Array = map.generator.shortest_path(
 		current_node,
 		map.generator.venue_access_node
 	)
@@ -196,7 +196,7 @@ func _choose_next_node() -> void:
 	# Hidden merge links are real car movement even though they are not drawn.
 	# Once the car enters one, continue through the short merge chain.
 	if previous_node >= 0:
-		var incoming_class := map.generator.edge_class(
+		var incoming_class: int = map.generator.edge_class(
 			previous_node,
 			current_node
 		)
@@ -270,7 +270,7 @@ func _choose_highway_next() -> void:
 		if neighbor == previous_node:
 			continue
 
-		var road_class := map.generator.edge_class(current_node, neighbor)
+		var road_class: int = map.generator.edge_class(current_node, neighbor)
 		if road_class == map.generator.RoadClass.HIGHWAY:
 			var point := Vector2(map.generator.nodes[neighbor])
 			var delta_axis := (
@@ -477,7 +477,7 @@ func _hidden_branch_is_off_ramp(first_hidden_node: int) -> bool:
 			var neighbor: int = int(neighbor_value)
 			if neighbor == parent:
 				continue
-			var road_class := map.generator.edge_class(cursor, neighbor)
+			var road_class: int = map.generator.edge_class(cursor, neighbor)
 			if road_class == map.generator.RoadClass.RAMP:
 				return not map.generator.is_on_ramp_edge(cursor, neighbor)
 
